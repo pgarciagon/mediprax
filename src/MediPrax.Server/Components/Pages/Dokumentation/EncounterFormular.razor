@@ -1,0 +1,305 @@
+@page "/patienten/{PatientId:guid}/dokumentation/neu"
+@page "/dokumentation/{Id:guid}/bearbeiten"
+@inject IEncounterService EncounterService
+@inject IPatientService PatientService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(isEdit ? "Dokumentation bearbeiten" : "Neue Dokumentation")</PageTitle>
+
+<div class="page-header">
+    <h1>@(isEdit ? "Dokumentation bearbeiten" : "Neue Dokumentation")</h1>
+    @if (patientName is not null)
+    {
+        <span class="patient-context">@patientName</span>
+    }
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="encounterForm">
+        <fieldset>
+            <legend>Konsultation</legend>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Arzt *</label>
+                    <InputSelect @bind-Value="form.DoctorId" class="form-control">
+                        <option value="">— Arzt wählen —</option>
+                        @foreach (var doc in doctors)
+                        {
+                            <option value="@doc.Id">@doc.FullName</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="form-group">
+                    <label>Datum</label>
+                    <InputDate @bind-Value="form.EncounterDate" class="form-control" />
+                </div>
+                <div class="form-group" style="flex:0.5">
+                    <label>Dauer (Min.)</label>
+                    <InputNumber @bind-Value="form.DurationMinutes" class="form-control" />
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>ICD-10-GM Diagnosen</legend>
+
+            <div class="icd-search">
+                <input type="text"
+                       @bind="icdSearchTerm"
+                       @bind:event="oninput"
+                       @bind:after="SearchIcd"
+                       placeholder="ICD-10 Code oder Beschreibung suchen..."
+                       class="form-control" />
+                @if (icdResults.Count > 0)
+                {
+                    <div class="search-dropdown">
+                        @foreach (var entry in icdResults)
+                        {
+                            <div class="search-item" @onclick="() => AddIcd(entry)">
+                                <span class="icd-code">@entry.Code</span>
+                                <span class="icd-desc">@entry.Description</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="icd-tags">
+                @foreach (var icd in form.Icd10Codes)
+                {
+                    var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(icd);
+                    <span class="icd-tag">
+                        <strong>@icd</strong> @desc
+                        <button type="button" class="tag-remove" @onclick="() => RemoveIcd(icd)">&times;</button>
+                    </span>
+                }
+                @if (form.Icd10Codes.Count == 0)
+                {
+                    <span class="no-codes">Keine Diagnosen hinzugefügt.</span>
+                }
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Befund / Notizen</legend>
+
+            <div class="template-bar">
+                <span class="template-label">Vorlage:</span>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("psych")'>Psychiatrisch</button>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("neuro")'>Neurologisch</button>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("kurz")'>Kurzkonsultation</button>
+            </div>
+
+            <InputTextArea @bind-Value="form.Notes" class="form-control notes-area" rows="12" />
+        </fieldset>
+
+        @if (isEdit)
+        {
+            <fieldset>
+                <legend>Status</legend>
+                <InputSelect @bind-Value="form.Status" class="form-control" style="max-width:200px">
+                    <option value="Open">Offen</option>
+                    <option value="InProgress">In Bearbeitung</option>
+                    <option value="Completed">Abgeschlossen</option>
+                </InputSelect>
+            </fieldset>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "Speichern..." : "Speichern")
+            </button>
+            <a href="@backUrl" class="btn btn-secondary">Abbrechen</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid? PatientId { get; set; }
+    [Parameter] public Guid? Id { get; set; }
+
+    private EncounterFormModel form = new();
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
+    private string icdSearchTerm = string.Empty;
+    private string? patientName;
+    private string backUrl = "/patienten";
+    private bool isEdit => Id.HasValue;
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        doctors = await UserService.GetDoctorsAsync();
+
+        if (isEdit)
+        {
+            var encounter = await EncounterService.GetByIdAsync(Id!.Value);
+            if (encounter is null) { Navigation.NavigateTo("/patienten"); return; }
+
+            PatientId = encounter.PatientId;
+            patientName = encounter.PatientName;
+            backUrl = $"/patienten/{PatientId}";
+            form = new EncounterFormModel
+            {
+                DoctorId = encounter.DoctorId.ToString(),
+                EncounterDate = encounter.EncounterDate,
+                DurationMinutes = encounter.DurationMinutes,
+                Notes = encounter.Notes,
+                Icd10Codes = encounter.Icd10Codes.Select(c => c.Code).ToList(),
+                Status = encounter.Status.ToString()
+            };
+        }
+        else if (PatientId.HasValue)
+        {
+            var patient = await PatientService.GetByIdAsync(PatientId.Value);
+            patientName = patient?.FullName;
+            backUrl = $"/patienten/{PatientId}";
+            form.EncounterDate = DateOnly.FromDateTime(DateTime.Today);
+        }
+
+        loading = false;
+    }
+
+    private void SearchIcd()
+    {
+        icdResults = MediPrax.Application.Data.Icd10Catalog.Search(icdSearchTerm);
+    }
+
+    private void AddIcd(MediPrax.Application.Data.Icd10Catalog.Icd10Entry entry)
+    {
+        if (!form.Icd10Codes.Contains(entry.Code))
+            form.Icd10Codes.Add(entry.Code);
+        icdSearchTerm = string.Empty;
+        icdResults = [];
+    }
+
+    private void RemoveIcd(string code)
+    {
+        form.Icd10Codes.Remove(code);
+    }
+
+    private void ApplyTemplate(string template)
+    {
+        form.Notes = template switch
+        {
+            "psych" => """
+                PSYCHISCHER BEFUND:
+                Bewusstsein: klar / getrübt
+                Orientierung: zeitlich / örtlich / situativ / zur Person — orientiert / desorientiert
+                Antrieb: normal / gesteigert / vermindert
+                Stimmung: euthym / depressiv / gehoben / gereizt
+                Affekt: moduliert / eingeengt / flach / inadäquat
+                Formales Denken: geordnet / verlangsamt / beschleunigt / umständlich
+                Inhaltliches Denken: unauffällig / Wahn / Zwangsgedanken
+                Wahrnehmung: unauffällig / Halluzinationen (akustisch / optisch)
+                Ich-Störungen: keine / Gedankeneingebung / -entzug / -ausbreitung
+                Suizidalität: keine / Gedanken / Absichten / Pläne
+
+                BEURTEILUNG:
+
+                PROCEDERE:
+                """,
+            "neuro" => """
+                NEUROLOGISCHER BEFUND:
+                Hirnnerven: unauffällig / Auffälligkeiten:
+                Motorik: Tonus normal / erhöht / schlaff; Kraft seitengleich / Paresen:
+                Reflexe: seitengleich / Seitendifferenz; Pathologische Reflexe:
+                Sensibilität: unauffällig / Hypästhesie / Parästhesien:
+                Koordination: Finger-Nase-Versuch / Knie-Hacke-Versuch — unauffällig / Dysmetrie
+                Gang: sicher / unsicher / Ataxie / Spastik
+                Sprache: unauffällig / Dysarthrie / Aphasie
+
+                BEURTEILUNG:
+
+                PROCEDERE:
+                """,
+            "kurz" => """
+                Konsultation am @(DateTime.Today.ToString("dd.MM.yyyy"))
+
+                Aktueller Zustand:
+
+                Medikation: unverändert / Anpassung:
+
+                Weiteres Vorgehen:
+                Nächster Termin:
+                """,
+            _ => form.Notes
+        };
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+
+        if (!Guid.TryParse(form.DoctorId, out var doctorId))
+        {
+            errorMessage = "Bitte wählen Sie einen Arzt.";
+            saving = false;
+            return;
+        }
+
+        try
+        {
+            if (isEdit)
+            {
+                Enum.TryParse<EncounterStatus>(form.Status, out var status);
+                await EncounterService.UpdateAsync(new UpdateEncounterDto
+                {
+                    Id = Id!.Value,
+                    PatientId = PatientId!.Value,
+                    DoctorId = doctorId,
+                    EncounterDate = form.EncounterDate,
+                    Notes = form.Notes,
+                    Icd10Codes = form.Icd10Codes,
+                    DurationMinutes = form.DurationMinutes,
+                    Status = status
+                });
+            }
+            else
+            {
+                await EncounterService.CreateAsync(new CreateEncounterDto
+                {
+                    PatientId = PatientId!.Value,
+                    DoctorId = doctorId,
+                    EncounterDate = form.EncounterDate,
+                    Notes = form.Notes,
+                    Icd10Codes = form.Icd10Codes,
+                    DurationMinutes = form.DurationMinutes
+                });
+            }
+
+            Navigation.NavigateTo(backUrl);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            saving = false;
+        }
+    }
+
+    private class EncounterFormModel
+    {
+        public string DoctorId { get; set; } = string.Empty;
+        public DateOnly EncounterDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public int? DurationMinutes { get; set; } = 10;
+        public string? Notes { get; set; }
+        public List<string> Icd10Codes { get; set; } = [];
+        public string Status { get; set; } = "Open";
+    }
+}

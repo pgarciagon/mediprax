@@ -1,5 +1,6 @@
 @page "/patienten/{Id:guid}"
 @inject IPatientService PatientService
+@inject IEncounterService EncounterService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -79,6 +80,56 @@ else
         </section>
     </div>
 
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>Klinische Dokumentation</h2>
+            <a href="/patienten/@Id/dokumentation/neu" class="btn btn-sm btn-primary">+ Neue Dokumentation</a>
+        </div>
+
+        @if (encounters is null)
+        {
+            <p>Laden...</p>
+        }
+        else if (encounters.Count == 0)
+        {
+            <div class="empty-encounters">Noch keine Dokumentation vorhanden.</div>
+        }
+        else
+        {
+            <div class="encounter-list">
+                @foreach (var enc in encounters)
+                {
+                    <a href="/dokumentation/@enc.Id/bearbeiten" class="encounter-item">
+                        <div class="enc-date">
+                            <span class="enc-day">@enc.EncounterDate.ToString("dd")</span>
+                            <span class="enc-month">@enc.EncounterDate.ToString("MMM yy", new System.Globalization.CultureInfo("de-DE"))</span>
+                        </div>
+                        <div class="enc-details">
+                            <span class="enc-doctor">@enc.DoctorName</span>
+                            <span class="enc-codes">
+                                @if (enc.Icd10Codes.Count > 0)
+                                {
+                                    @string.Join(", ", enc.Icd10Codes)
+                                }
+                                else
+                                {
+                                    <text>Keine Diagnosen</text>
+                                }
+                            </span>
+                        </div>
+                        <div class="enc-meta">
+                            @if (enc.DurationMinutes.HasValue)
+                            {
+                                <span>@enc.DurationMinutes Min.</span>
+                            }
+                            <span class="enc-status status-@enc.Status.ToString().ToLower()">@enc.Status</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
     @if (showDeleteConfirm)
     {
         <div class="confirm-overlay">
@@ -97,13 +148,18 @@ else
     [Parameter] public Guid Id { get; set; }
 
     private PatientDto? patient;
+    private IReadOnlyList<EncounterListItemDto>? encounters;
     private bool showDeleteConfirm;
 
     protected override async Task OnInitializedAsync()
     {
         patient = await PatientService.GetByIdAsync(Id);
         if (patient is null)
+        {
             Navigation.NavigateTo("/patienten");
+            return;
+        }
+        encounters = await EncounterService.GetByPatientAsync(Id);
     }
 
     private void HandleDelete() => showDeleteConfirm = true;

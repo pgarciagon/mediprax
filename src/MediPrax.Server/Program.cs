@@ -20,6 +20,7 @@ builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<MediPraxDbCont
 builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IEncounterService, EncounterService>();
 
 // Blazor
 builder.Services.AddRazorComponents()

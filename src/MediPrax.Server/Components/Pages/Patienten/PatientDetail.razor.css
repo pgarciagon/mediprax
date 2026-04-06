@@ -94,6 +94,117 @@
     justify-content: flex-end;
 }
 
+/* Encounters section */
+.encounters-section {
+    margin-top: 2rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header h2 {
+    margin: 0;
+}
+
+.encounter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.encounter-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    text-decoration: none;
+    color: var(--color-text, #1e293b);
+    transition: all 150ms ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.encounter-item:hover {
+    border-color: var(--color-primary, #2563eb);
+    box-shadow: var(--shadow-md);
+    transform: translateX(3px);
+    color: var(--color-text, #1e293b);
+}
+
+.enc-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 45px;
+}
+
+.enc-day {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.enc-month {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.enc-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.enc-doctor {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.enc-codes {
+    font-size: 0.8rem;
+    font-family: monospace;
+    color: var(--color-primary, #2563eb);
+}
+
+.enc-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.enc-status {
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.enc-status.status-open { background: #dbeafe; color: #1d4ed8; }
+.enc-status.status-inprogress { background: #dcfce7; color: #15803d; }
+.enc-status.status-completed { background: #f1f5f9; color: #64748b; }
+
+.empty-encounters {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-muted, #94a3b8);
+    background: var(--color-surface, #fff);
+    border: 1px dashed var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    font-size: 0.9rem;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
