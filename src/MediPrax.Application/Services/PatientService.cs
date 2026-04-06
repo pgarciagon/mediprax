@@ -84,7 +84,7 @@ public class PatientService(DbContext context) : IPatientService
     {
         var patient = await Patients.FindAsync([dto.Id], ct)
             ?? throw new KeyNotFoundException($"Patient {dto.Id} not found");
-
+    
         patient.FirstName = dto.FirstName;
         patient.LastName = dto.LastName;
         patient.DateOfBirth = dto.DateOfBirth;

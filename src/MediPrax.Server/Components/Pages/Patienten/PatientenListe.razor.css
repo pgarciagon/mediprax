@@ -2,100 +2,41 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.8rem;
 }
 
 .page-header h1 {
     margin: 0;
 }
 
-.btn-primary {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    padding: 0.5rem 1.2rem;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    cursor: pointer;
-}
-
-.btn-primary:hover {
-    background: #1d4ed8;
-}
-
 .search-bar {
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
 }
 
 .search-bar input {
-    width: 100%;
-    max-width: 500px;
-    padding: 0.5rem 0.8rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.95rem;
+    max-width: 480px;
+    padding-left: 2.5rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3e%3ccircle cx='11' cy='11' r='8'/%3e%3cpath d='m21 21-4.35-4.35'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: 0.7rem center;
+    background-size: 1rem;
 }
 
-.table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.table th,
-.table td {
-    padding: 0.6rem 0.8rem;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.table th {
-    font-weight: 600;
-    color: #475569;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-}
-
-.table tbody tr:hover {
-    background: #f1f5f9;
-}
-
-.table a {
-    color: #2563eb;
-    text-decoration: none;
-}
-
-.table a:hover {
-    text-decoration: underline;
-}
-
-.btn-link {
-    color: #64748b;
-    font-size: 0.85rem;
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--color-text-muted, #94a3b8);
+    background: var(--color-surface, #fff);
+    border: 1px dashed var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
 }
 
 .pagination {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 1rem;
-    margin-top: 1rem;
-    font-size: 0.9rem;
-}
-
-.btn-sm {
-    padding: 0.3rem 0.8rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    background: #fff;
-    cursor: pointer;
-}
-
-.btn-sm:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.empty-state {
-    color: #64748b;
-    padding: 2rem 0;
+    margin-top: 1.2rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary, #64748b);
 }

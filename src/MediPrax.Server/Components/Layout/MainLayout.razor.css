@@ -3,79 +3,134 @@
     min-height: 100vh;
 }
 
+/* === Sidebar === */
 .sidebar {
-    width: 220px;
-    background: #1e293b;
-    color: #e2e8f0;
+    width: 240px;
+    background: #0f172a;
+    color: #cbd5e1;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    border-right: 1px solid #1e293b;
 }
 
-.sidebar-header {
-    padding: 1.2rem 1rem;
-    border-bottom: 1px solid #334155;
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1.25rem 1.2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
-.sidebar-header h2 {
-    margin: 0;
-    font-size: 1.3rem;
-    font-weight: 700;
+.brand-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #fff;
+    font-weight: 800;
+    font-size: 1rem;
+}
+
+.sidebar-brand span {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+}
+
+.sidebar-section {
+    padding: 1rem 0;
+    flex: 1;
+}
+
+.section-label {
+    display: block;
+    padding: 0 1.2rem 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #475569;
 }
 
 .nav-menu {
     list-style: none;
-    padding: 0.5rem 0;
+    padding: 0;
     margin: 0;
 }
 
-.nav-menu li a,
-.nav-menu li ::deep a {
+.nav-menu li ::deep .nav-item {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.7rem 1rem;
-    color: #cbd5e1;
+    gap: 0.7rem;
+    padding: 0.6rem 1.2rem;
+    margin: 0.1rem 0.6rem;
+    color: #94a3b8;
     text-decoration: none;
-    font-size: 0.95rem;
-    transition: background 0.15s;
+    font-size: 0.9rem;
+    font-weight: 450;
+    border-radius: 6px;
+    transition: all 150ms ease;
 }
 
-.nav-menu li a:hover,
-.nav-menu li ::deep a:hover {
-    background: #334155;
-    color: #fff;
+.nav-menu li ::deep .nav-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: #e2e8f0;
 }
 
-.nav-menu li ::deep a.active {
-    background: #2563eb;
-    color: #fff;
+.nav-menu li ::deep .nav-item.active {
+    background: rgba(37, 99, 235, 0.2);
+    color: #60a5fa;
 }
 
 .nav-icon {
-    font-size: 1.1rem;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    stroke-width: 1.8;
+}
+
+.sidebar-footer {
+    padding: 1rem 1.2rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.7rem;
+    color: #475569;
+}
+
+/* === Main === */
+.main-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--color-bg, #f1f5f9);
 }
 
 .main-content {
     flex: 1;
-    padding: 1.5rem 2rem;
-    background: #f8fafc;
-    overflow-y: auto;
+    padding: 2rem 2.5rem;
+    max-width: 1200px;
+    width: 100%;
 }
 
+/* === Error UI === */
 #blazor-error-ui {
     color-scheme: light only;
-    background: lightyellow;
+    background: #fef2f2;
+    border-top: 2px solid #fca5a5;
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
     box-sizing: border-box;
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: 0.6rem 1.25rem;
     position: fixed;
     width: 100%;
     z-index: 1000;
+    font-size: 0.9rem;
 }
 
 #blazor-error-ui .dismiss {

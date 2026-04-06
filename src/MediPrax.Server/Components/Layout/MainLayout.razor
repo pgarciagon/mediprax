@@ -2,26 +2,39 @@
 
 <div class="app-layout">
     <nav class="sidebar">
-        <div class="sidebar-header">
-            <h2>MediPrax</h2>
+        <div class="sidebar-brand">
+            <div class="brand-icon">M</div>
+            <span>MediPrax</span>
         </div>
-        <ul class="nav-menu">
-            <li>
-                <NavLink href="/" Match="NavLinkMatch.All">
-                    <span class="nav-icon">&#x1F3E0;</span> Start
-                </NavLink>
-            </li>
-            <li>
-                <NavLink href="/patienten">
-                    <span class="nav-icon">&#x1F465;</span> Patienten
-                </NavLink>
-            </li>
-        </ul>
+
+        <div class="sidebar-section">
+            <span class="section-label">Navigation</span>
+            <ul class="nav-menu">
+                <li>
+                    <NavLink href="/" Match="NavLinkMatch.All" class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        Start
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="/patienten" class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                        Patienten
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+
+        <div class="sidebar-footer">
+            <span>Neuropsychiatricum Bremen</span>
+        </div>
     </nav>
 
-    <main class="main-content">
-        @Body
-    </main>
+    <div class="main-wrapper">
+        <main class="main-content">
+            @Body
+        </main>
+    </div>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
