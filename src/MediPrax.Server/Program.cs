@@ -1,3 +1,5 @@
+using MediPrax.Application.Interfaces;
+using MediPrax.Application.Services;
 using MediPrax.Core.Interfaces;
 using MediPrax.Infrastructure.Persistence;
 using MediPrax.Server.Components;
@@ -12,6 +14,10 @@ builder.Services.AddDbContext<MediPraxDbContext>(options =>
 // Repositories
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Services
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<MediPraxDbContext>());
+builder.Services.AddScoped<IPatientService, PatientService>();
 
 // Blazor
 builder.Services.AddRazorComponents()

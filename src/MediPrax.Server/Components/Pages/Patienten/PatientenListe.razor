@@ -1,0 +1,112 @@
+@page "/patienten"
+@inject IPatientService PatientService
+@rendermode InteractiveServer
+
+<PageTitle>Patienten</PageTitle>
+
+<div class="page-header">
+    <h1>Patienten</h1>
+    <a href="/patienten/neu" class="btn btn-primary">+ Neuer Patient</a>
+</div>
+
+<div class="search-bar">
+    <input type="text"
+           @bind="searchTerm"
+           @bind:event="oninput"
+           @bind:after="OnSearchChanged"
+           placeholder="Suche nach Name, KVNR oder Telefon..."
+           class="form-control" />
+</div>
+
+@if (result is null)
+{
+    <p>Laden...</p>
+}
+else if (result.TotalCount == 0)
+{
+    <p class="empty-state">Keine Patienten gefunden.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Geburtsdatum</th>
+                <th>Versicherung</th>
+                <th>KVNR</th>
+                <th>Telefon</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in result.Items)
+            {
+                <tr>
+                    <td><a href="/patienten/@p.Id">@p.FullName</a></td>
+                    <td>@p.DateOfBirth.ToString("dd.MM.yyyy")</td>
+                    <td>@(p.InsuranceType?.ToString() ?? "—")</td>
+                    <td>@(p.Kvnr ?? "—")</td>
+                    <td>@(p.Phone ?? "—")</td>
+                    <td>
+                        <a href="/patienten/@p.Id/bearbeiten" class="btn-link">Bearbeiten</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (result.TotalPages > 1)
+    {
+        <div class="pagination">
+            <button disabled="@(!result.HasPrevious)" @onclick="PreviousPage" class="btn btn-sm">Zurück</button>
+            <span>Seite @result.Page von @result.TotalPages (@result.TotalCount Patienten)</span>
+            <button disabled="@(!result.HasNext)" @onclick="NextPage" class="btn btn-sm">Weiter</button>
+        </div>
+    }
+}
+
+@code {
+    private PagedResult<PatientListItemDto>? result;
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPatients();
+    }
+
+    private async Task LoadPatients()
+    {
+        result = await PatientService.SearchAsync(new PatientSearchDto
+        {
+            SearchTerm = searchTerm,
+            Page = currentPage,
+            PageSize = 20
+        });
+    }
+
+    private async Task OnSearchChanged()
+    {
+        currentPage = 1;
+        await LoadPatients();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadPatients();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (result is not null && result.HasNext)
+        {
+            currentPage++;
+            await LoadPatients();
+        }
+    }
+}

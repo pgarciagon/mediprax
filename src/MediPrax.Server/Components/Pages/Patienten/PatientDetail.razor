@@ -1,0 +1,116 @@
+@page "/patienten/{Id:guid}"
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Patient — @(patient?.FullName ?? "Laden...")</PageTitle>
+
+@if (patient is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>@patient.FullName</h1>
+        <div class="header-actions">
+            <a href="/patienten/@Id/bearbeiten" class="btn btn-primary">Bearbeiten</a>
+            <button @onclick="HandleDelete" class="btn btn-danger">Löschen</button>
+        </div>
+    </div>
+
+    <div class="detail-grid">
+        <section class="detail-card">
+            <h3>Persönliche Daten</h3>
+            <dl>
+                <dt>Name</dt>
+                <dd>@patient.FirstName @patient.LastName</dd>
+
+                <dt>Geburtsdatum</dt>
+                <dd>@patient.DateOfBirth.ToString("dd.MM.yyyy")</dd>
+
+                <dt>Geschlecht</dt>
+                <dd>@(patient.Gender ?? "—")</dd>
+            </dl>
+        </section>
+
+        <section class="detail-card">
+            <h3>Versicherung</h3>
+            <dl>
+                <dt>Art</dt>
+                <dd>@patient.InsuranceDisplay</dd>
+
+                <dt>Krankenkasse</dt>
+                <dd>@(patient.InsuranceProvider ?? "—")</dd>
+
+                <dt>Versichertennr.</dt>
+                <dd>@(patient.InsuranceNumber ?? "—")</dd>
+
+                <dt>KVNR</dt>
+                <dd>@(patient.Kvnr ?? "—")</dd>
+            </dl>
+        </section>
+
+        <section class="detail-card">
+            <h3>Kontakt & Adresse</h3>
+            <dl>
+                <dt>Telefon</dt>
+                <dd>@(patient.Phone ?? "—")</dd>
+
+                <dt>E-Mail</dt>
+                <dd>@(patient.Email ?? "—")</dd>
+
+                <dt>Adresse</dt>
+                <dd>
+                    @if (!string.IsNullOrEmpty(patient.Street))
+                    {
+                        @patient.Street<br />
+                    }
+                    @if (!string.IsNullOrEmpty(patient.PostalCode) || !string.IsNullOrEmpty(patient.City))
+                    {
+                        @($"{patient.PostalCode} {patient.City}".Trim())
+                    }
+                    else
+                    {
+                        <text>—</text>
+                    }
+                </dd>
+            </dl>
+        </section>
+    </div>
+
+    @if (showDeleteConfirm)
+    {
+        <div class="confirm-overlay">
+            <div class="confirm-dialog">
+                <p>Patient <strong>@patient.FullName</strong> wirklich löschen?</p>
+                <div class="confirm-actions">
+                    <button @onclick="ConfirmDelete" class="btn btn-danger">Ja, löschen</button>
+                    <button @onclick="() => showDeleteConfirm = false" class="btn btn-secondary">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private PatientDto? patient;
+    private bool showDeleteConfirm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        patient = await PatientService.GetByIdAsync(Id);
+        if (patient is null)
+            Navigation.NavigateTo("/patienten");
+    }
+
+    private void HandleDelete() => showDeleteConfirm = true;
+
+    private async Task ConfirmDelete()
+    {
+        await PatientService.DeleteAsync(Id);
+        Navigation.NavigateTo("/patienten");
+    }
+}

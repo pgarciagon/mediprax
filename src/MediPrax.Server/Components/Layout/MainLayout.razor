@@ -1,9 +1,31 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@Body
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>MediPrax</h2>
+        </div>
+        <ul class="nav-menu">
+            <li>
+                <NavLink href="/" Match="NavLinkMatch.All">
+                    <span class="nav-icon">&#x1F3E0;</span> Start
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/patienten">
+                    <span class="nav-icon">&#x1F465;</span> Patienten
+                </NavLink>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        @Body
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <span class="dismiss">&#x2717;</span>
 </div>

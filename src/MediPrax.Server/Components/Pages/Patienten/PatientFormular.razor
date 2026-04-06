@@ -1,0 +1,248 @@
+@page "/patienten/neu"
+@page "/patienten/{Id:guid}/bearbeiten"
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(isEdit ? "Patient bearbeiten" : "Neuer Patient")</PageTitle>
+
+<div class="page-header">
+    <h1>@(isEdit ? "Patient bearbeiten" : "Neuer Patient")</h1>
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="patientForm">
+        <DataAnnotationsValidator />
+
+        <fieldset>
+            <legend>Persönliche Daten</legend>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nachname *</label>
+                    <InputText @bind-Value="form.LastName" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Vorname *</label>
+                    <InputText @bind-Value="form.FirstName" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Geburtsdatum *</label>
+                    <InputDate @bind-Value="form.DateOfBirth" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Geschlecht</label>
+                    <InputSelect @bind-Value="form.Gender" class="form-control">
+                        <option value="">— Bitte wählen —</option>
+                        <option value="männlich">Männlich</option>
+                        <option value="weiblich">Weiblich</option>
+                        <option value="divers">Divers</option>
+                    </InputSelect>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Versicherung</legend>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Versicherungsart</label>
+                    <InputSelect @bind-Value="form.InsuranceType" class="form-control">
+                        <option value="">— Bitte wählen —</option>
+                        <option value="GKV">GKV</option>
+                        <option value="PKV">PKV</option>
+                    </InputSelect>
+                </div>
+                <div class="form-group">
+                    <label>Krankenkasse</label>
+                    <InputText @bind-Value="form.InsuranceProvider" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Versichertennummer</label>
+                    <InputText @bind-Value="form.InsuranceNumber" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>KVNR</label>
+                    <InputText @bind-Value="form.Kvnr" class="form-control" />
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Kontakt & Adresse</legend>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Telefon</label>
+                    <InputText @bind-Value="form.Phone" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>E-Mail</label>
+                    <InputText @bind-Value="form.Email" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group full">
+                    <label>Straße</label>
+                    <InputText @bind-Value="form.Street" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 0.4">
+                    <label>PLZ</label>
+                    <InputText @bind-Value="form.PostalCode" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Ort</label>
+                    <InputText @bind-Value="form.City" class="form-control" />
+                </div>
+            </div>
+        </fieldset>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "Speichern..." : "Speichern")
+            </button>
+            <a href="@(isEdit ? $"/patienten/{Id}" : "/patienten")" class="btn btn-secondary">Abbrechen</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private PatientFormModel form = new();
+    private bool isEdit => Id.HasValue;
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (isEdit)
+        {
+            var patient = await PatientService.GetByIdAsync(Id!.Value);
+            if (patient is null)
+            {
+                Navigation.NavigateTo("/patienten");
+                return;
+            }
+            form = new PatientFormModel
+            {
+                FirstName = patient.FirstName,
+                LastName = patient.LastName,
+                DateOfBirth = patient.DateOfBirth,
+                Gender = patient.Gender,
+                InsuranceType = patient.InsuranceType?.ToString(),
+                InsuranceNumber = patient.InsuranceNumber,
+                InsuranceProvider = patient.InsuranceProvider,
+                Kvnr = patient.Kvnr,
+                Street = patient.Street,
+                City = patient.City,
+                PostalCode = patient.PostalCode,
+                Phone = patient.Phone,
+                Email = patient.Email
+            };
+        }
+        loading = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            var insuranceType = form.InsuranceType switch
+            {
+                "GKV" => InsuranceType.GKV,
+                "PKV" => InsuranceType.PKV,
+                _ => (InsuranceType?)null
+            };
+
+            if (isEdit)
+            {
+                await PatientService.UpdateAsync(new UpdatePatientDto
+                {
+                    Id = Id!.Value,
+                    FirstName = form.FirstName,
+                    LastName = form.LastName,
+                    DateOfBirth = form.DateOfBirth,
+                    Gender = form.Gender,
+                    InsuranceType = insuranceType,
+                    InsuranceNumber = form.InsuranceNumber,
+                    InsuranceProvider = form.InsuranceProvider,
+                    Kvnr = form.Kvnr,
+                    Street = form.Street,
+                    City = form.City,
+                    PostalCode = form.PostalCode,
+                    Phone = form.Phone,
+                    Email = form.Email
+                });
+                Navigation.NavigateTo($"/patienten/{Id}");
+            }
+            else
+            {
+                var created = await PatientService.CreateAsync(new CreatePatientDto
+                {
+                    FirstName = form.FirstName,
+                    LastName = form.LastName,
+                    DateOfBirth = form.DateOfBirth,
+                    Gender = form.Gender,
+                    InsuranceType = insuranceType,
+                    InsuranceNumber = form.InsuranceNumber,
+                    InsuranceProvider = form.InsuranceProvider,
+                    Kvnr = form.Kvnr,
+                    Street = form.Street,
+                    City = form.City,
+                    PostalCode = form.PostalCode,
+                    Phone = form.Phone,
+                    Email = form.Email
+                });
+                Navigation.NavigateTo($"/patienten/{created.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            saving = false;
+        }
+    }
+
+    private class PatientFormModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public DateOnly DateOfBirth { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public string? Gender { get; set; }
+        public string? InsuranceType { get; set; }
+        public string? InsuranceNumber { get; set; }
+        public string? InsuranceProvider { get; set; }
+        public string? Kvnr { get; set; }
+        public string? Street { get; set; }
+        public string? City { get; set; }
+        public string? PostalCode { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+    }
+}
