@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MediPrax.Application\MediPrax.Application.csproj" />
+    <ProjectReference Include="..\MediPrax.Infrastructure\MediPrax.Infrastructure.csproj" />
+    <ProjectReference Include="..\MediPrax.UI\MediPrax.UI.csproj" />
+    <ProjectReference Include="..\MediPrax.Reporting\MediPrax.Reporting.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+</Project>

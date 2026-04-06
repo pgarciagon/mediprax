@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MediPrax.Application/MediPrax.Application.csproj" />
+    <Project Path="src/MediPrax.Core/MediPrax.Core.csproj" />
+    <Project Path="src/MediPrax.Infrastructure/MediPrax.Infrastructure.csproj" />
+    <Project Path="src/MediPrax.Reporting/MediPrax.Reporting.csproj" />
+    <Project Path="src/MediPrax.Server/MediPrax.Server.csproj" />
+    <Project Path="src/MediPrax.UI/MediPrax.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MediPrax.IntegrationTests/MediPrax.IntegrationTests.csproj" />
+    <Project Path="tests/MediPrax.UnitTests/MediPrax.UnitTests.csproj" />
+  </Folder>
+</Solution>
