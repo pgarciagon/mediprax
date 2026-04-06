@@ -18,6 +18,8 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Services
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<MediPraxDbContext>());
 builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Blazor
 builder.Services.AddRazorComponents()

@@ -1,0 +1,114 @@
+@page "/termine"
+@inject IAppointmentService AppointmentService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Terminplanung</PageTitle>
+
+<div class="page-header">
+    <h1>Terminplanung</h1>
+    <a href="/termine/neu" class="btn btn-primary">+ Neuer Termin</a>
+</div>
+
+<div class="toolbar">
+    <div class="week-nav">
+        <button class="btn btn-secondary btn-sm" @onclick="PreviousWeek">&larr;</button>
+        <button class="btn btn-secondary btn-sm" @onclick="GoToToday">Heute</button>
+        <button class="btn btn-secondary btn-sm" @onclick="NextWeek">&rarr;</button>
+        <span class="week-label">@weekStart.ToString("dd.MM.") – @weekStart.AddDays(6).ToString("dd.MM.yyyy")</span>
+    </div>
+
+    <div class="doctor-filter">
+        <select class="form-control" @bind="selectedDoctorId" @bind:after="LoadSchedule">
+            <option value="">Alle Ärzte</option>
+            @foreach (var doc in doctors)
+            {
+                <option value="@doc.Id">@doc.FullName</option>
+            }
+        </select>
+    </div>
+</div>
+
+@if (schedule is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="week-grid">
+        @foreach (var day in schedule.Days.Take(6)) // Mo-Sa
+        {
+            var isToday = day.Date == DateOnly.FromDateTime(DateTime.Today);
+            <div class="day-column @(isToday ? "today" : "") @(day.Date.DayOfWeek == DayOfWeek.Sunday ? "sunday" : "")">
+                <div class="day-header">
+                    <span class="day-name">@GetDayName(day.Date.DayOfWeek)</span>
+                    <span class="day-date @(isToday ? "today-badge" : "")">@day.Date.ToString("dd.MM.")</span>
+                </div>
+                <div class="day-slots">
+                    @if (day.Appointments.Count == 0)
+                    {
+                        <div class="empty-day">—</div>
+                    }
+                    else
+                    {
+                        @foreach (var appt in day.Appointments)
+                        {
+                            <div class="appointment-slot status-@appt.Status.ToString().ToLower()" @onclick="() => ViewAppointment(appt.Id)">
+                                <span class="slot-time">@appt.StartTime.ToLocalTime().ToString("HH:mm")</span>
+                                <span class="slot-patient">@appt.PatientName</span>
+                                @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId))
+                                {
+                                    <span class="slot-doctor">@appt.DoctorName</span>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private WeekScheduleDto? schedule;
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private DateOnly weekStart;
+    private string selectedDoctorId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today));
+        doctors = await UserService.GetDoctorsAsync();
+        await LoadSchedule();
+    }
+
+    private async Task LoadSchedule()
+    {
+        Guid? doctorId = Guid.TryParse(selectedDoctorId, out var id) ? id : null;
+        schedule = await AppointmentService.GetWeekScheduleAsync(weekStart, doctorId);
+    }
+
+    private async Task PreviousWeek() { weekStart = weekStart.AddDays(-7); await LoadSchedule(); }
+    private async Task NextWeek() { weekStart = weekStart.AddDays(7); await LoadSchedule(); }
+    private async Task GoToToday() { weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today)); await LoadSchedule(); }
+
+    private void ViewAppointment(Guid id) => Navigation.NavigateTo($"/termine/{id}");
+
+    private static DateOnly GetMonday(DateOnly date)
+    {
+        var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.AddDays(-diff);
+    }
+
+    private static string GetDayName(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Mo",
+        DayOfWeek.Tuesday => "Di",
+        DayOfWeek.Wednesday => "Mi",
+        DayOfWeek.Thursday => "Do",
+        DayOfWeek.Friday => "Fr",
+        DayOfWeek.Saturday => "Sa",
+        _ => "So"
+    };
+}

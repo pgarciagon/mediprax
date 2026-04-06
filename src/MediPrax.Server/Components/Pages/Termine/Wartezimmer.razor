@@ -1,0 +1,119 @@
+@page "/wartezimmer"
+@inject IAppointmentService AppointmentService
+@rendermode InteractiveServer
+
+<PageTitle>Wartezimmer</PageTitle>
+
+<div class="page-header">
+    <h1>Wartezimmer</h1>
+    <span class="today-label">@DateOnly.FromDateTime(DateTime.Today).ToString("dddd, dd. MMMM yyyy", new System.Globalization.CultureInfo("de-DE"))</span>
+</div>
+
+@if (entries is null)
+{
+    <p>Laden...</p>
+}
+else if (entries.Count == 0)
+{
+    <div class="empty-state">Heute keine Termine.</div>
+}
+else
+{
+    <div class="waiting-grid">
+        @{ var inProgress = entries.Where(e => e.Status == AppointmentStatus.InProgress).ToList(); }
+        @{ var waiting = entries.Where(e => e.Status == AppointmentStatus.CheckedIn).ToList(); }
+        @{ var expected = entries.Where(e => e.Status == AppointmentStatus.Scheduled).ToList(); }
+        @{ var done = entries.Where(e => e.Status == AppointmentStatus.Completed).ToList(); }
+
+        <section class="status-section">
+            <h2 class="section-title in-progress">In Behandlung (@inProgress.Count)</h2>
+            @foreach (var e in inProgress)
+            {
+                <div class="entry-card status-inprogress">
+                    @RenderEntry(e)
+                    <div class="entry-actions">
+                        <button class="btn btn-sm btn-primary" @onclick="() => ChangeStatus(e.AppointmentId, AppointmentStatus.Completed)">Fertig</button>
+                    </div>
+                </div>
+            }
+            @if (inProgress.Count == 0) { <div class="empty-section">—</div> }
+        </section>
+
+        <section class="status-section">
+            <h2 class="section-title checked-in">Im Wartezimmer (@waiting.Count)</h2>
+            @foreach (var e in waiting)
+            {
+                <div class="entry-card status-checkedin">
+                    @RenderEntry(e)
+                    <div class="entry-actions">
+                        <button class="btn btn-sm btn-primary" @onclick="() => ChangeStatus(e.AppointmentId, AppointmentStatus.InProgress)">Aufrufen</button>
+                    </div>
+                </div>
+            }
+            @if (waiting.Count == 0) { <div class="empty-section">—</div> }
+        </section>
+
+        <section class="status-section">
+            <h2 class="section-title scheduled">Erwartet (@expected.Count)</h2>
+            @foreach (var e in expected)
+            {
+                <div class="entry-card status-scheduled">
+                    @RenderEntry(e)
+                    <div class="entry-actions">
+                        <button class="btn btn-sm btn-secondary" @onclick="() => ChangeStatus(e.AppointmentId, AppointmentStatus.CheckedIn)">Einchecken</button>
+                        <button class="btn btn-sm btn-link" @onclick="() => ChangeStatus(e.AppointmentId, AppointmentStatus.NoShow)">Nicht erschienen</button>
+                    </div>
+                </div>
+            }
+            @if (expected.Count == 0) { <div class="empty-section">—</div> }
+        </section>
+
+        @if (done.Count > 0)
+        {
+            <section class="status-section">
+                <h2 class="section-title completed">Fertig (@done.Count)</h2>
+                @foreach (var e in done)
+                {
+                    <div class="entry-card status-completed">
+                        @RenderEntry(e)
+                    </div>
+                }
+            </section>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<WaitingRoomEntryDto>? entries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        entries = await AppointmentService.GetWaitingRoomAsync(DateOnly.FromDateTime(DateTime.Today));
+    }
+
+    private async Task ChangeStatus(Guid appointmentId, AppointmentStatus status)
+    {
+        await AppointmentService.UpdateStatusAsync(appointmentId, status);
+        await LoadEntries();
+    }
+
+    private RenderFragment RenderEntry(WaitingRoomEntryDto e) => __builder =>
+    {
+        <div class="entry-info">
+            <span class="entry-time">@e.StartTime.ToLocalTime().ToString("HH:mm")</span>
+            <div class="entry-details">
+                <a href="/patienten/@e.PatientId" class="entry-patient">@e.PatientName</a>
+                <span class="entry-doctor">@e.DoctorName · @e.DurationMinutes Min.</span>
+                @if (!string.IsNullOrEmpty(e.Notes))
+                {
+                    <span class="entry-notes">@e.Notes</span>
+                }
+            </div>
+        </div>
+    };
+}
