@@ -1,0 +1,297 @@
+@page "/patienten/{PatientId:guid}/arztbrief/neu"
+@inject IArztbriefService ArztbriefService
+@inject IPatientService PatientService
+@inject IEncounterService EncounterService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Neuer Arztbrief</PageTitle>
+
+<div class="page-header">
+    <h1>Neuer Arztbrief</h1>
+    @if (patientName is not null)
+    {
+        <span class="patient-context">@patientName</span>
+    }
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="arztbriefForm">
+        <fieldset>
+            <legend>Arzt & Encounter</legend>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Arzt *</label>
+                    <InputSelect @bind-Value="form.DoctorId" class="form-control">
+                        <option value="">— Arzt wählen —</option>
+                        @foreach (var doc in doctors)
+                        {
+                            <option value="@doc.Id">@doc.FullName</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="form-group">
+                    <label>Encounter (optional)</label>
+                    <InputSelect @bind-Value="form.EncounterId" @bind:after="OnEncounterSelected" class="form-control">
+                        <option value="">— Ohne Bezug —</option>
+                        @foreach (var enc in encounters)
+                        {
+                            <option value="@enc.Id">@enc.EncounterDate.ToString("dd.MM.yyyy") — @string.Join(", ", enc.Icd10Codes)</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Empfänger</legend>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Name / Praxis *</label>
+                    <InputText @bind-Value="form.RecipientName" class="form-control" placeholder="Dr. med. ..." />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full">
+                    <label>Adresse</label>
+                    <InputText @bind-Value="form.RecipientAddress" class="form-control" placeholder="Straße, PLZ Ort" />
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Inhalt</legend>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Betreff</label>
+                    <InputText @bind-Value="form.Subject" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Diagnosen</label>
+                <div class="icd-search">
+                    <input type="text"
+                           @bind="icdSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchIcd"
+                           placeholder="ICD-10 suchen..."
+                           class="form-control" />
+                    @if (icdResults.Count > 0)
+                    {
+                        <div class="search-dropdown">
+                            @foreach (var entry in icdResults)
+                            {
+                                <div class="search-item" @onclick="() => AddIcd(entry)">
+                                    <span class="icd-code">@entry.Code</span>
+                                    <span class="icd-desc">@entry.Description</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="icd-tags">
+                    @foreach (var icd in form.Diagnoses)
+                    {
+                        var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(icd);
+                        <span class="icd-tag">
+                            <strong>@icd</strong> @desc
+                            <button type="button" class="tag-remove" @onclick="() => form.Diagnoses.Remove(icd)">&times;</button>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 0.8rem">
+                <label>Brieftext *</label>
+                <div class="template-bar">
+                    <span class="template-label">Vorlage:</span>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("ueberweisung")'>Überweisung</button>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("befund")'>Befundbericht</button>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("verlauf")'>Verlaufsbericht</button>
+                </div>
+                <InputTextArea @bind-Value="form.Body" class="form-control notes-area" rows="14" />
+            </div>
+        </fieldset>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "PDF wird erzeugt..." : "Arztbrief erstellen (PDF)")
+            </button>
+            <a href="/patienten/@PatientId" class="btn btn-secondary">Abbrechen</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    private ArztbriefFormModel form = new();
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private IReadOnlyList<EncounterListItemDto> encounters = [];
+    private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
+    private string icdSearchTerm = string.Empty;
+    private string? patientName;
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await PatientService.GetByIdAsync(PatientId);
+        if (patient is null) { Navigation.NavigateTo("/patienten"); return; }
+
+        patientName = patient.FullName;
+        doctors = await UserService.GetDoctorsAsync();
+        encounters = await EncounterService.GetByPatientAsync(PatientId);
+        form.Subject = $"Arztbrief — {patient.FullName}";
+        loading = false;
+    }
+
+    private void OnEncounterSelected()
+    {
+        if (Guid.TryParse(form.EncounterId, out var encId))
+        {
+            var enc = encounters.FirstOrDefault(e => e.Id == encId);
+            if (enc is not null)
+            {
+                form.Diagnoses = enc.Icd10Codes.ToList();
+            }
+        }
+    }
+
+    private void SearchIcd()
+    {
+        icdResults = MediPrax.Application.Data.Icd10Catalog.Search(icdSearchTerm);
+    }
+
+    private void AddIcd(MediPrax.Application.Data.Icd10Catalog.Icd10Entry entry)
+    {
+        if (!form.Diagnoses.Contains(entry.Code))
+            form.Diagnoses.Add(entry.Code);
+        icdSearchTerm = string.Empty;
+        icdResults = [];
+    }
+
+    private void ApplyTemplate(string template)
+    {
+        form.Body = template switch
+        {
+            "ueberweisung" => $"""
+                Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+                wir überweisen Ihnen o.g. Patienten mit der Bitte um Mitbeurteilung / Weiterbehandlung.
+
+                Anamnese:
+
+                Aktueller Befund:
+
+                Bisherige Therapie:
+
+                Fragestellung:
+
+                Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
+                """,
+            "befund" => $"""
+                Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+                wir berichten über o.g. Patienten, der/die sich am {DateTime.Today:dd.MM.yyyy} in unserer Praxis vorstellte.
+
+                Anamnese:
+
+                Psychischer Befund:
+
+                Neurologischer Befund:
+
+                Diagnosen:
+                (siehe oben)
+
+                Therapieempfehlung:
+
+                Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
+                """,
+            "verlauf" => $"""
+                Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+                wir berichten über den aktuellen Behandlungsverlauf von o.g. Patient/in.
+
+                Vorgeschichte:
+
+                Aktueller Verlauf:
+
+                Aktuelle Medikation:
+
+                Weiteres Procedere:
+
+                Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
+                """,
+            _ => form.Body
+        };
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+
+        if (!Guid.TryParse(form.DoctorId, out var doctorId))
+        {
+            errorMessage = "Bitte wählen Sie einen Arzt.";
+            saving = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(form.RecipientName))
+        {
+            errorMessage = "Bitte geben Sie einen Empfänger an.";
+            saving = false;
+            return;
+        }
+
+        try
+        {
+            Guid? encounterId = Guid.TryParse(form.EncounterId, out var eid) ? eid : null;
+
+            var docId = await ArztbriefService.CreateAndGeneratePdfAsync(new CreateArztbriefDto
+            {
+                PatientId = PatientId,
+                DoctorId = doctorId,
+                EncounterId = encounterId,
+                RecipientName = form.RecipientName,
+                RecipientAddress = form.RecipientAddress,
+                Subject = form.Subject,
+                Body = form.Body,
+                Diagnoses = form.Diagnoses
+            });
+
+            Navigation.NavigateTo($"/dokumente/{docId}/pdf");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            saving = false;
+        }
+    }
+
+    private class ArztbriefFormModel
+    {
+        public string DoctorId { get; set; } = string.Empty;
+        public string EncounterId { get; set; } = string.Empty;
+        public string RecipientName { get; set; } = string.Empty;
+        public string? RecipientAddress { get; set; }
+        public string Subject { get; set; } = "Arztbrief";
+        public string Body { get; set; } = string.Empty;
+        public List<string> Diagnoses { get; set; } = [];
+    }
+}

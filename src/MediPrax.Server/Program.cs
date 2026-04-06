@@ -21,6 +21,7 @@ builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEncounterService, EncounterService>();
+builder.Services.AddScoped<IArztbriefService, MediPrax.Server.Services.ArztbriefService>();
 
 // Blazor
 builder.Services.AddRazorComponents()
@@ -37,6 +38,14 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 app.UseAntiforgery();
+
+// PDF endpoint
+app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbriefService) =>
+{
+    var pdf = await arztbriefService.GetPdfAsync(id);
+    if (pdf is null) return Results.NotFound();
+    return Results.File(pdf, "application/pdf", $"Arztbrief-{id:N}.pdf");
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

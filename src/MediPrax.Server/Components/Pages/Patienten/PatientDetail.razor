@@ -1,6 +1,7 @@
 @page "/patienten/{Id:guid}"
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService
+@inject IArztbriefService ArztbriefService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -130,6 +131,38 @@ else
         }
     </div>
 
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>Arztbriefe</h2>
+            <a href="/patienten/@Id/arztbrief/neu" class="btn btn-sm btn-primary">+ Neuer Arztbrief</a>
+        </div>
+
+        @if (arztbriefe is null || arztbriefe.Count == 0)
+        {
+            <div class="empty-encounters">Noch keine Arztbriefe vorhanden.</div>
+        }
+        else
+        {
+            <div class="encounter-list">
+                @foreach (var brief in arztbriefe)
+                {
+                    <a href="/dokumente/@brief.Id/pdf" target="_blank" class="encounter-item">
+                        <div class="enc-date">
+                            <svg style="width:20px;height:20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <div class="enc-details">
+                            <span class="enc-doctor">@brief.Title</span>
+                            <span class="enc-codes">@brief.CreatedAt.ToString("dd.MM.yyyy HH:mm")</span>
+                        </div>
+                        <div class="enc-meta">
+                            <span class="enc-status status-completed">PDF</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
     @if (showDeleteConfirm)
     {
         <div class="confirm-overlay">
@@ -149,6 +182,7 @@ else
 
     private PatientDto? patient;
     private IReadOnlyList<EncounterListItemDto>? encounters;
+    private IReadOnlyList<ArztbriefListItemDto>? arztbriefe;
     private bool showDeleteConfirm;
 
     protected override async Task OnInitializedAsync()
@@ -160,6 +194,7 @@ else
             return;
         }
         encounters = await EncounterService.GetByPatientAsync(Id);
+        arztbriefe = await ArztbriefService.GetByPatientAsync(Id);
     }
 
     private void HandleDelete() => showDeleteConfirm = true;
