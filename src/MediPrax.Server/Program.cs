@@ -34,6 +34,8 @@ builder.Services.AddScoped<IArztbriefService, MediPrax.Server.Services.Arztbrief
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
+builder.Services.AddScoped<IKvdtExportService, KvdtExportService>();
+builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
 
@@ -144,6 +146,15 @@ app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbri
     await auditService.LogAsync(AuditAction.Export, "Document", id, "PDF heruntergeladen");
     return Results.File(pdf, "application/pdf", $"Arztbrief-{id:N}.pdf");
 });
+
+// KVDT export endpoint
+app.MapGet("/api/kvdt-export/{quarter}", async (string quarter, IKvdtExportService kvdtService, IAuditService auditService) =>
+{
+    var result = await kvdtService.ExportQuarterAsync(quarter);
+    if (!result.Success) return Results.BadRequest(result.ErrorMessage);
+    await auditService.LogAsync(AuditAction.Export, "BillingItem", details: $"KVDT-Export {quarter}: {result.ItemCount} Positionen, {result.PatientCount} Patienten");
+    return Results.File(result.Content, "text/plain", result.FileName);
+}).RequireAuthorization("Admin");
 
 // Seed: ensure admin user and hash placeholder passwords
 if (app.Environment.IsDevelopment())

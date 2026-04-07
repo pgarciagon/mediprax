@@ -6,6 +6,7 @@
 }
 
 .page-header h1 { margin: 0; }
+.header-actions { display: flex; align-items: center; gap: 1rem; }
 
 .quarter-selector {
     display: flex;

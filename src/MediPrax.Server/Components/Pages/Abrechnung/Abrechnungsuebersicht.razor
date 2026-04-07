@@ -7,10 +7,17 @@
 
 <div class="page-header">
     <h1>Abrechnung</h1>
-    <div class="quarter-selector">
-        <button class="btn btn-sm" @onclick="PrevQuarter">&lt;</button>
-        <span class="quarter-label">@selectedQuarter</span>
-        <button class="btn btn-sm" @onclick="NextQuarter">&gt;</button>
+    <div class="header-actions">
+        <div class="quarter-selector">
+            <button class="btn btn-sm" @onclick="PrevQuarter">&lt;</button>
+            <span class="quarter-label">@selectedQuarter</span>
+            <button class="btn btn-sm" @onclick="NextQuarter">&gt;</button>
+        </div>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <a href="/api/kvdt-export/@selectedQuarter" class="btn btn-secondary" target="_blank">KVDT Export</a>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 

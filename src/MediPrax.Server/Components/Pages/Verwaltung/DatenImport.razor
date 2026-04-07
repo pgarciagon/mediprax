@@ -1,0 +1,65 @@
+@page "/verwaltung/import"
+@attribute [Authorize(Roles = "Admin")]
+@inject IImportService ImportService
+@rendermode InteractiveServer
+
+<PageTitle>Datenimport</PageTitle>
+
+<div class="page-header">
+    <h1>Datenimport</h1>
+</div>
+
+<div class="import-card">
+    <h3>Patienten-CSV importieren</h3>
+    <p class="import-hint">
+        CSV-Format (Semikolon-getrennt, UTF-8):<br />
+        <code>Nachname;Vorname;Geburtsdatum;Geschlecht;KVNR;Versichertennr;Krankenkasse;Versicherungsart;Straße;PLZ;Ort;Telefon;Email</code>
+    </p>
+
+    <InputFile OnChange="HandleFileSelected" accept=".csv" class="form-control" style="max-width:400px" />
+
+    @if (importing)
+    {
+        <p class="import-status">Importiere...</p>
+    }
+
+    @if (result is not null)
+    {
+        <div class="import-result @(result.Errors > 0 ? "has-errors" : "")">
+            <dl>
+                <dt>Importiert</dt><dd class="success">@result.Imported</dd>
+                <dt>Übersprungen (Duplikate)</dt><dd>@result.Skipped</dd>
+                <dt>Fehler</dt><dd class="@(result.Errors > 0 ? "error" : "")">@result.Errors</dd>
+            </dl>
+
+            @if (result.ErrorMessages.Count > 0)
+            {
+                <details>
+                    <summary>Fehlerdetails (@result.ErrorMessages.Count)</summary>
+                    <ul class="error-list">
+                        @foreach (var msg in result.ErrorMessages)
+                        {
+                            <li>@msg</li>
+                        }
+                    </ul>
+                </details>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private ImportResultDto? result;
+    private bool importing;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        importing = true;
+        result = null;
+        StateHasChanged();
+
+        using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        result = await ImportService.ImportPatientsCsvAsync(stream);
+        importing = false;
+    }
+}
