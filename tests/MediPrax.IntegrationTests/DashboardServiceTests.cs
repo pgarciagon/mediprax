@@ -1,0 +1,60 @@
+using MediPrax.Application.Services;
+using MediPrax.Core.Entities;
+using MediPrax.Core.Enums;
+
+namespace MediPrax.IntegrationTests;
+
+public class DashboardServiceTests : IDisposable
+{
+    private readonly TestDbContextFactory _factory;
+    private readonly DashboardService _sut;
+
+    public DashboardServiceTests()
+    {
+        _factory = new TestDbContextFactory();
+        _sut = new DashboardService(_factory.Context);
+
+        // Seed data
+        var patient = new Patient { FirstName = "Dash", LastName = "Test", DateOfBirth = new DateOnly(1990, 1, 1) };
+        var doctor = new User { FirstName = "Dr", LastName = "Dash", Email = "dash@test.de", PasswordHash = "x", Role = UserRole.Arzt };
+        _factory.Context.Set<Patient>().Add(patient);
+        _factory.Context.Set<User>().Add(doctor);
+        _factory.Context.SaveChanges();
+
+        // Add today's appointment
+        _factory.Context.Set<Appointment>().Add(new Appointment
+        {
+            PatientId = patient.Id, DoctorId = doctor.Id,
+            StartTime = DateTime.UtcNow, DurationMinutes = 15
+        });
+
+        // Add encounter this week
+        _factory.Context.Set<Encounter>().Add(new Encounter
+        {
+            PatientId = patient.Id, DoctorId = doctor.Id,
+            EncounterDate = DateOnly.FromDateTime(DateTime.Today)
+        });
+
+        _factory.Context.SaveChanges();
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_ReturnsData()
+    {
+        var result = await _sut.GetDashboardAsync();
+
+        Assert.NotNull(result);
+        Assert.True(result.TotalPatients >= 1);
+        Assert.True(result.AppointmentsToday >= 1);
+        Assert.True(result.EncountersThisWeek >= 1);
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_IncludesUpcomingAppointments()
+    {
+        var result = await _sut.GetDashboardAsync();
+        Assert.True(result.UpcomingAppointments.Count >= 1);
+    }
+
+    public void Dispose() => _factory.Dispose();
+}

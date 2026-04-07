@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\MediPrax.Core\MediPrax.Core.csproj" />
     <ProjectReference Include="..\..\src\MediPrax.Application\MediPrax.Application.csproj" />
     <ProjectReference Include="..\..\src\MediPrax.Infrastructure\MediPrax.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\MediPrax.Server\MediPrax.Server.csproj" />
   </ItemGroup>
 
 </Project>
