@@ -1,0 +1,51 @@
+.inactive-row {
+    opacity: 0.5;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.role-arzt {
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+}
+
+.role-mfa {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.role-empfang {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.role-admin {
+    background: rgba(139, 92, 246, 0.1);
+    color: #7c3aed;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.status-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.status-inactive {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}

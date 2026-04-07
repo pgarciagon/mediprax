@@ -1,0 +1,222 @@
+@page "/verwaltung/benutzer/neu"
+@page "/verwaltung/benutzer/{Id:guid}"
+@attribute [Authorize(Roles = "Admin")]
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(IsEdit ? "Benutzer bearbeiten" : "Neuer Benutzer")</PageTitle>
+
+<div class="page-header">
+    <h1>@(IsEdit ? "Benutzer bearbeiten" : "Neuer Benutzer")</h1>
+</div>
+
+@if (notFound)
+{
+    <p>Benutzer nicht gefunden.</p>
+}
+else
+{
+    <div class="form-container">
+        <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="userForm">
+            <fieldset>
+                <legend>Benutzerdaten</legend>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Vorname *</label>
+                        <InputText @bind-Value="form.FirstName" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Nachname *</label>
+                        <InputText @bind-Value="form.LastName" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>E-Mail *</label>
+                        <InputText @bind-Value="form.Email" class="form-control" type="email" />
+                    </div>
+                    <div class="form-group">
+                        <label>Rolle *</label>
+                        <InputSelect @bind-Value="form.Role" class="form-control">
+                            <option value="@MediPrax.Core.Enums.UserRole.Arzt">Arzt</option>
+                            <option value="@MediPrax.Core.Enums.UserRole.MFA">MFA</option>
+                            <option value="@MediPrax.Core.Enums.UserRole.Empfang">Empfang</option>
+                            <option value="@MediPrax.Core.Enums.UserRole.Admin">Admin</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                @if (!IsEdit)
+                {
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Passwort *</label>
+                            <InputText @bind-Value="form.Password" class="form-control" type="password" />
+                        </div>
+                    </div>
+                }
+
+                @if (IsEdit)
+                {
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <InputSelect @bind-Value="form.IsActive" class="form-control">
+                                <option value="true">Aktiv</option>
+                                <option value="false">Deaktiviert</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                }
+            </fieldset>
+
+            @if (IsEdit)
+            {
+                <fieldset>
+                    <legend>Passwort zurücksetzen</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Neues Passwort</label>
+                            <InputText @bind-Value="newPassword" class="form-control" type="password" placeholder="Leer lassen, um nicht zu ändern" />
+                        </div>
+                        <div class="form-group" style="align-self: flex-end">
+                            <button type="button" class="btn btn-secondary" @onclick="ResetPassword" disabled="@(string.IsNullOrWhiteSpace(newPassword))">
+                                Passwort setzen
+                            </button>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(passwordMessage))
+                    {
+                        <div class="success-message">@passwordMessage</div>
+                    }
+                </fieldset>
+            }
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-message">@errorMessage</div>
+            }
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" disabled="@saving">
+                    @(saving ? "Speichern..." : "Speichern")
+                </button>
+                <a href="/verwaltung/benutzer" class="btn btn-secondary">Abbrechen</a>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEdit => Id.HasValue;
+    private bool notFound;
+    private bool saving;
+    private string? errorMessage;
+    private string newPassword = string.Empty;
+    private string? passwordMessage;
+    private UserFormModel form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit)
+        {
+            var user = await UserService.GetByIdAsync(Id!.Value);
+            if (user is null) { notFound = true; return; }
+
+            form.FirstName = user.FirstName;
+            form.LastName = user.LastName;
+            form.Email = user.Email;
+            form.Role = user.Role;
+            form.IsActive = user.IsActive;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(form.FirstName) || string.IsNullOrWhiteSpace(form.LastName) || string.IsNullOrWhiteSpace(form.Email))
+        {
+            errorMessage = "Bitte füllen Sie alle Pflichtfelder aus.";
+            saving = false;
+            return;
+        }
+
+        try
+        {
+            if (IsEdit)
+            {
+                await UserService.UpdateAsync(Id!.Value, new UpdateUserDto
+                {
+                    FirstName = form.FirstName,
+                    LastName = form.LastName,
+                    Email = form.Email,
+                    Role = form.Role,
+                    IsActive = form.IsActive
+                });
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(form.Password) || form.Password.Length < 6)
+                {
+                    errorMessage = "Das Passwort muss mindestens 6 Zeichen lang sein.";
+                    saving = false;
+                    return;
+                }
+
+                await UserService.CreateAsync(new CreateUserDto
+                {
+                    FirstName = form.FirstName,
+                    LastName = form.LastName,
+                    Email = form.Email,
+                    Password = form.Password,
+                    Role = form.Role
+                });
+            }
+
+            Navigation.NavigateTo("/verwaltung/benutzer");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            saving = false;
+        }
+    }
+
+    private async Task ResetPassword()
+    {
+        passwordMessage = null;
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+        {
+            passwordMessage = "Mindestens 6 Zeichen.";
+            return;
+        }
+
+        try
+        {
+            await UserService.ResetPasswordAsync(Id!.Value, new ResetPasswordDto { NewPassword = newPassword });
+            passwordMessage = "Passwort wurde erfolgreich zurückgesetzt.";
+            newPassword = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            passwordMessage = ex.Message;
+        }
+    }
+
+    private class UserFormModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public MediPrax.Core.Enums.UserRole Role { get; set; } = MediPrax.Core.Enums.UserRole.MFA;
+        public bool IsActive { get; set; } = true;
+    }
+}

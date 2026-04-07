@@ -1,0 +1,66 @@
+@page "/verwaltung/benutzer"
+@attribute [Authorize(Roles = "Admin")]
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<PageTitle>Benutzerverwaltung</PageTitle>
+
+<div class="page-header">
+    <h1>Benutzerverwaltung</h1>
+    <a href="/verwaltung/benutzer/neu" class="btn btn-primary">+ Neuer Benutzer</a>
+</div>
+
+@if (users is null)
+{
+    <p>Laden...</p>
+}
+else if (users.Count == 0)
+{
+    <p class="empty-state">Keine Benutzer gefunden.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>E-Mail</th>
+                <th>Rolle</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in users)
+            {
+                <tr class="@(u.IsActive ? "" : "inactive-row")">
+                    <td>@u.FullName</td>
+                    <td>@u.Email</td>
+                    <td><span class="role-badge role-@u.Role.ToString().ToLower()">@u.RoleDisplay</span></td>
+                    <td>
+                        @if (u.IsActive)
+                        {
+                            <span class="status-badge status-active">Aktiv</span>
+                        }
+                        else
+                        {
+                            <span class="status-badge status-inactive">Deaktiviert</span>
+                        }
+                    </td>
+                    <td>
+                        <a href="/verwaltung/benutzer/@u.Id" class="btn-link">Bearbeiten</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<UserListItemDto>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await UserService.GetAllAsync();
+    }
+}

@@ -1,5 +1,5 @@
 @page "/patienten/{PatientId:guid}/arztbrief/neu"
-@attribute [Authorize]
+@attribute [Authorize(Policy = "Arzt")]
 @inject IArztbriefService ArztbriefService
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService

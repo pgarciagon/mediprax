@@ -40,6 +40,22 @@
             </ul>
         </div>
 
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="sidebar-section">
+                    <span class="section-label">Verwaltung</span>
+                    <ul class="nav-menu">
+                        <li>
+                            <NavLink href="/verwaltung/benutzer" class="nav-item">
+                                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z"/><circle cx="12" cy="8" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                                Benutzer
+                            </NavLink>
+                        </li>
+                    </ul>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
         <div class="sidebar-footer">
             <AuthorizeView>
                 <Authorized>
@@ -50,7 +66,10 @@
                             <span class="user-role">@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
                         </div>
                     </div>
-                    <a href="/api/logout" class="logout-btn">Abmelden</a>
+                    <div class="user-actions">
+                        <a href="/konto/passwort" class="user-action-link">Passwort ändern</a>
+                        <a href="/api/logout" class="logout-btn">Abmelden</a>
+                    </div>
                 </Authorized>
             </AuthorizeView>
             <span class="footer-text">Neuropsychiatricum Bremen</span>

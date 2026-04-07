@@ -1,0 +1,123 @@
+@page "/konto/passwort"
+@attribute [Authorize]
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Passwort ändern</PageTitle>
+
+<div class="page-header">
+    <h1>Passwort ändern</h1>
+</div>
+
+<div class="form-container" style="max-width: 480px">
+    <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="changePasswordForm">
+        <fieldset>
+            <div class="form-group">
+                <label>Aktuelles Passwort *</label>
+                <InputText @bind-Value="form.CurrentPassword" class="form-control" type="password" />
+            </div>
+
+            <div class="form-group">
+                <label>Neues Passwort *</label>
+                <InputText @bind-Value="form.NewPassword" class="form-control" type="password" />
+            </div>
+
+            <div class="form-group">
+                <label>Neues Passwort bestätigen *</label>
+                <InputText @bind-Value="form.ConfirmPassword" class="form-control" type="password" />
+            </div>
+        </fieldset>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="success-message">@successMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "Speichern..." : "Passwort ändern")
+            </button>
+            <a href="/" class="btn btn-secondary">Abbrechen</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private PasswordFormModel form = new();
+    private bool saving;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+        successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(form.CurrentPassword) || string.IsNullOrWhiteSpace(form.NewPassword))
+        {
+            errorMessage = "Bitte füllen Sie alle Felder aus.";
+            saving = false;
+            return;
+        }
+
+        if (form.NewPassword.Length < 6)
+        {
+            errorMessage = "Das neue Passwort muss mindestens 6 Zeichen lang sein.";
+            saving = false;
+            return;
+        }
+
+        if (form.NewPassword != form.ConfirmPassword)
+        {
+            errorMessage = "Die Passwörter stimmen nicht überein.";
+            saving = false;
+            return;
+        }
+
+        try
+        {
+            var auth = await AuthState!;
+            var userIdClaim = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                errorMessage = "Benutzer nicht erkannt.";
+                saving = false;
+                return;
+            }
+
+            await UserService.ChangePasswordAsync(userId, new ChangePasswordDto
+            {
+                CurrentPassword = form.CurrentPassword,
+                NewPassword = form.NewPassword
+            });
+
+            successMessage = "Passwort wurde erfolgreich geändert.";
+            form = new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class PasswordFormModel
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

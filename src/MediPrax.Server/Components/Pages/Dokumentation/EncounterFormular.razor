@@ -1,6 +1,6 @@
 @page "/patienten/{PatientId:guid}/dokumentation/neu"
 @page "/dokumentation/{Id:guid}/bearbeiten"
-@attribute [Authorize]
+@attribute [Authorize(Policy = "Klinisch")]
 @inject IEncounterService EncounterService
 @inject IPatientService PatientService
 @inject IUserService UserService

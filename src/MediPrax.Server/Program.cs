@@ -37,7 +37,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.SlidingExpiration = true;
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("Arzt", policy => policy.RequireRole("Arzt", "Admin"));
+    options.AddPolicy("Klinisch", policy => policy.RequireRole("Arzt", "MFA", "Admin"));
+    options.AddPolicy("Empfang", policy => policy.RequireRole("Arzt", "MFA", "Empfang", "Admin"));
+});
 builder.Services.AddCascadingAuthenticationState();
 
 // Blazor
@@ -95,17 +101,31 @@ app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbri
     return Results.File(pdf, "application/pdf", $"Arztbrief-{id:N}.pdf");
 });
 
-// Seed: hash placeholder passwords in development
+// Seed: ensure admin user and hash placeholder passwords
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<MediPraxDbContext>();
+
+    // Hash placeholder passwords
     var usersToFix = db.Users.Where(u => u.PasswordHash == "placeholder").ToList();
     foreach (var u in usersToFix)
-    {
         u.PasswordHash = BCrypt.Net.BCrypt.HashPassword("mediprax2026");
+
+    // Ensure an Admin user exists
+    if (!db.Users.Any(u => u.Role == MediPrax.Core.Enums.UserRole.Admin))
+    {
+        db.Users.Add(new MediPrax.Core.Entities.User
+        {
+            FirstName = "System",
+            LastName = "Admin",
+            Email = "admin@neuropsych-bremen.de",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("mediprax2026"),
+            Role = MediPrax.Core.Enums.UserRole.Admin
+        });
     }
-    if (usersToFix.Count > 0) db.SaveChanges();
+
+    db.SaveChanges();
 }
 
 app.MapStaticAssets();
