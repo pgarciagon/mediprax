@@ -1,0 +1,202 @@
+@page "/berichte"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IReportService ReportService
+@inject IBillingService BillingService
+@rendermode InteractiveServer
+
+<PageTitle>Berichte</PageTitle>
+
+<div class="page-header">
+    <h1>Berichte</h1>
+</div>
+
+<div class="report-tabs">
+    <button class="tab @(activeTab == "daily" ? "active" : "")" @onclick='() => SwitchTab("daily")'>Tagesbericht</button>
+    <button class="tab @(activeTab == "quarterly" ? "active" : "")" @onclick='() => SwitchTab("quarterly")'>Quartalsbericht</button>
+</div>
+
+@if (activeTab == "daily")
+{
+    <div class="filter-bar">
+        <InputDate @bind-Value="selectedDate" class="form-control" style="max-width:180px" />
+        <button class="btn btn-primary btn-sm" @onclick="LoadDaily">Laden</button>
+    </div>
+
+    @if (daily is not null)
+    {
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-value">@daily.TotalAppointments</span>
+                <span class="kpi-label">Termine gesamt</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-value">@daily.CompletedAppointments</span>
+                <span class="kpi-label">Abgeschlossen</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-value">@daily.EncountersCreated</span>
+                <span class="kpi-label">Dokumentationen</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-value">@daily.DocumentsCreated</span>
+                <span class="kpi-label">Dokumente</span>
+            </div>
+        </div>
+
+        @if (daily.DoctorBreakdown.Count > 0)
+        {
+            <div class="report-card">
+                <h3>Aufschlüsselung nach Arzt</h3>
+                <table class="table">
+                    <thead>
+                        <tr><th>Arzt</th><th>Termine</th><th>Dokumentationen</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in daily.DoctorBreakdown)
+                        {
+                            <tr>
+                                <td>@doc.DoctorName</td>
+                                <td>@doc.Appointments</td>
+                                <td>@doc.Encounters</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+}
+
+@if (activeTab == "quarterly")
+{
+    <div class="filter-bar">
+        <div class="quarter-selector">
+            <button class="btn btn-sm" @onclick="PrevQuarter">&lt;</button>
+            <span class="quarter-label">@selectedQuarter</span>
+            <button class="btn btn-sm" @onclick="NextQuarter">&gt;</button>
+        </div>
+    </div>
+
+    @if (quarterly is not null)
+    {
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-value">@quarterly.TotalPatientsSeen</span>
+                <span class="kpi-label">Patienten behandelt</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-value">@quarterly.TotalEncounters</span>
+                <span class="kpi-label">Dokumentationen</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-value">@quarterly.NewPatients</span>
+                <span class="kpi-label">Neue Patienten</span>
+            </div>
+            <div class="kpi-card accent">
+                <span class="kpi-value">@quarterly.EstimatedRevenue.ToString("N2") €</span>
+                <span class="kpi-label">Geschätzter Umsatz</span>
+            </div>
+        </div>
+
+        <div class="report-grid">
+            @if (quarterly.TopDiagnoses.Count > 0)
+            {
+                <div class="report-card">
+                    <h3>Top-10 Diagnosen</h3>
+                    <div class="diagnosis-list">
+                        @foreach (var diag in quarterly.TopDiagnoses)
+                        {
+                            <div class="diagnosis-row">
+                                <span class="diag-code">@diag.Code</span>
+                                <span class="diag-desc">@(diag.Description ?? "—")</span>
+                                <span class="diag-bar">
+                                    <span class="bar-fill" style="width: @(quarterly.TopDiagnoses.Count > 0 ? (int)(100.0 * diag.Count / quarterly.TopDiagnoses[0].Count) : 0)%"></span>
+                                </span>
+                                <span class="diag-count">@diag.Count</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (quarterly.DoctorBreakdown.Count > 0)
+            {
+                <div class="report-card">
+                    <h3>Leistung nach Arzt</h3>
+                    <table class="table">
+                        <thead>
+                            <tr><th>Arzt</th><th>Dok.</th><th>Positionen</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var doc in quarterly.DoctorBreakdown)
+                            {
+                                <tr>
+                                    <td>@doc.DoctorName</td>
+                                    <td>@doc.Encounters</td>
+                                    <td>@doc.BillingItems</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private string activeTab = "daily";
+    private DateOnly selectedDate = DateOnly.FromDateTime(DateTime.Today);
+    private string selectedQuarter = string.Empty;
+    private int quarterOffset;
+    private DailyReportDto? daily;
+    private QuarterlyReportDto? quarterly;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedQuarter = BillingService.GetCurrentQuarter();
+        await LoadDaily();
+    }
+
+    private async Task SwitchTab(string tab)
+    {
+        activeTab = tab;
+        if (tab == "daily" && daily is null) await LoadDaily();
+        if (tab == "quarterly" && quarterly is null) await LoadQuarterly();
+    }
+
+    private async Task LoadDaily()
+    {
+        daily = await ReportService.GetDailyReportAsync(selectedDate);
+    }
+
+    private async Task LoadQuarterly()
+    {
+        quarterly = await ReportService.GetQuarterlyReportAsync(selectedQuarter);
+    }
+
+    private async Task PrevQuarter()
+    {
+        quarterOffset--;
+        selectedQuarter = GetQuarter(quarterOffset);
+        await LoadQuarterly();
+    }
+
+    private async Task NextQuarter()
+    {
+        quarterOffset++;
+        selectedQuarter = GetQuarter(quarterOffset);
+        await LoadQuarterly();
+    }
+
+    private string GetQuarter(int offset)
+    {
+        var now = DateTime.UtcNow;
+        var month = now.Month + (offset * 3);
+        var year = now.Year;
+        while (month > 12) { month -= 12; year++; }
+        while (month < 1) { month += 12; year--; }
+        var q = (month - 1) / 3 + 1;
+        return $"{year}-Q{q}";
+    }
+}

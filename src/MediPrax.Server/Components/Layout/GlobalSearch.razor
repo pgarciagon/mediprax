@@ -1,0 +1,58 @@
+@inject ISearchService SearchService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<div class="global-search">
+    <div class="search-input-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text"
+               @bind="query"
+               @bind:event="oninput"
+               @bind:after="OnSearch"
+               placeholder="Suchen..."
+               class="search-input" />
+    </div>
+
+    @if (result is not null && result.Results.Count > 0)
+    {
+        <div class="search-results">
+            @foreach (var group in result.Results.GroupBy(r => r.Category))
+            {
+                <div class="result-group">
+                    <span class="result-category">@group.Key</span>
+                    @foreach (var item in group)
+                    {
+                        <a href="@item.Url" class="result-item" @onclick="Clear">
+                            <span class="result-title">@item.Title</span>
+                            @if (item.Subtitle is not null)
+                            {
+                                <span class="result-subtitle">@item.Subtitle</span>
+                            }
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string query = string.Empty;
+    private GlobalSearchResultDto? result;
+
+    private async Task OnSearch()
+    {
+        if (query.Length < 2)
+        {
+            result = null;
+            return;
+        }
+        result = await SearchService.SearchAsync(query);
+    }
+
+    private void Clear()
+    {
+        query = string.Empty;
+        result = null;
+    }
+}

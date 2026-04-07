@@ -33,6 +33,8 @@ builder.Services.AddScoped<IEncounterService, EncounterService>();
 builder.Services.AddScoped<IArztbriefService, MediPrax.Server.Services.ArztbriefService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
