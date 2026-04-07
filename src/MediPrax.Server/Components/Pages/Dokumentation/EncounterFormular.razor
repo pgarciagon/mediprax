@@ -4,6 +4,7 @@
 @inject IEncounterService EncounterService
 @inject IPatientService PatientService
 @inject IUserService UserService
+@inject IBillingService BillingService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -114,6 +115,78 @@ else
             </fieldset>
         }
 
+        @if (isEdit)
+        {
+            <fieldset>
+                <legend>Abrechnung</legend>
+
+                <div class="gop-search">
+                    <input type="text"
+                           @bind="gopSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchGop"
+                           placeholder="GOP-Ziffer oder Beschreibung suchen..."
+                           class="form-control" />
+                    @if (gopResults.Count > 0)
+                    {
+                        <div class="search-dropdown">
+                            @foreach (var entry in gopResults)
+                            {
+                                <div class="search-item" @onclick="() => AddGop(entry)">
+                                    <span class="icd-code">@entry.Code</span>
+                                    <span class="icd-desc">@entry.Description</span>
+                                    <span class="gop-type">@entry.Type</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (billingItems.Count > 0)
+                {
+                    <table class="billing-table">
+                        <thead>
+                            <tr>
+                                <th>GOP</th>
+                                <th>Beschreibung</th>
+                                <th>Typ</th>
+                                <th class="text-right">Betrag</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in billingItems)
+                            {
+                                <tr>
+                                    <td class="gop-code">@item.GopCode</td>
+                                    <td>@(item.GopDescription ?? "—")</td>
+                                    <td><span class="type-badge type-@item.BillingType.ToString().ToLower()">@item.BillingTypeDisplay</span></td>
+                                    <td class="text-right">@item.Amount.ToString("N2") €</td>
+                                    <td>
+                                        @if (!item.KvdtExported)
+                                        {
+                                            <button type="button" class="btn-link danger" @onclick="() => RemoveGop(item.Id)">×</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-right"><strong>Gesamt:</strong></td>
+                                <td class="text-right"><strong>@billingItems.Sum(i => i.Amount).ToString("N2") €</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                }
+                else
+                {
+                    <p class="no-codes">Keine Abrechnungspositionen hinzugefügt.</p>
+                }
+            </fieldset>
+        }
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="error-message">@errorMessage</div>
@@ -135,7 +208,10 @@ else
     private EncounterFormModel form = new();
     private IReadOnlyList<DoctorListItemDto> doctors = [];
     private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
+    private IReadOnlyList<MediPrax.Application.Data.GopCatalog.GopEntry> gopResults = [];
+    private List<BillingItemDto> billingItems = [];
     private string icdSearchTerm = string.Empty;
+    private string gopSearchTerm = string.Empty;
     private string? patientName;
     private string backUrl = "/patienten";
     private bool isEdit => Id.HasValue;
@@ -155,6 +231,7 @@ else
             PatientId = encounter.PatientId;
             patientName = encounter.PatientName;
             backUrl = $"/patienten/{PatientId}";
+            billingItems = (await BillingService.GetByEncounterAsync(Id!.Value)).ToList();
             form = new EncounterFormModel
             {
                 DoctorId = encounter.DoctorId.ToString(),
@@ -192,6 +269,32 @@ else
     private void RemoveIcd(string code)
     {
         form.Icd10Codes.Remove(code);
+    }
+
+    private void SearchGop()
+    {
+        gopResults = MediPrax.Application.Data.GopCatalog.Search(gopSearchTerm);
+    }
+
+    private async Task AddGop(MediPrax.Application.Data.GopCatalog.GopEntry entry)
+    {
+        var item = await BillingService.AddAsync(new CreateBillingItemDto
+        {
+            EncounterId = Id!.Value,
+            PatientId = PatientId!.Value,
+            GopCode = entry.Code,
+            Quantity = 1,
+            BillingType = entry.Type
+        });
+        billingItems.Add(item);
+        gopSearchTerm = string.Empty;
+        gopResults = [];
+    }
+
+    private async Task RemoveGop(Guid billingItemId)
+    {
+        await BillingService.DeleteAsync(billingItemId);
+        billingItems.RemoveAll(b => b.Id == billingItemId);
     }
 
     private void ApplyTemplate(string template)

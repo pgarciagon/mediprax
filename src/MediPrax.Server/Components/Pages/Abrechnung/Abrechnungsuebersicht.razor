@@ -1,0 +1,119 @@
+@page "/abrechnung"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IBillingService BillingService
+@rendermode InteractiveServer
+
+<PageTitle>Abrechnung</PageTitle>
+
+<div class="page-header">
+    <h1>Abrechnung</h1>
+    <div class="quarter-selector">
+        <button class="btn btn-sm" @onclick="PrevQuarter">&lt;</button>
+        <span class="quarter-label">@selectedQuarter</span>
+        <button class="btn btn-sm" @onclick="NextQuarter">&gt;</button>
+    </div>
+</div>
+
+@if (overview is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="summary-cards">
+        <div class="summary-card">
+            <span class="summary-value">@overview.Patients.Count</span>
+            <span class="summary-label">Patienten</span>
+        </div>
+        <div class="summary-card">
+            <span class="summary-value">@overview.TotalItems</span>
+            <span class="summary-label">Positionen</span>
+        </div>
+        <div class="summary-card highlight">
+            <span class="summary-value">@overview.TotalAmount.ToString("N2") €</span>
+            <span class="summary-label">Gesamtbetrag (geschätzt)</span>
+        </div>
+    </div>
+
+    @if (overview.Patients.Count == 0)
+    {
+        <p class="empty-state">Keine Abrechnungspositionen in diesem Quartal.</p>
+    }
+    else
+    {
+        @foreach (var patient in overview.Patients)
+        {
+            <div class="patient-billing-card">
+                <div class="patient-billing-header">
+                    <a href="/patienten/@patient.PatientId" class="patient-link">@patient.PatientName</a>
+                    <span class="patient-total">@patient.TotalAmount.ToString("N2") € <span class="item-count">(@patient.ItemCount Pos.)</span></span>
+                </div>
+                <table class="billing-table">
+                    <thead>
+                        <tr>
+                            <th>GOP</th>
+                            <th>Beschreibung</th>
+                            <th>Typ</th>
+                            <th>Anz.</th>
+                            <th class="text-right">Betrag</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in patient.Items)
+                        {
+                            <tr>
+                                <td class="gop-code">@item.GopCode</td>
+                                <td>@(item.GopDescription ?? "—")</td>
+                                <td><span class="type-badge type-@item.BillingType.ToString().ToLower()">@item.BillingTypeDisplay</span></td>
+                                <td>@item.Quantity</td>
+                                <td class="text-right">@item.Amount.ToString("N2") €</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+}
+
+@code {
+    private QuarterOverviewDto? overview;
+    private string selectedQuarter = string.Empty;
+    private int quarterOffset;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedQuarter = BillingService.GetCurrentQuarter();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        overview = await BillingService.GetQuarterOverviewAsync(selectedQuarter);
+    }
+
+    private async Task PrevQuarter()
+    {
+        quarterOffset--;
+        selectedQuarter = GetQuarter(quarterOffset);
+        await LoadData();
+    }
+
+    private async Task NextQuarter()
+    {
+        quarterOffset++;
+        selectedQuarter = GetQuarter(quarterOffset);
+        await LoadData();
+    }
+
+    private string GetQuarter(int offset)
+    {
+        var now = DateTime.UtcNow;
+        var month = now.Month + (offset * 3);
+        var year = now.Year;
+        while (month > 12) { month -= 12; year++; }
+        while (month < 1) { month += 12; year--; }
+        var q = (month - 1) / 3 + 1;
+        return $"{year}-Q{q}";
+    }
+}

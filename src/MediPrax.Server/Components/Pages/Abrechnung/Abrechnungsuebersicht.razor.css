@@ -1,0 +1,142 @@
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.8rem;
+}
+
+.page-header h1 { margin: 0; }
+
+.quarter-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.quarter-label {
+    font-size: 1rem;
+    font-weight: 600;
+    min-width: 80px;
+    text-align: center;
+}
+
+.summary-cards {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    padding: 1rem 1.5rem;
+    flex: 1;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+}
+
+.summary-card.highlight {
+    border-left: 3px solid #2563eb;
+}
+
+.summary-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text, #0f172a);
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.patient-billing-card {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    overflow: hidden;
+}
+
+.patient-billing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1.2rem;
+    background: var(--color-bg, #f8fafc);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.patient-link {
+    font-weight: 600;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.patient-link:hover { text-decoration: underline; }
+
+.patient-total {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.item-count {
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.billing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.billing-table th {
+    text-align: left;
+    padding: 0.5rem 1rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary, #64748b);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.billing-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+}
+
+.billing-table tr:last-child td { border-bottom: none; }
+
+.gop-code {
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.text-right { text-align: right; }
+
+.type-badge {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.type-ebm { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+.type-goa { background: rgba(139, 92, 246, 0.1); color: #7c3aed; }
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--color-text-muted, #94a3b8);
+    background: var(--color-surface, #fff);
+    border: 1px dashed var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+}
