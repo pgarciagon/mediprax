@@ -1,10 +1,7 @@
-﻿namespace MediPrax.UnitTests;
+namespace MediPrax.UnitTests;
 
-public class UnitTest1
+public class Placeholder
 {
     [Fact]
-    public void Test1()
-    {
-
-    }
+    public void Placeholder_Passes() { }
 }

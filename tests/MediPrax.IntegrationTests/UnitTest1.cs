@@ -1,10 +1,7 @@
-﻿namespace MediPrax.IntegrationTests;
+namespace MediPrax.IntegrationTests;
 
-public class UnitTest1
+public class Placeholder
 {
     [Fact]
-    public void Test1()
-    {
-
-    }
+    public void Placeholder_Passes() { }
 }

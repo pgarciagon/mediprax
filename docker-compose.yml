@@ -1,0 +1,31 @@
+services:
+  mediprax-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mediprax
+      POSTGRES_USER: mediprax
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mediprax_prod}
+    volumes:
+      - mediprax-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediprax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mediprax-server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=mediprax-db;Port=5432;Database=mediprax;Username=mediprax;Password=${DB_PASSWORD:-mediprax_prod}"
+      ASPNETCORE_ENVIRONMENT: Production
+    depends_on:
+      mediprax-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mediprax-data:
