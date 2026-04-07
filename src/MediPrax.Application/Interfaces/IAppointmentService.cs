@@ -9,6 +9,7 @@ public interface IAppointmentService
     Task<WeekScheduleDto> GetWeekScheduleAsync(DateOnly weekStart, Guid? doctorId, CancellationToken ct = default);
     Task<IReadOnlyList<WaitingRoomEntryDto>> GetWaitingRoomAsync(DateOnly date, CancellationToken ct = default);
     Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto, CancellationToken ct = default);
+    Task UpdateAsync(Guid id, UpdateAppointmentDto dto, CancellationToken ct = default);
     Task UpdateStatusAsync(Guid id, AppointmentStatus status, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

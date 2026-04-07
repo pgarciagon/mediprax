@@ -21,16 +21,82 @@
 
 ### Meilensteine
 
-1. Projekt-Setup: Repository, CI/CD, Testserver, Datenbankschema
-2. Patientenverwaltung (CRUD, Suche, Versicherungsdaten)
-3. Terminplanung (Tages-/Wochenansicht, Kurztermin-optimiert)
-4. Klinische Dokumentation (Befunde, ICD-10-GM, Neuro/Psych-Vorlagen)
-5. Arztbrief-Generierung (PDF-Vorlagen, strukturiert)
-6. Basis-Dashboard und Benutzerrollen
+1. ✅ Projekt-Setup: Repository, CI/CD, Clean Architecture, Datenbankschema (EF Core + PostgreSQL)
+2. ✅ Patientenverwaltung (CRUD, Suche, Versicherungsdaten, GKV/PKV)
+3. ✅ Terminplanung (Wochenansicht, Terminformular, Wartezimmer)
+4. ✅ Klinische Dokumentation (Encounters, ICD-10-GM-Suche, Neuro/Psych-Vorlagen)
+5. ✅ Arztbrief-Generierung (QuestPDF, Vorlagen, PDF-Download)
+6. ✅ Dashboard (KPIs, heutige Termine, letzte Aktivität, Schnellzugriffe)
+7. ✅ Authentifizierung (Cookie-Login, BCrypt, Seitenprotection, Abmelden)
+8. ✅ Branding (Logo-SVG/PNG, Favicons, Login-Screen)
 
-### Ergebnis
+### Nächste Meilensteine (Phase 1 Härtung)
 
-Funktionsfähiges System, das Patientenverwaltung, Termine, Dokumentation und Arztbriefe abdeckt. Noch ohne TI-Anbindung und Abrechnung.
+#### Meilenstein 8: Benutzerverwaltung und Rollenbasierte Zugriffskontrolle
+
+Verwaltung von Benutzerkonten und Durchsetzung rollenbasierter Zugriffsrechte.
+
+- **User CRUD** — `IUserService` erweitern: GetAll, Create, Update, Deactivate, ResetPassword
+- **Admin-Seiten** — `/verwaltung/benutzer` (Liste, Formular)
+- **RBAC durchsetzen** — Arzt (voller klinischer Zugriff), MFA (Patienten/Termine), Empfang (Check-in), Admin (Benutzerverwaltung)
+- **BaseEntity erweitern** — `CreatedById`, `UpdatedById` für Audit-Trail
+- **Passwort ändern** — `/konto/passwort` für eingeloggte Benutzer
+- **Sidebar** — Verwaltungsbereich nur für Admin sichtbar
+
+#### Meilenstein 9: Audit-Logging und Datenschutz-Compliance
+
+Pflicht für medizinische Software gemäß DSGVO, §203 StGB, KBV-Richtlinien.
+
+- **AuditLog-Entity** — Timestamp, User, Action, EntityType, EntityId, OldValues/NewValues (JSON)
+- **EF Core Interceptor** — automatische Protokollierung aller Create/Update/Delete-Operationen
+- **Login/Logout-Audit** — inkl. IP-Adresse und Erfolg/Misserfolg
+- **Patientenakten-Zugriff loggen** — jeder Zugriff auf Patientendaten nachvollziehbar (DSGVO)
+- **Soft Delete** — `IsDeleted` + `DeletedAt` auf BaseEntity, Global Query Filter (Aufbewahrungspflicht 10 Jahre, §630f BGB)
+- **Audit-Log Viewer** — `/verwaltung/audit-log` (nur Admin, Filterung, Paginierung)
+
+#### Meilenstein 10: Abrechnung — EBM-Ziffernerfassung und GOÄ-Rechnungen
+
+Die `BillingItem`-Entity existiert bereits. Geschäftslogik und UI aufbauen.
+
+- **GOP-Katalog** — EBM Kap. 16/21 (Neurologie/Psychiatrie) + GOÄ-Ziffern als Stammdaten
+- **IBillingService** — Ziffern erfassen, Quartalsübersicht, Plausibilitätsprüfung
+- **Encounter-Formular erweitern** — Abrechnung-Fieldset mit GOP-Suche
+- **Abrechnungsübersicht** — `/abrechnung` mit Quartalsfilter, Arztfilter, Exportstatus
+- **GOÄ-Rechnung PDF** — QuestPDF-basierte Privatrechnung
+- **Plausibilitätsprüfung** — Ausschlüsse, Mengenbegrenzung, Dauerdokumentation
+
+#### Meilenstein 11: Globale Suche, Berichte und Praxisstatistiken
+
+- **Globale Suche** — Ctrl+K Shortcut, Suche über Patienten/Termine/Encounters/Dokumente
+- **Berichte** — Tagesbericht, Quartalsstatistik, Patientenstatistik, Abrechnungsbericht
+- **Dashboard erweitern** — rollenspezifische Widgets, Trend-Diagramme
+- **PDF-Berichte** — Quartalsübersicht als PDF für Praxisleitung
+- **Input-Validierung** — DataAnnotations auf allen DTOs
+
+#### Meilenstein 12: Tests, Docker-Deployment und Produktionshärtung
+
+- **Unit Tests** — alle Application Services, Validierungsregeln, Audit-Interceptor
+- **Integration Tests** — WebApplicationFactory + Testcontainers.PostgreSQL
+- **Dockerfile** — Multi-Stage Build (SDK → Runtime)
+- **docker-compose.yml** — mediprax-server + PostgreSQL + Health Checks
+- **CI/CD erweitern** — Integration Tests, Docker Build, GHCR Push
+- **Fehlerbehandlung** — Global Exception Handler, ILogger, Retry-Policies
+- **Performance** — AsNoTracking, Index-Review, Response Compression
+- **Konfiguration** — appsettings.json, Praxis-Stammdaten externalisieren
+
+### Abhängigkeiten
+
+```
+M8: Benutzerverwaltung & RBAC
+ └─→ M9: Audit-Logging & Datenschutz (benötigt Benutzer-Tracking)
+      └─→ M10: Abrechnung EBM/GOÄ (benötigt Rollen + Audit)
+           └─→ M11: Suche, Berichte, Statistiken (benötigt Abrechnungsdaten)
+                └─→ M12: Tests, Docker, Produktion (benötigt alle vorherigen)
+```
+
+### Ergebnis Phase 1
+
+Produktionsreifes System mit Patientenverwaltung, Terminplanung, klinischer Dokumentation, Arztbriefen, Abrechnung, Audit-Trail und Docker-Deployment. Bereit für Parallelbetrieb.
 
 ## 6.3 Phase 2: TI-Integration (Monate 7–12)
 

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediPrax Logo Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+
+    .section {
+      padding: 60px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .section h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-weight: 600;
+    }
+
+    .light { background: #FFFFFF; color: #37474F; }
+    .dark { background: #1a1a2e; color: #ECEFF1; }
+    .gray { background: #F5F5F5; color: #37474F; }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .logo-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-card span {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.6;
+    }
+
+    .divider {
+      width: 100%;
+      max-width: 800px;
+      height: 1px;
+      background: currentColor;
+      opacity: 0.1;
+    }
+
+    .colors {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .color-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-chip .swatch {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .color-chip span {
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .usage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .usage-card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .usage-card.dark-card {
+      background: #1a1a2e;
+    }
+
+    .app-bar {
+      width: 100%;
+      background: #1565C0;
+      border-radius: 8px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .app-bar svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .app-bar span {
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .favicon-demo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f0f0f0;
+      padding: 8px 16px;
+      border-radius: 8px;
+    }
+
+    .favicon-demo svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .favicon-demo span {
+      font-size: 13px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Light Background -->
+  <div class="section light">
+    <h2>Logo — Heller Hintergrund</h2>
+    <div class="logo-row">
+      <div class="logo-card">
+        <img src="logo-mediprax.svg" alt="MediPrax Logo" width="320">
+        <span>Vollversion</span>
+      </div>
+    </div>
+    <div class="logo-row">
+      <div class="logo-card">
+        <img src="logo-mediprax-icon.svg" alt="MediPrax Icon" width="80">
+        <span>Icon 80px</span>
+      </div>
+      <div class="logo-card">
+        <img src="logo-mediprax-icon.svg" alt="MediPrax Icon" width="48">
+        <span>Icon 48px</span>
+      </div>
+      <div class="logo-card">
+        <img src="logo-mediprax-icon.svg" alt="MediPrax Icon" width="32">
+        <span>Icon 32px</span>
+      </div>
+      <div class="logo-card">
+        <img src="logo-mediprax-icon.svg" alt="MediPrax Icon" width="16">
+        <span>Favicon</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dark Background -->
+  <div class="section dark">
+    <h2>Logo — Dunkler Hintergrund</h2>
+    <div class="logo-row">
+      <div class="logo-card">
+        <img src="logo-mediprax-dark.svg" alt="MediPrax Logo Dark" width="320">
+        <span>Vollversion (Dark)</span>
+      </div>
+    </div>
+    <div class="logo-row">
+      <div class="logo-card">
+        <img src="logo-mediprax-icon.svg" alt="MediPrax Icon" width="80">
+        <span>Icon 80px</span>
+      </div>
+      <div class="logo-card">
+        <img src="logo-mediprax-icon.svg" alt="MediPrax Icon" width="48">
+        <span>Icon 48px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Palette -->
+  <div class="section gray">
+    <h2>Farbpalette</h2>
+    <div class="colors">
+      <div class="color-chip">
+        <div class="swatch" style="background: #1565C0;"></div>
+        <span>Primary<br>#1565C0</span>
+      </div>
+      <div class="color-chip">
+        <div class="swatch" style="background: #1E88E5;"></div>
+        <span>Primary Light<br>#1E88E5</span>
+      </div>
+      <div class="color-chip">
+        <div class="swatch" style="background: #42A5F5;"></div>
+        <span>Accent<br>#42A5F5</span>
+      </div>
+      <div class="color-chip">
+        <div class="swatch" style="background: #37474F;"></div>
+        <span>Text Dark<br>#37474F</span>
+      </div>
+      <div class="color-chip">
+        <div class="swatch" style="background: #78909C;"></div>
+        <span>Text Light<br>#78909C</span>
+      </div>
+      <div class="color-chip">
+        <div class="swatch" style="background: #ECEFF1;"></div>
+        <span>Background<br>#ECEFF1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage Examples -->
+  <div class="section light">
+    <h2>Anwendungsbeispiele</h2>
+    <div class="usage-grid">
+      <div class="usage-card">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;opacity:0.5;">App Header</span>
+        <div class="app-bar">
+          <svg viewBox="0 0 100 100" width="32" height="32">
+            <defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#42A5F5"/><stop offset="100%" style="stop-color:#64B5F6"/></linearGradient></defs>
+            <rect x="5" y="5" width="90" height="90" rx="20" ry="20" fill="url(#g2)"/>
+            <rect x="42" y="18" width="16" height="64" rx="4" ry="4" fill="white" opacity="0.2"/>
+            <rect x="18" y="42" width="64" height="16" rx="4" ry="4" fill="white" opacity="0.2"/>
+            <path d="M 24 72 L 24 34 L 38 52 L 50 38 L 62 52 L 76 34 L 76 72" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>MediPrax</span>
+        </div>
+      </div>
+      <div class="usage-card">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:2px;opacity:0.5;">Browser Tab</span>
+        <div class="favicon-demo">
+          <svg viewBox="0 0 100 100" width="16" height="16">
+            <defs><linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1565C0"/><stop offset="100%" style="stop-color:#1E88E5"/></linearGradient></defs>
+            <rect x="5" y="5" width="90" height="90" rx="20" ry="20" fill="url(#g3)"/>
+            <path d="M 24 72 L 24 34 L 38 52 L 50 38 L 62 52 L 76 34 L 76 72" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>MediPrax — Terminkalender</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

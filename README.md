@@ -6,7 +6,22 @@ MediPrax ist ein modulares Praxisverwaltungssystem (PVS), das als Ersatz für CG
 
 ## Status
 
-🟡 **Phase: Voruntersuchung / Planung**
+🟢 **Phase 1: Grundlagen + MVP — Meilensteine 1–7 abgeschlossen**
+
+| Meilenstein | Status |
+|-------------|--------|
+| 1. Projekt-Setup (Clean Architecture, EF Core, PostgreSQL) | ✅ |
+| 2. Patientenverwaltung (CRUD, Suche, Versicherungsdaten) | ✅ |
+| 3. Terminplanung (Wochenansicht, Wartezimmer) | ✅ |
+| 4. Klinische Dokumentation (Encounters, ICD-10, Vorlagen) | ✅ |
+| 5. Arztbrief-Generierung (QuestPDF) | ✅ |
+| 6. Dashboard (KPIs, Aktivität, Schnellzugriffe) | ✅ |
+| 7. Authentifizierung & Branding | ✅ |
+| 8. Benutzerverwaltung & RBAC | ⬜ Nächster |
+| 9. Audit-Logging & Datenschutz | ⬜ |
+| 10. Abrechnung EBM/GOÄ | ⬜ |
+| 11. Suche, Berichte, Statistiken | ⬜ |
+| 12. Tests, Docker, Produktionshärtung | ⬜ |
 
 ## Dokumentation
 
@@ -24,7 +39,7 @@ MediPrax ist ein modulares Praxisverwaltungssystem (PVS), das als Ersatz für CG
 
 | Schicht | Technologie |
 |---------|------------|
-| Backend + Frontend | C# / .NET 8+ mit Blazor Server |
+| Backend + Frontend | C# / .NET 10 mit Blazor Server |
 | Datenbank | PostgreSQL 16+ |
 | API | ASP.NET Core Web API (REST) |
 | FHIR | Firely SDK (.NET) |

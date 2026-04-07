@@ -27,6 +27,15 @@ public class CreateAppointmentDto
     public string? Notes { get; set; }
 }
 
+public class UpdateAppointmentDto
+{
+    public Guid PatientId { get; set; }
+    public Guid DoctorId { get; set; }
+    public DateTime StartTime { get; set; }
+    public int DurationMinutes { get; set; } = 10;
+    public string? Notes { get; set; }
+}
+
 public class DayScheduleDto
 {
     public DateOnly Date { get; set; }

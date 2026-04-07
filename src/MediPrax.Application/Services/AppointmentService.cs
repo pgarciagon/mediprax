@@ -133,6 +133,19 @@ public class AppointmentService(DbContext context) : IAppointmentService
         return MapToDto(created);
     }
 
+    public async Task UpdateAsync(Guid id, UpdateAppointmentDto dto, CancellationToken ct = default)
+    {
+        var appointment = await Appointments.FindAsync([id], ct)
+            ?? throw new KeyNotFoundException($"Appointment {id} not found");
+
+        appointment.PatientId = dto.PatientId;
+        appointment.DoctorId = dto.DoctorId;
+        appointment.StartTime = DateTime.SpecifyKind(dto.StartTime, DateTimeKind.Utc);
+        appointment.DurationMinutes = dto.DurationMinutes;
+        appointment.Notes = dto.Notes;
+        await context.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateStatusAsync(Guid id, AppointmentStatus status, CancellationToken ct = default)
     {
         var appointment = await Appointments.FindAsync([id], ct)
