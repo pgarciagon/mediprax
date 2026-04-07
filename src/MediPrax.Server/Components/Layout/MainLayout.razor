@@ -3,8 +3,11 @@
 <div class="app-layout">
     <nav class="sidebar">
         <div class="sidebar-brand">
-            <div class="brand-icon">M</div>
-            <span>MediPrax</span>
+            <img src="/images/logo-mediprax-icon.svg" alt="MediPrax" class="brand-icon" />
+            <div class="brand-text">
+                <span class="brand-name"><span class="brand-medi">Medi</span>Prax</span>
+                <span class="brand-tagline">PRAXISVERWALTUNG</span>
+            </div>
         </div>
 
         <div class="sidebar-section">
@@ -47,7 +50,7 @@
                             <span class="user-role">@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
                         </div>
                     </div>
-                    <button class="logout-btn" @onclick="Logout">Abmelden</button>
+                    <a href="/api/logout" class="logout-btn">Abmelden</a>
                 </Authorized>
             </AuthorizeView>
             <span class="footer-text">Neuropsychiatricum Bremen</span>
@@ -61,19 +64,8 @@
     </div>
 </div>
 
-@inject NavigationManager Navigation
-
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">&#x2717;</span>
 </div>
-
-@code {
-    private async Task Logout()
-    {
-        var http = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
-        await http.PostAsync("/api/logout", null);
-        Navigation.NavigateTo("/login", forceLoad: true);
-    }
-}

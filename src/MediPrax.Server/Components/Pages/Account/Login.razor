@@ -1,27 +1,27 @@
 @page "/login"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject IAuthService AuthService
 @inject NavigationManager Navigation
-@inject IHttpClientFactory? HttpClientFactory
-@rendermode InteractiveServer
 
 <PageTitle>MediPrax — Anmelden</PageTitle>
 
 <div class="login-container">
     <div class="login-card">
         <div class="login-brand">
-            <div class="brand-icon">M</div>
-            <h1>MediPrax</h1>
-            <p>Praxisverwaltungssystem</p>
+            <img src="/images/logo-mediprax-dark.svg" alt="MediPrax" class="login-logo" />
         </div>
 
-        <EditForm Model="form" OnValidSubmit="HandleLogin" FormName="loginForm">
+        <EditForm Model="Form" OnValidSubmit="HandleLogin" FormName="loginForm">
             <div class="form-group">
                 <label>E-Mail</label>
-                <InputText @bind-Value="form.Email" class="form-control" placeholder="email@praxis.de" />
+                <InputText @bind-Value="Form.Email" class="form-control" placeholder="email@praxis.de" />
             </div>
 
             <div class="form-group">
                 <label>Passwort</label>
-                <input type="password" @bind="form.Password" class="form-control" placeholder="Passwort" />
+                <InputText @bind-Value="Form.Password" type="password" class="form-control" placeholder="Passwort" />
             </div>
 
             @if (!string.IsNullOrEmpty(errorMessage))
@@ -29,44 +29,53 @@
                 <div class="error-message">@errorMessage</div>
             }
 
-            <button type="submit" class="btn btn-primary btn-full" disabled="@loading">
-                @(loading ? "Anmelden..." : "Anmelden")
-            </button>
+            <button type="submit" class="btn btn-primary btn-full">Anmelden</button>
         </EditForm>
     </div>
 </div>
 
 @code {
-    private LoginFormModel form = new();
+    [SupplyParameterFromForm]
+    private LoginFormModel Form { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Form ??= new();
+    }
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
     private string? errorMessage;
-    private bool loading;
 
     private async Task HandleLogin()
     {
-        loading = true;
-        errorMessage = null;
+        if (HttpContext is null) return;
 
-        try
+        var user = await AuthService.ValidateCredentialsAsync(Form.Email, Form.Password);
+        if (user is null)
         {
-            var http = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
-            var response = await http.PostAsJsonAsync("/api/login", new { form.Email, form.Password });
+            errorMessage = "E-Mail oder Passwort ungültig.";
+            return;
+        }
 
-            if (response.IsSuccessStatusCode)
-            {
-                // Cookie is set server-side, need full navigation to pick it up
-                Navigation.NavigateTo("/", forceLoad: true);
-            }
-            else
-            {
-                errorMessage = "E-Mail oder Passwort ungültig.";
-                loading = false;
-            }
-        }
-        catch
+        var claims = new List<Claim>
         {
-            errorMessage = "Verbindungsfehler. Bitte versuchen Sie es erneut.";
-            loading = false;
-        }
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, $"{user.FirstName} {user.LastName}"),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Role, user.Role.ToString())
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties { IsPersistent = true });
+
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 
     private class LoginFormModel

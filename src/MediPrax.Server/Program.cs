@@ -81,10 +81,10 @@ app.MapPost("/api/login", async (HttpContext httpContext, IAuthService authServi
 });
 
 // Logout endpoint
-app.MapPost("/api/logout", async (HttpContext httpContext) =>
+app.MapGet("/api/logout", async (HttpContext httpContext) =>
 {
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Ok();
+    return Results.Redirect("/login");
 });
 
 // PDF endpoint

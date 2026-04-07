@@ -24,31 +24,9 @@
     margin-bottom: 2rem;
 }
 
-.brand-icon {
-    width: 48px;
+.login-logo {
     height: 48px;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    border-radius: 12px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-weight: 800;
-    font-size: 1.4rem;
-    margin-bottom: 0.8rem;
-}
-
-.login-brand h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0;
-    letter-spacing: -0.02em;
-}
-
-.login-brand p {
-    font-size: 0.85rem;
-    color: var(--color-text-secondary, #64748b);
-    margin: 0.2rem 0 0;
+    width: auto;
 }
 
 .form-group {

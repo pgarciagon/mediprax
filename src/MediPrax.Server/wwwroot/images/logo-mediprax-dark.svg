@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
+  <defs>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#42A5F5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#64B5F6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Icon: Abstract M + medical cross -->
+  <g transform="translate(10, 10)">
+    <!-- Rounded square background -->
+    <rect x="0" y="0" width="80" height="80" rx="18" ry="18" fill="url(#iconGrad)" />
+
+    <!-- Medical cross - white, clean -->
+    <rect x="34" y="16" width="12" height="48" rx="3" ry="3" fill="white" opacity="0.3" />
+    <rect x="16" y="34" width="48" height="12" rx="3" ry="3" fill="white" opacity="0.3" />
+
+    <!-- Stylized M letterform -->
+    <path d="M 20 60 L 20 28 L 32 44 L 40 32 L 48 44 L 60 28 L 60 60"
+          fill="none" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Wordmark for dark background -->
+  <g transform="translate(108, 42)">
+    <!-- "Medi" in bold -->
+    <text font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="44" font-weight="700" fill="#64B5F6" letter-spacing="-1">
+      Medi
+    </text>
+    <!-- "Prax" in lighter weight -->
+    <text x="108" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="44" font-weight="300" fill="#ECEFF1" letter-spacing="-1">
+      Prax
+    </text>
+  </g>
+
+  <!-- Tagline -->
+  <text x="110" y="76" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="12" font-weight="400" fill="#90A4AE" letter-spacing="2.5">
+    PRAXISVERWALTUNG
+  </text>
+</svg>
