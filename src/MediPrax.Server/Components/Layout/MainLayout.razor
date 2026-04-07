@@ -38,7 +38,19 @@
         </div>
 
         <div class="sidebar-footer">
-            <span>Neuropsychiatricum Bremen</span>
+            <AuthorizeView>
+                <Authorized>
+                    <div class="user-info">
+                        <div class="user-avatar">@context.User.Identity?.Name?[..1]</div>
+                        <div class="user-details">
+                            <span class="user-name">@context.User.Identity?.Name</span>
+                            <span class="user-role">@context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
+                        </div>
+                    </div>
+                    <button class="logout-btn" @onclick="Logout">Abmelden</button>
+                </Authorized>
+            </AuthorizeView>
+            <span class="footer-text">Neuropsychiatricum Bremen</span>
         </div>
     </nav>
 
@@ -49,8 +61,19 @@
     </div>
 </div>
 
+@inject NavigationManager Navigation
+
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">&#x2717;</span>
 </div>
+
+@code {
+    private async Task Logout()
+    {
+        var http = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+        await http.PostAsync("/api/logout", null);
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

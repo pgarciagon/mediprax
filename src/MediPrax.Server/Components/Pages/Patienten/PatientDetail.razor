@@ -1,4 +1,5 @@
 @page "/patienten/{Id:guid}"
+@attribute [Authorize]
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService
 @inject IArztbriefService ArztbriefService

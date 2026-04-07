@@ -1,5 +1,6 @@
 @page "/patienten/{PatientId:guid}/dokumentation/neu"
 @page "/dokumentation/{Id:guid}/bearbeiten"
+@attribute [Authorize]
 @inject IEncounterService EncounterService
 @inject IPatientService PatientService
 @inject IUserService UserService

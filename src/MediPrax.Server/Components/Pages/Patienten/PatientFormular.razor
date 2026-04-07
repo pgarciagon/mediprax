@@ -1,5 +1,6 @@
 @page "/patienten/neu"
 @page "/patienten/{Id:guid}/bearbeiten"
+@attribute [Authorize]
 @inject IPatientService PatientService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer

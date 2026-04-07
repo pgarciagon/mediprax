@@ -1,0 +1,77 @@
+@page "/login"
+@inject NavigationManager Navigation
+@inject IHttpClientFactory? HttpClientFactory
+@rendermode InteractiveServer
+
+<PageTitle>MediPrax — Anmelden</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="brand-icon">M</div>
+            <h1>MediPrax</h1>
+            <p>Praxisverwaltungssystem</p>
+        </div>
+
+        <EditForm Model="form" OnValidSubmit="HandleLogin" FormName="loginForm">
+            <div class="form-group">
+                <label>E-Mail</label>
+                <InputText @bind-Value="form.Email" class="form-control" placeholder="email@praxis.de" />
+            </div>
+
+            <div class="form-group">
+                <label>Passwort</label>
+                <input type="password" @bind="form.Password" class="form-control" placeholder="Passwort" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-message">@errorMessage</div>
+            }
+
+            <button type="submit" class="btn btn-primary btn-full" disabled="@loading">
+                @(loading ? "Anmelden..." : "Anmelden")
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private LoginFormModel form = new();
+    private string? errorMessage;
+    private bool loading;
+
+    private async Task HandleLogin()
+    {
+        loading = true;
+        errorMessage = null;
+
+        try
+        {
+            var http = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+            var response = await http.PostAsJsonAsync("/api/login", new { form.Email, form.Password });
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Cookie is set server-side, need full navigation to pick it up
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                errorMessage = "E-Mail oder Passwort ungültig.";
+                loading = false;
+            }
+        }
+        catch
+        {
+            errorMessage = "Verbindungsfehler. Bitte versuchen Sie es erneut.";
+            loading = false;
+        }
+    }
+
+    private class LoginFormModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
