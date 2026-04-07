@@ -205,6 +205,53 @@
     font-size: 0.9rem;
 }
 
+/* Inline form */
+.inline-form {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-primary, #2563eb);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.inline-form .form-row { display: flex; gap: .8rem; margin-bottom: .6rem; }
+.inline-form .form-group { flex: 1; display: flex; flex-direction: column; }
+.inline-form .form-group label { font-size: .75rem; font-weight: 500; color: var(--color-text-secondary); margin-bottom: .2rem; }
+
+/* Medication list */
+.med-list { display: flex; flex-direction: column; gap: .4rem; }
+.med-item {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 6px;
+    font-size: .85rem;
+}
+.med-item.btm { border-left: 3px solid #dc2626; }
+.med-main { display: flex; align-items: center; gap: .4rem; min-width: 200px; }
+.med-name { font-weight: 600; }
+.btm-badge { background: rgba(220,38,38,.1); color: #dc2626; font-size: .6rem; font-weight: 700; padding: .1rem .3rem; border-radius: 3px; text-transform: uppercase; }
+.med-details { flex: 1; display: flex; gap: .8rem; color: var(--color-text-secondary, #64748b); font-size: .8rem; }
+.med-hint { font-style: italic; }
+.med-since { margin-left: auto; }
+.danger { color: #dc2626 !important; }
+
+/* Recall list */
+.recall-list { display: flex; flex-direction: column; gap: .4rem; }
+.recall-item {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 6px;
+    font-size: .85rem;
+}
+.recall-item.overdue { border-left: 3px solid #dc2626; background: rgba(220,38,38,.02); }
+.recall-date { font-weight: 600; min-width: 90px; font-family: monospace; }
+.recall-reason { flex: 1; }
+.recall-status { font-size: .75rem; font-weight: 500; color: var(--color-text-secondary); }
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }

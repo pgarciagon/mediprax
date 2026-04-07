@@ -1,0 +1,67 @@
+@page "/wiedervorlagen"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IRecallService RecallService
+@rendermode InteractiveServer
+
+<PageTitle>Wiedervorlagen</PageTitle>
+
+<div class="page-header">
+    <h1>Wiedervorlagen</h1>
+</div>
+
+@if (recalls is null)
+{
+    <p>Laden...</p>
+}
+else if (recalls.Count == 0)
+{
+    <p class="empty-state">Keine offenen Wiedervorlagen.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fällig</th>
+                <th>Patient</th>
+                <th>Grund</th>
+                <th>Status</th>
+                <th>Erstellt von</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in recalls)
+            {
+                <tr class="@(r.IsOverdue ? "overdue-row" : "")">
+                    <td class="date-cell @(r.IsOverdue ? "overdue" : "")">@r.DueDate.ToString("dd.MM.yyyy")</td>
+                    <td><a href="/patienten/@r.PatientId">@r.PatientName</a></td>
+                    <td>@r.Reason</td>
+                    <td><span class="status-badge status-@r.Status.ToString().ToLower()">@r.StatusDisplay</span></td>
+                    <td>@r.CreatedByName</td>
+                    <td>
+                        @if (r.Status == MediPrax.Core.Enums.RecallStatus.Open)
+                        {
+                            <button class="btn-link" @onclick="() => Complete(r.Id)">Erledigt</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<RecallDto>? recalls;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recalls = await RecallService.GetPendingAsync();
+    }
+
+    private async Task Complete(Guid id)
+    {
+        await RecallService.UpdateStatusAsync(id, MediPrax.Core.Enums.RecallStatus.Completed);
+        recalls = await RecallService.GetPendingAsync();
+    }
+}

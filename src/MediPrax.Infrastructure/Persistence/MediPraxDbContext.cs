@@ -15,6 +15,8 @@ public class MediPraxDbContext : DbContext
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<BillingItem> BillingItems => Set<BillingItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Medication> Medications => Set<Medication>();
+    public DbSet<Recall> Recalls => Set<Recall>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

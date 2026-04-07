@@ -4,6 +4,8 @@
 @inject IEncounterService EncounterService
 @inject IArztbriefService ArztbriefService
 @inject IAuditService AuditService
+@inject IMedicationService MedicationService
+@inject IRecallService RecallService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -166,6 +168,103 @@ else
         }
     </div>
 
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>Medikamentenplan</h2>
+            <button class="btn btn-sm btn-primary" @onclick="() => showMedForm = true">+ Medikament</button>
+        </div>
+
+        @if (showMedForm)
+        {
+            <div class="inline-form">
+                <div class="form-row">
+                    <div class="form-group"><label>Medikament *</label><InputText @bind-Value="newMed.Name" class="form-control" placeholder="z.B. Sertralin" /></div>
+                    <div class="form-group" style="flex:0.5"><label>Stärke</label><InputText @bind-Value="newMed.Staerke" class="form-control" placeholder="50mg" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Dosierung</label><InputText @bind-Value="newMed.Dosierung" class="form-control" placeholder="1-0-0-0" /></div>
+                    <div class="form-group"><label>Wirkstoff</label><InputText @bind-Value="newMed.Wirkstoff" class="form-control" /></div>
+                    <div class="form-group" style="flex:0.5"><label>Seit</label><InputDate @bind-Value="newMed.SeitDatum" class="form-control" /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Hinweis</label><InputText @bind-Value="newMed.Hinweis" class="form-control" placeholder="z.B. zur Mahlzeit" /></div>
+                </div>
+                <div style="display:flex;gap:.5rem">
+                    <button class="btn btn-primary btn-sm" @onclick="AddMedication">Hinzufügen</button>
+                    <button class="btn btn-secondary btn-sm" @onclick="() => showMedForm = false">Abbrechen</button>
+                </div>
+            </div>
+        }
+
+        @if (medications is null || medications.Count == 0)
+        {
+            <div class="empty-encounters">Keine aktive Medikation.</div>
+        }
+        else
+        {
+            <div class="med-list">
+                @foreach (var med in medications)
+                {
+                    <div class="med-item @(med.IsBtm ? "btm" : "")">
+                        <div class="med-main">
+                            <span class="med-name">@med.Name @med.Staerke</span>
+                            @if (med.IsBtm) { <span class="btm-badge">BtM</span> }
+                        </div>
+                        <div class="med-details">
+                            @if (!string.IsNullOrEmpty(med.Dosierung)) { <span>@med.Dosierung</span> }
+                            @if (!string.IsNullOrEmpty(med.Hinweis)) { <span class="med-hint">@med.Hinweis</span> }
+                            <span class="med-since">seit @med.SeitDatum.ToString("MM/yyyy")</span>
+                        </div>
+                        <button class="btn-link danger" @onclick="() => DeactivateMed(med.Id)">Absetzen</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>Wiedervorlagen</h2>
+            <button class="btn btn-sm btn-primary" @onclick="() => showRecallForm = true">+ Wiedervorlage</button>
+        </div>
+
+        @if (showRecallForm)
+        {
+            <div class="inline-form">
+                <div class="form-row">
+                    <div class="form-group"><label>Fällig am *</label><InputDate @bind-Value="newRecall.DueDate" class="form-control" /></div>
+                    <div class="form-group"><label>Grund *</label><InputText @bind-Value="newRecall.Reason" class="form-control" placeholder="z.B. Kontrolltermin" /></div>
+                </div>
+                <div style="display:flex;gap:.5rem">
+                    <button class="btn btn-primary btn-sm" @onclick="AddRecall">Hinzufügen</button>
+                    <button class="btn btn-secondary btn-sm" @onclick="() => showRecallForm = false">Abbrechen</button>
+                </div>
+            </div>
+        }
+
+        @if (recalls is null || recalls.Count == 0)
+        {
+            <div class="empty-encounters">Keine Wiedervorlagen.</div>
+        }
+        else
+        {
+            <div class="recall-list">
+                @foreach (var r in recalls)
+                {
+                    <div class="recall-item @(r.IsOverdue ? "overdue" : "")">
+                        <span class="recall-date">@r.DueDate.ToString("dd.MM.yyyy")</span>
+                        <span class="recall-reason">@r.Reason</span>
+                        <span class="recall-status">@r.StatusDisplay</span>
+                        @if (r.Status == MediPrax.Core.Enums.RecallStatus.Open)
+                        {
+                            <button class="btn-link" @onclick="() => CompleteRecall(r.Id)">Erledigt</button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
     @if (showDeleteConfirm)
     {
         <div class="confirm-overlay">
@@ -186,7 +285,13 @@ else
     private PatientDto? patient;
     private IReadOnlyList<EncounterListItemDto>? encounters;
     private IReadOnlyList<ArztbriefListItemDto>? arztbriefe;
-    private bool showDeleteConfirm;
+    private IReadOnlyList<MedicationDto>? medications;
+    private IReadOnlyList<RecallDto>? recalls;
+    private bool showDeleteConfirm, showMedForm, showRecallForm;
+    private MedForm newMed = new();
+    private RecallForm newRecall = new();
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -198,7 +303,55 @@ else
         }
         encounters = await EncounterService.GetByPatientAsync(Id);
         arztbriefe = await ArztbriefService.GetByPatientAsync(Id);
+        medications = await MedicationService.GetByPatientAsync(Id);
+        recalls = await RecallService.GetByPatientAsync(Id);
         await AuditService.LogAsync(MediPrax.Core.Enums.AuditAction.Read, "Patient", Id, $"Patientenakte geöffnet: {patient.FullName}");
+    }
+
+    private async Task<Guid> GetCurrentUserId()
+    {
+        var auth = await AuthState!;
+        return Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    }
+
+    private async Task AddMedication()
+    {
+        var userId = await GetCurrentUserId();
+        await MedicationService.AddAsync(new CreateMedicationDto
+        {
+            PatientId = Id, PrescribedById = userId,
+            Name = newMed.Name, Wirkstoff = newMed.Wirkstoff,
+            Staerke = newMed.Staerke, Dosierung = newMed.Dosierung,
+            Hinweis = newMed.Hinweis, SeitDatum = newMed.SeitDatum
+        });
+        medications = await MedicationService.GetByPatientAsync(Id);
+        newMed = new();
+        showMedForm = false;
+    }
+
+    private async Task DeactivateMed(Guid id)
+    {
+        await MedicationService.DeactivateAsync(id);
+        medications = await MedicationService.GetByPatientAsync(Id);
+    }
+
+    private async Task AddRecall()
+    {
+        var userId = await GetCurrentUserId();
+        await RecallService.CreateAsync(new CreateRecallDto
+        {
+            PatientId = Id, CreatedById = userId,
+            DueDate = newRecall.DueDate, Reason = newRecall.Reason
+        });
+        recalls = await RecallService.GetByPatientAsync(Id);
+        newRecall = new();
+        showRecallForm = false;
+    }
+
+    private async Task CompleteRecall(Guid id)
+    {
+        await RecallService.UpdateStatusAsync(id, MediPrax.Core.Enums.RecallStatus.Completed);
+        recalls = await RecallService.GetByPatientAsync(Id);
     }
 
     private void HandleDelete() => showDeleteConfirm = true;
@@ -207,5 +360,21 @@ else
     {
         await PatientService.DeleteAsync(Id);
         Navigation.NavigateTo("/patienten");
+    }
+
+    private class MedForm
+    {
+        public string Name { get; set; } = "";
+        public string? Wirkstoff { get; set; }
+        public string? Staerke { get; set; }
+        public string? Dosierung { get; set; }
+        public string? Hinweis { get; set; }
+        public DateOnly SeitDatum { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    }
+
+    private class RecallForm
+    {
+        public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddMonths(3));
+        public string Reason { get; set; } = "";
     }
 }

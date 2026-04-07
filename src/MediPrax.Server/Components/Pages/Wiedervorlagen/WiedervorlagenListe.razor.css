@@ -1,0 +1,10 @@
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.8rem; }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--color-text-muted); background: var(--color-surface); border: 1px dashed var(--color-border); border-radius: 8px; }
+.overdue-row { background: rgba(220,38,38,.03); }
+.date-cell { font-family: monospace; font-weight: 600; }
+.date-cell.overdue { color: #dc2626; }
+.status-badge { display: inline-block; padding: .15rem .4rem; border-radius: 4px; font-size: .7rem; font-weight: 500; }
+.status-open { background: rgba(37,99,235,.1); color: #2563eb; }
+.status-scheduled { background: rgba(245,158,11,.1); color: #d97706; }
+.status-completed { background: rgba(16,185,129,.1); color: #059669; }
+.status-cancelled { background: rgba(100,116,139,.1); color: #64748b; }
