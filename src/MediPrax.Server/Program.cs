@@ -36,6 +36,12 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
+
+// Telematik — Mock services (replace with real implementations when TI access is available)
+builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEgkService, MediPrax.Server.Services.Telematik.MockEgkService>();
+builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IERezeptService, MediPrax.Server.Services.Telematik.MockERezeptService>();
+builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IKimService, MediPrax.Server.Services.Telematik.MockKimService>();
+builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEpaService, MediPrax.Server.Services.Telematik.MockEpaService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Authentication

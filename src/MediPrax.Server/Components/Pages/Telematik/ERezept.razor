@@ -1,0 +1,144 @@
+@page "/telematik/erezept"
+@attribute [Authorize(Policy = "Arzt")]
+@using MediPrax.Application.Interfaces.Telematik
+@inject IERezeptService ERezeptService
+@inject IPatientService PatientService
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<PageTitle>E-Rezept</PageTitle>
+
+<div class="page-header">
+    <h1>E-Rezept</h1>
+    <span class="sim-badge">SIMULATION</span>
+</div>
+
+<div class="rezept-layout">
+    <div class="form-card">
+        <h3>Neues E-Rezept</h3>
+
+        <div class="form-group">
+            <label>Patient</label>
+            <div style="position:relative">
+                <input @bind="patientSearch" @bind:event="oninput" @bind:after="SearchPatients" class="form-control" placeholder="Patient suchen..." />
+                @if (patientResults is not null && patientResults.Items.Count > 0 && !patientSelected)
+                {
+                    <div class="search-dropdown">
+                        @foreach (var p in patientResults.Items)
+                        {
+                            <div class="search-item" @onclick="() => SelectPatient(p)">
+                                <span class="item-name">@p.FullName</span>
+                                <span class="item-detail">@p.DateOfBirth.ToString("dd.MM.yyyy") · @(p.Kvnr ?? "—")</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Medikament (PZN oder Name)</label>
+            <input @bind="form.MedicationName" class="form-control" placeholder="z.B. Sertralin 50mg" />
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>PZN</label>
+                <input @bind="form.MedicationPzn" class="form-control" placeholder="z.B. 01234567" />
+            </div>
+            <div class="form-group">
+                <label>Packungen</label>
+                <input type="number" @bind="form.Quantity" class="form-control" min="1" />
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Dosierung</label>
+            <input @bind="form.Dosierung" class="form-control" placeholder="z.B. 1-0-0-0" />
+        </div>
+        <div class="form-row">
+            <label class="checkbox-label"><input type="checkbox" @bind="form.IsBtm" /> BtM-Rezept</label>
+            <label class="checkbox-label"><input type="checkbox" @bind="form.IsSubstitutionAllowed" /> Aut idem</label>
+        </div>
+        <div class="form-group">
+            <label>Hinweis für Apotheke</label>
+            <input @bind="form.Notes" class="form-control" />
+        </div>
+
+        <button class="btn btn-primary" @onclick="CreateRezept" disabled="@creating">
+            @(creating ? "Wird erstellt..." : "E-Rezept erstellen")
+        </button>
+
+        @if (createResult is not null)
+        {
+            <div class="result-card @(createResult.Success ? "success" : "error")">
+                @if (createResult.Success)
+                {
+                    <p><strong>E-Rezept erstellt</strong></p>
+                    <dl>
+                        <dt>E-Rezept-ID</dt><dd class="mono">@createResult.ERezeptId</dd>
+                        <dt>Task-ID</dt><dd class="mono">@createResult.TaskId</dd>
+                        <dt>Access-Code</dt><dd class="mono">@createResult.AccessCode</dd>
+                    </dl>
+                }
+                else
+                {
+                    <p>@createResult.ErrorMessage</p>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private ERezeptFormModel form = new();
+    private PagedResult<PatientListItemDto>? patientResults;
+    private string patientSearch = "";
+    private bool patientSelected, creating;
+    private ERezeptCreateResultDto? createResult;
+
+    private async Task SearchPatients()
+    {
+        patientSelected = false;
+        if (patientSearch.Length < 2) { patientResults = null; return; }
+        patientResults = await PatientService.SearchAsync(new PatientSearchDto { SearchTerm = patientSearch, Page = 1, PageSize = 5 });
+    }
+
+    private void SelectPatient(PatientListItemDto p)
+    {
+        form.PatientId = p.Id;
+        form.Kvnr = p.Kvnr ?? "";
+        patientSearch = p.FullName;
+        patientSelected = true;
+        patientResults = null;
+    }
+
+    private async Task CreateRezept()
+    {
+        creating = true;
+        createResult = await ERezeptService.CreateAsync(new ERezeptRequestDto
+        {
+            PatientId = form.PatientId,
+            Kvnr = form.Kvnr,
+            MedicationPzn = form.MedicationPzn,
+            MedicationName = form.MedicationName,
+            Dosierung = form.Dosierung,
+            Quantity = form.Quantity,
+            IsBtm = form.IsBtm,
+            IsSubstitutionAllowed = form.IsSubstitutionAllowed,
+            Notes = form.Notes
+        });
+        creating = false;
+    }
+
+    private class ERezeptFormModel
+    {
+        public Guid PatientId { get; set; }
+        public string Kvnr { get; set; } = "";
+        public string MedicationPzn { get; set; } = "";
+        public string MedicationName { get; set; } = "";
+        public string? Dosierung { get; set; }
+        public int Quantity { get; set; } = 1;
+        public bool IsBtm { get; set; }
+        public bool IsSubstitutionAllowed { get; set; } = true;
+        public string? Notes { get; set; }
+    }
+}

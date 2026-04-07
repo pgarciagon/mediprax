@@ -54,6 +54,30 @@
             </ul>
         </div>
 
+        <div class="sidebar-section">
+            <span class="section-label">Telematik</span>
+            <ul class="nav-menu">
+                <li>
+                    <NavLink href="/telematik/egk" class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                        eGK einlesen
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="/telematik/erezept" class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+                        E-Rezept
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="/telematik/kim" class="nav-item">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+                        KIM-Postfach
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
+
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <div class="sidebar-section">

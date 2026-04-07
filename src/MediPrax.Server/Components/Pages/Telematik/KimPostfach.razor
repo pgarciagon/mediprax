@@ -1,0 +1,142 @@
+@page "/telematik/kim"
+@attribute [Authorize(Policy = "Klinisch")]
+@using MediPrax.Application.Interfaces.Telematik
+@inject IKimService KimService
+@rendermode InteractiveServer
+
+<PageTitle>KIM — Postfach</PageTitle>
+
+<div class="page-header">
+    <h1>KIM-Postfach</h1>
+    <span class="sim-badge">SIMULATION</span>
+    <button class="btn btn-primary" @onclick="() => showCompose = true" style="margin-left:auto">+ Neue Nachricht</button>
+</div>
+
+@if (showCompose)
+{
+    <div class="compose-card">
+        <h3>Neue KIM-Nachricht</h3>
+        <div class="form-group">
+            <label>Empfänger (KIM-Adresse)</label>
+            <input @bind="composeRecipient" @bind:event="oninput" @bind:after="SearchRecipients" class="form-control" placeholder="Name suchen..." />
+            @if (directoryResults.Count > 0)
+            {
+                <div class="search-dropdown">
+                    @foreach (var entry in directoryResults)
+                    {
+                        <div class="search-item" @onclick="() => SelectRecipient(entry)">
+                            <span class="item-name">@entry.DisplayName</span>
+                            <span class="item-detail">@entry.Specialty · @entry.City</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="form-group">
+            <label>Betreff</label>
+            <input @bind="composeSubject" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Nachricht</label>
+            <textarea @bind="composeBody" class="form-control" rows="6"></textarea>
+        </div>
+        <div class="compose-actions">
+            <button class="btn btn-primary" @onclick="Send" disabled="@sending">@(sending ? "Sende..." : "Senden")</button>
+            <button class="btn btn-secondary" @onclick="() => showCompose = false">Abbrechen</button>
+            @if (sendResult is not null) { <span class="action-message">@sendResult</span> }
+        </div>
+    </div>
+}
+
+@if (selectedMessage is not null)
+{
+    <div class="message-detail-card">
+        <div class="detail-header">
+            <button class="btn btn-sm" @onclick="() => selectedMessage = null">&larr; Zurück</button>
+            <h3>@selectedMessage.Subject</h3>
+        </div>
+        <div class="detail-meta">
+            <span><strong>Von:</strong> @selectedMessage.SenderName &lt;@selectedMessage.SenderAddress&gt;</span>
+            <span><strong>Datum:</strong> @selectedMessage.ReceivedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+        </div>
+        <div class="detail-body">@selectedMessage.Body</div>
+        @if (selectedMessage.HasAttachment)
+        {
+            <div class="detail-attachment">
+                <svg style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                @selectedMessage.AttachmentName
+            </div>
+        }
+    </div>
+}
+else if (!showCompose)
+{
+    @if (inbox is null)
+    {
+        <p>Laden...</p>
+    }
+    else
+    {
+        <div class="inbox-list">
+            @foreach (var msg in inbox)
+            {
+                <div class="inbox-item @(msg.IsRead ? "" : "unread")" @onclick="() => OpenMessage(msg.MessageId)">
+                    <div class="inbox-sender">@msg.SenderName</div>
+                    <div class="inbox-subject">
+                        @msg.Subject
+                        @if (msg.HasAttachment) { <span class="attachment-icon">📎</span> }
+                    </div>
+                    <div class="inbox-date">@msg.ReceivedAt.ToLocalTime().ToString("dd.MM. HH:mm")</div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private IReadOnlyList<KimInboxItemDto>? inbox;
+    private KimMessageDetailDto? selectedMessage;
+    private IReadOnlyList<KimDirectoryEntryDto> directoryResults = [];
+    private bool showCompose, sending;
+    private string composeRecipient = "", composeSubject = "", composeBody = "";
+    private string? sendResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        inbox = await KimService.GetInboxAsync();
+    }
+
+    private async Task OpenMessage(string messageId)
+    {
+        selectedMessage = await KimService.GetMessageAsync(messageId);
+        inbox = await KimService.GetInboxAsync(); // refresh read status
+    }
+
+    private async Task SearchRecipients()
+    {
+        directoryResults = composeRecipient.Length >= 2
+            ? await KimService.SearchDirectoryAsync(composeRecipient)
+            : [];
+    }
+
+    private void SelectRecipient(KimDirectoryEntryDto entry)
+    {
+        composeRecipient = entry.KimAddress;
+        directoryResults = [];
+    }
+
+    private async Task Send()
+    {
+        sending = true;
+        sendResult = null;
+        var result = await KimService.SendAsync(new KimMessageDto
+        {
+            RecipientAddress = composeRecipient,
+            Subject = composeSubject,
+            Body = composeBody
+        });
+        sending = false;
+        sendResult = result.Success ? "Nachricht gesendet." : result.ErrorMessage;
+        if (result.Success) { composeRecipient = ""; composeSubject = ""; composeBody = ""; }
+    }
+}

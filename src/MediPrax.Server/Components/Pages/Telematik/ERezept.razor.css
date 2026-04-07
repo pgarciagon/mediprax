@@ -1,0 +1,25 @@
+.page-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.sim-badge { background: rgba(245,158,11,.15); color: #d97706; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: .2rem .6rem; border-radius: 4px; }
+
+.form-card { background: var(--color-surface,#fff); border: 1px solid var(--color-border,#e2e8f0); border-radius: 8px; padding: 1.2rem 1.5rem; max-width: 600px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.form-card h3 { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary,#64748b); margin: 0 0 1rem; }
+.form-group { margin-bottom: .8rem; position: relative; }
+.form-group label { display: block; font-size: .8rem; font-weight: 500; color: var(--color-text-secondary,#64748b); margin-bottom: .3rem; }
+.form-row { display: flex; gap: 1rem; margin-bottom: .8rem; }
+.form-row .form-group { flex: 1; margin-bottom: 0; }
+
+.checkbox-label { display: flex; align-items: center; gap: .4rem; font-size: .85rem; cursor: pointer; }
+
+.search-dropdown { position: absolute; left: 0; right: 0; background: #fff; border: 1px solid var(--color-border,#e2e8f0); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.1); z-index: 50; max-height: 200px; overflow-y: auto; }
+.search-item { padding: .5rem .8rem; cursor: pointer; }
+.search-item:hover { background: #f1f5f9; }
+.item-name { font-weight: 500; display: block; font-size: .85rem; }
+.item-detail { font-size: .75rem; color: var(--color-text-secondary,#64748b); }
+
+.result-card { margin-top: 1rem; padding: .8rem 1rem; border-radius: 6px; font-size: .85rem; }
+.result-card.success { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: #059669; }
+.result-card.error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+.result-card dl { display: grid; grid-template-columns: 110px 1fr; gap: .2rem .8rem; margin: .5rem 0 0; }
+.result-card dt { font-weight: 500; }
+.result-card dd { margin: 0; }
+.mono { font-family: monospace; font-size: .8rem; }

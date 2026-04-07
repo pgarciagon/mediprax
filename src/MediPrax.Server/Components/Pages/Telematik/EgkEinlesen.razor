@@ -1,0 +1,163 @@
+@page "/telematik/egk"
+@attribute [Authorize(Policy = "Empfang")]
+@using MediPrax.Application.Interfaces.Telematik
+@inject IEgkService EgkService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>eGK einlesen</PageTitle>
+
+<div class="page-header">
+    <h1>eGK einlesen</h1>
+    <span class="sim-badge">SIMULATION</span>
+</div>
+
+<div class="egk-layout">
+    <div class="card-reader-card">
+        <div class="reader-visual">
+            <svg viewBox="0 0 80 50" class="card-svg"><rect x="2" y="2" width="76" height="46" rx="6" fill="#1e40af" stroke="#60a5fa" stroke-width="1.5"/><rect x="10" y="12" width="22" height="16" rx="2" fill="#fbbf24"/><text x="40" y="40" text-anchor="middle" fill="#93c5fd" font-size="6" font-family="monospace">eGK</text></svg>
+        </div>
+        <button class="btn btn-primary btn-lg" @onclick="ReadCard" disabled="@reading">
+            @(reading ? "Lese Karte..." : "Karte einlesen")
+        </button>
+
+        @if (result is not null && result.Success && result.PatientData is not null)
+        {
+            <div class="vsdm-status">
+                @if (vsdmResult is not null && vsdmResult.Valid)
+                {
+                    <span class="vsdm-badge valid">VSDM-Prüfung bestanden</span>
+                }
+                else if (validating)
+                {
+                    <span class="vsdm-badge pending">VSDM wird geprüft...</span>
+                }
+            </div>
+        }
+    </div>
+
+    @if (result is not null)
+    {
+        @if (!result.Success)
+        {
+            <div class="error-message">@result.ErrorMessage</div>
+        }
+        else if (result.PatientData is not null)
+        {
+            <div class="egk-data">
+                <div class="data-card">
+                    <h3>Versichertendaten</h3>
+                    <dl>
+                        <dt>Name</dt><dd>@result.PatientData.FirstName @result.PatientData.LastName</dd>
+                        <dt>Geburtsdatum</dt><dd>@result.PatientData.DateOfBirth.ToString("dd.MM.yyyy")</dd>
+                        <dt>KVNR</dt><dd class="mono">@result.PatientData.Kvnr</dd>
+                        <dt>Adresse</dt><dd>@result.PatientData.Street, @result.PatientData.PostalCode @result.PatientData.City</dd>
+                    </dl>
+                </div>
+
+                <div class="data-card">
+                    <h3>Versicherung</h3>
+                    <dl>
+                        <dt>Kasse</dt><dd>@result.InsuranceData?.InsuranceProvider</dd>
+                        <dt>IK-Nr.</dt><dd class="mono">@result.InsuranceData?.InsuranceProviderIknr</dd>
+                        <dt>Art</dt><dd>@result.InsuranceData?.InsuranceType</dd>
+                        <dt>Gültig bis</dt><dd>@result.InsuranceData?.ValidUntil.ToString("dd.MM.yyyy")</dd>
+                    </dl>
+                </div>
+
+                <div class="egk-actions">
+                    <button class="btn btn-primary" @onclick="CreateOrUpdatePatient" disabled="@saving">
+                        @(existingPatient is not null ? "Daten aktualisieren" : "Patient anlegen")
+                    </button>
+                    @if (existingPatient is not null)
+                    {
+                        <a href="/patienten/@existingPatient.Id" class="btn btn-secondary">Zum Patient</a>
+                    }
+                    @if (actionMessage is not null)
+                    {
+                        <span class="action-message">@actionMessage</span>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private EgkReadResultDto? result;
+    private VsdmValidationResultDto? vsdmResult;
+    private PatientDto? existingPatient;
+    private bool reading, validating, saving;
+    private string? actionMessage;
+
+    private async Task ReadCard()
+    {
+        reading = true;
+        result = null;
+        vsdmResult = null;
+        existingPatient = null;
+        actionMessage = null;
+        StateHasChanged();
+
+        result = await EgkService.ReadCardAsync();
+        reading = false;
+        StateHasChanged();
+
+        if (result.Success && result.PatientData is not null)
+        {
+            // Check if patient already exists by KVNR
+            var search = await PatientService.SearchAsync(new PatientSearchDto
+            {
+                SearchTerm = result.PatientData.Kvnr, Page = 1, PageSize = 1
+            });
+            existingPatient = search.Items.Count > 0 ? await PatientService.GetByIdAsync(search.Items[0].Id) : null;
+
+            // Run VSDM check
+            validating = true;
+            StateHasChanged();
+            vsdmResult = await EgkService.ValidateOnlineAsync(result.PatientData.Kvnr);
+            validating = false;
+        }
+    }
+
+    private async Task CreateOrUpdatePatient()
+    {
+        if (result?.PatientData is null) return;
+        saving = true;
+        var data = result.PatientData;
+        var ins = result.InsuranceData;
+
+        if (existingPatient is not null)
+        {
+            await PatientService.UpdateAsync(new UpdatePatientDto
+            {
+                Id = existingPatient.Id,
+                FirstName = data.FirstName, LastName = data.LastName,
+                DateOfBirth = data.DateOfBirth, Gender = data.Gender,
+                Street = data.Street, PostalCode = data.PostalCode, City = data.City,
+                Kvnr = data.Kvnr,
+                InsuranceType = MediPrax.Core.Enums.InsuranceType.GKV,
+                InsuranceNumber = ins?.InsuranceNumber,
+                InsuranceProvider = ins?.InsuranceProvider
+            });
+            actionMessage = "Daten aktualisiert.";
+        }
+        else
+        {
+            var created = await PatientService.CreateAsync(new CreatePatientDto
+            {
+                FirstName = data.FirstName, LastName = data.LastName,
+                DateOfBirth = data.DateOfBirth, Gender = data.Gender,
+                Street = data.Street, PostalCode = data.PostalCode, City = data.City,
+                Kvnr = data.Kvnr,
+                InsuranceType = MediPrax.Core.Enums.InsuranceType.GKV,
+                InsuranceNumber = ins?.InsuranceNumber,
+                InsuranceProvider = ins?.InsuranceProvider
+            });
+            existingPatient = await PatientService.GetByIdAsync(created.Id);
+            actionMessage = "Patient angelegt.";
+        }
+        saving = false;
+    }
+}
