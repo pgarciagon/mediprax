@@ -9,6 +9,8 @@ using MediPrax.Server.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using QuestPDF.Fluent;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,6 +51,24 @@ builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IKimServ
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEpaService, MediPrax.Server.Services.Telematik.MockEpaService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgresql");
+
+// Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
+
 // Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -80,10 +100,27 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+
+// Health check endpoint
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new { name = e.Key, status = e.Value.Status.ToString(), duration = e.Value.Duration.TotalMilliseconds }),
+            totalDuration = report.TotalDuration.TotalMilliseconds
+        };
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
 
 // Login endpoint
 app.MapPost("/api/login", async (HttpContext httpContext, IAuthService authService, IAuditService auditService, LoginRequest request) =>
@@ -131,7 +168,7 @@ app.MapPost("/api/login", async (HttpContext httpContext, IAuthService authServi
     await dbCtx.SaveChangesAsync();
 
     return Results.Ok();
-});
+}).RequireRateLimiting("login");
 
 // Logout endpoint
 app.MapGet("/api/logout", async (HttpContext httpContext, IAuditService auditService) =>
