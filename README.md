@@ -6,7 +6,7 @@ MediPrax ist ein modulares Praxisverwaltungssystem (PVS), das als Ersatz für CG
 
 ## Status
 
-🟢 **Phase 1: Grundlagen + MVP — Meilensteine 1–7 abgeschlossen**
+🟢 **Phase 1: Grundlagen + MVP — Alle 12 Meilensteine abgeschlossen**
 
 | Meilenstein | Status |
 |-------------|--------|
@@ -17,11 +17,11 @@ MediPrax ist ein modulares Praxisverwaltungssystem (PVS), das als Ersatz für CG
 | 5. Arztbrief-Generierung (QuestPDF) | ✅ |
 | 6. Dashboard (KPIs, Aktivität, Schnellzugriffe) | ✅ |
 | 7. Authentifizierung & Branding | ✅ |
-| 8. Benutzerverwaltung & RBAC | ⬜ Nächster |
-| 9. Audit-Logging & Datenschutz | ⬜ |
-| 10. Abrechnung EBM/GOÄ | ⬜ |
-| 11. Suche, Berichte, Statistiken | ⬜ |
-| 12. Tests, Docker, Produktionshärtung | ⬜ |
+| 8. Benutzerverwaltung & RBAC | ✅ |
+| 9. Audit-Logging & Datenschutz (DSGVO) | ✅ |
+| 10. Abrechnung EBM/GOÄ | ✅ |
+| 11. Suche, Berichte, Statistiken | ✅ |
+| 12. Tests, Docker, Produktionshärtung | ✅ |
 
 ## Dokumentation
 
