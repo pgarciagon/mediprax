@@ -1,0 +1,35 @@
+.page-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.sim-badge { background: rgba(245,158,11,.15); color: #d97706; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: .2rem .6rem; border-radius: 4px; }
+
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+
+.status-card { display: flex; align-items: center; gap: 1rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem 1.2rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.status-indicator { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.status-card.ok .status-indicator { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,.4); }
+.status-card.error .status-indicator { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,.4); }
+.status-info h3 { font-size: .85rem; margin: 0; }
+.status-label { font-size: .75rem; color: var(--color-text-secondary); }
+
+.detail-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem 1.2rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.detail-card h3 { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-secondary); margin: 0 0 .6rem; }
+.detail-card dl { display: grid; grid-template-columns: 140px 1fr; gap: .2rem .8rem; font-size: .85rem; margin: 0; }
+.detail-card dt { color: var(--color-text-secondary); }
+.detail-card dd { margin: 0; font-weight: 500; }
+
+.card-item { display: flex; align-items: center; gap: .6rem; padding: .4rem 0; font-size: .85rem; }
+.card-item + .card-item { border-top: 1px solid rgba(0,0,0,.04); }
+.card-type-badge { font-size: .6rem; font-weight: 700; padding: .15rem .4rem; border-radius: 3px; text-transform: uppercase; }
+.card-type-badge.egk { background: rgba(37,99,235,.1); color: #2563eb; }
+.card-type-badge.hba { background: rgba(139,92,246,.1); color: #7c3aed; }
+.card-type-badge.smc_b { background: rgba(16,185,129,.1); color: #059669; }
+.card-holder { font-weight: 500; }
+.card-id { font-family: monospace; font-size: .75rem; color: var(--color-text-muted); margin-left: auto; }
+
+.checklist-section h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+.checklist { display: flex; flex-direction: column; gap: .4rem; }
+.check-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .8rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 6px; font-size: .85rem; }
+.check-item.done { border-left: 3px solid #10b981; }
+.check-item.pending { border-left: 3px solid #94a3b8; opacity: .7; }
+.check { font-weight: 700; min-width: 16px; }
+.check-item.done .check { color: #10b981; }
+.check-item.pending .check { color: #94a3b8; }

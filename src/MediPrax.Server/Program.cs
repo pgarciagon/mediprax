@@ -49,6 +49,7 @@ builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEgkServ
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IERezeptService, MediPrax.Server.Services.Telematik.MockERezeptService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IKimService, MediPrax.Server.Services.Telematik.MockKimService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEpaService, MediPrax.Server.Services.Telematik.MockEpaService>();
+builder.Services.AddSingleton<MediPrax.Application.Interfaces.Konnektor.IKonnektorClient, MediPrax.Server.Services.Telematik.MockKonnektorClient>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Health Checks

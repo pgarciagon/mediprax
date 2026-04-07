@@ -1,0 +1,91 @@
+@page "/telematik/status"
+@attribute [Authorize(Roles = "Admin")]
+@using MediPrax.Application.Interfaces.Konnektor
+@inject IKonnektorClient KonnektorClient
+@rendermode InteractiveServer
+
+<PageTitle>TI-Status</PageTitle>
+
+<div class="page-header">
+    <h1>Telematikinfrastruktur — Status</h1>
+    <span class="sim-badge">SIMULATION</span>
+</div>
+
+<div class="status-grid">
+    @if (status is null)
+    {
+        <p>Verbindung wird geprüft...</p>
+    }
+    else
+    {
+        <div class="status-card @(status.Connected ? "ok" : "error")">
+            <div class="status-indicator"></div>
+            <div class="status-info">
+                <h3>Konnektor</h3>
+                <span class="status-label">@(status.Connected ? "Verbunden" : "Nicht erreichbar")</span>
+            </div>
+        </div>
+
+        <div class="status-card @(status.TiOnline ? "ok" : "error")">
+            <div class="status-indicator"></div>
+            <div class="status-info">
+                <h3>TI-Netzwerk</h3>
+                <span class="status-label">@(status.TiOnline ? "Online" : "Offline")</span>
+            </div>
+        </div>
+
+        <div class="detail-card">
+            <h3>Konnektor-Details</h3>
+            <dl>
+                <dt>Version</dt><dd>@status.KonnektorVersion</dd>
+                <dt>Produkt</dt><dd>@status.ProductType</dd>
+                <dt>Karten eingelegt</dt><dd>@status.InsertedCards</dd>
+            </dl>
+        </div>
+
+        @if (cards is not null && cards.Count > 0)
+        {
+            <div class="detail-card">
+                <h3>Eingelegte Karten</h3>
+                @foreach (var card in cards)
+                {
+                    <div class="card-item">
+                        <span class="card-type-badge @card.CardType.ToLower()">@card.CardType</span>
+                        <span class="card-holder">@card.HolderName</span>
+                        <span class="card-id">@(card.Kvnr ?? card.Iccsn ?? "—")</span>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+<div class="checklist-section">
+    <h2>Zertifizierungs-Checkliste</h2>
+    <div class="checklist">
+        <div class="check-item done"><span class="check">✓</span> Clean Architecture + DSGVO-Audit-Trail</div>
+        <div class="check-item done"><span class="check">✓</span> FHIR R4 Patient/Encounter/MedicationRequest Mapper</div>
+        <div class="check-item done"><span class="check">✓</span> Konnektor-Client Interface (SOAP/REST)</div>
+        <div class="check-item done"><span class="check">✓</span> TI-Simulation (eGK, E-Rezept, KIM, ePA)</div>
+        <div class="check-item done"><span class="check">✓</span> EBM/GOÄ-Abrechnung + KVDT-Export</div>
+        <div class="check-item pending"><span class="check">○</span> gematik-Registrierung als Primärsystem-Hersteller</div>
+        <div class="check-item pending"><span class="check">○</span> Zugang zur gematik-Referenzumgebung (RU)</div>
+        <div class="check-item pending"><span class="check">○</span> KBV-Prüfpaket für KVDT-Validierung</div>
+        <div class="check-item pending"><span class="check">○</span> SMC-B + HBA Testkarten</div>
+        <div class="check-item pending"><span class="check">○</span> Konnektor-Anbindung (physisch)</div>
+        <div class="check-item pending"><span class="check">○</span> KBV-Zertifizierung (Prüfverfahren)</div>
+        <div class="check-item pending"><span class="check">○</span> gematik KOB (Konformitätsbewertung)</div>
+    </div>
+</div>
+
+@code {
+    private KonnektorStatusDto? status;
+    private IReadOnlyList<CardInfoDto>? cards;
+
+    protected override async Task OnInitializedAsync()
+    {
+        status = await KonnektorClient.GetStatusAsync();
+        if (status.Connected)
+            cards = await KonnektorClient.GetCardsAsync();
+    }
+}
