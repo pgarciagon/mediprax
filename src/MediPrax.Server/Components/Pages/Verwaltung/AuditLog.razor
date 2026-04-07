@@ -1,0 +1,152 @@
+@page "/verwaltung/audit-log"
+@attribute [Authorize(Roles = "Admin")]
+@inject IAuditService AuditService
+@rendermode InteractiveServer
+
+<PageTitle>Audit-Log</PageTitle>
+
+<div class="page-header">
+    <h1>Audit-Log</h1>
+</div>
+
+<div class="filters">
+    <div class="filter-row">
+        <div class="filter-group">
+            <label>Zeitraum</label>
+            <div class="date-range">
+                <InputDate @bind-Value="filterFrom" class="form-control" />
+                <span>bis</span>
+                <InputDate @bind-Value="filterTo" class="form-control" />
+            </div>
+        </div>
+        <div class="filter-group">
+            <label>Aktion</label>
+            <select @bind="filterAction" class="form-control">
+                <option value="">Alle</option>
+                <option value="Create">Erstellt</option>
+                <option value="Read">Gelesen</option>
+                <option value="Update">Geändert</option>
+                <option value="Delete">Gelöscht</option>
+                <option value="Login">Anmeldung</option>
+                <option value="LoginFailed">Fehlgeschlagen</option>
+                <option value="Logout">Abmeldung</option>
+                <option value="Export">Export</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Entität</label>
+            <select @bind="filterEntity" class="form-control">
+                <option value="">Alle</option>
+                <option value="Patient">Patient</option>
+                <option value="Appointment">Termin</option>
+                <option value="Encounter">Dokumentation</option>
+                <option value="Document">Dokument</option>
+                <option value="User">Benutzer</option>
+            </select>
+        </div>
+        <div class="filter-group" style="align-self: flex-end">
+            <button @onclick="Search" class="btn btn-primary">Filtern</button>
+        </div>
+    </div>
+</div>
+
+@if (result is null)
+{
+    <p>Laden...</p>
+}
+else if (result.TotalCount == 0)
+{
+    <p class="empty-state">Keine Einträge gefunden.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Zeitpunkt</th>
+                <th>Benutzer</th>
+                <th>Aktion</th>
+                <th>Entität</th>
+                <th>Details</th>
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in result.Items)
+            {
+                <tr>
+                    <td class="nowrap">@entry.Timestamp.ToLocalTime().ToString("dd.MM.yy HH:mm:ss")</td>
+                    <td>
+                        <span class="user-cell">@(entry.UserName ?? "—")</span>
+                        @if (entry.UserRole is not null)
+                        {
+                            <span class="role-tag">@entry.UserRole</span>
+                        }
+                    </td>
+                    <td><span class="action-badge action-@entry.Action.ToString().ToLower()">@entry.ActionDisplay</span></td>
+                    <td>@(entry.EntityType ?? "—")</td>
+                    <td class="details-cell">@(entry.Details ?? "—")</td>
+                    <td class="nowrap">@(entry.IpAddress ?? "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (result.TotalPages > 1)
+    {
+        <div class="pagination">
+            <button disabled="@(currentPage <= 1)" @onclick="PreviousPage" class="btn btn-sm">Zurück</button>
+            <span>Seite @currentPage von @result.TotalPages (@result.TotalCount Einträge)</span>
+            <button disabled="@(currentPage >= result.TotalPages)" @onclick="NextPage" class="btn btn-sm">Weiter</button>
+        </div>
+    }
+}
+
+@code {
+    private AuditLogResult? result;
+    private DateOnly? filterFrom;
+    private DateOnly? filterTo;
+    private string filterAction = string.Empty;
+    private string filterEntity = string.Empty;
+    private int currentPage = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        filterFrom = DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
+        filterTo = DateOnly.FromDateTime(DateTime.Today);
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        MediPrax.Core.Enums.AuditAction? action = null;
+        if (!string.IsNullOrEmpty(filterAction) && Enum.TryParse<MediPrax.Core.Enums.AuditAction>(filterAction, out var parsed))
+            action = parsed;
+
+        result = await AuditService.SearchAsync(new AuditLogSearchDto
+        {
+            From = filterFrom?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+            To = filterTo?.ToDateTime(new TimeOnly(23, 59, 59), DateTimeKind.Utc),
+            Action = action,
+            EntityType = string.IsNullOrEmpty(filterEntity) ? null : filterEntity,
+            Page = currentPage,
+            PageSize = 50
+        });
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1) { currentPage--; await LoadData(); }
+    }
+
+    private async Task NextPage()
+    {
+        if (result is not null && currentPage < result.TotalPages) { currentPage++; await LoadData(); }
+    }
+}

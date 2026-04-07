@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using MediPrax.Application.Interfaces;
 using MediPrax.Application.Services;
+using MediPrax.Core.Enums;
 using MediPrax.Core.Interfaces;
 using MediPrax.Infrastructure.Persistence;
+using MediPrax.Infrastructure.Services;
 using MediPrax.Server.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -11,8 +13,12 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-builder.Services.AddDbContext<MediPraxDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditInterceptor>();
+builder.Services.AddDbContext<MediPraxDbContext>((sp, options) =>
+    options
+        .UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+        .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
 
 // Repositories
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -27,6 +33,7 @@ builder.Services.AddScoped<IEncounterService, EncounterService>();
 builder.Services.AddScoped<IArztbriefService, MediPrax.Server.Services.ArztbriefService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -65,11 +72,23 @@ app.UseAuthorization();
 app.UseAntiforgery();
 
 // Login endpoint
-app.MapPost("/api/login", async (HttpContext httpContext, IAuthService authService, LoginRequest request) =>
+app.MapPost("/api/login", async (HttpContext httpContext, IAuthService authService, IAuditService auditService, LoginRequest request) =>
 {
+    var ip = httpContext.Connection.RemoteIpAddress?.ToString();
     var user = await authService.ValidateCredentialsAsync(request.Email, request.Password);
     if (user is null)
+    {
+        // Log failed login — write directly since no user context yet
+        var db = httpContext.RequestServices.GetRequiredService<MediPraxDbContext>();
+        db.AuditLogs.Add(new MediPrax.Core.Entities.AuditLog
+        {
+            Action = AuditAction.LoginFailed,
+            Details = $"Fehlgeschlagener Login: {request.Email}",
+            IpAddress = ip
+        });
+        await db.SaveChangesAsync();
         return Results.Unauthorized();
+    }
 
     var claims = new List<Claim>
     {
@@ -83,21 +102,37 @@ app.MapPost("/api/login", async (HttpContext httpContext, IAuthService authServi
     var principal = new ClaimsPrincipal(identity);
 
     await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+    // Log successful login
+    var dbCtx = httpContext.RequestServices.GetRequiredService<MediPraxDbContext>();
+    dbCtx.AuditLogs.Add(new MediPrax.Core.Entities.AuditLog
+    {
+        UserId = user.Id,
+        UserName = user.FullName,
+        UserRole = user.Role.ToString(),
+        Action = AuditAction.Login,
+        Details = "Erfolgreicher Login",
+        IpAddress = ip
+    });
+    await dbCtx.SaveChangesAsync();
+
     return Results.Ok();
 });
 
 // Logout endpoint
-app.MapGet("/api/logout", async (HttpContext httpContext) =>
+app.MapGet("/api/logout", async (HttpContext httpContext, IAuditService auditService) =>
 {
+    await auditService.LogAsync(AuditAction.Logout, details: "Abmeldung");
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
 });
 
 // PDF endpoint
-app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbriefService) =>
+app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbriefService, IAuditService auditService) =>
 {
     var pdf = await arztbriefService.GetPdfAsync(id);
     if (pdf is null) return Results.NotFound();
+    await auditService.LogAsync(AuditAction.Export, "Document", id, "PDF heruntergeladen");
     return Results.File(pdf, "application/pdf", $"Arztbrief-{id:N}.pdf");
 });
 

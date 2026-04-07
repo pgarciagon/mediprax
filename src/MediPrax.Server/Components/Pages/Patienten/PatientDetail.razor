@@ -3,6 +3,7 @@
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService
 @inject IArztbriefService ArztbriefService
+@inject IAuditService AuditService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -196,6 +197,7 @@ else
         }
         encounters = await EncounterService.GetByPatientAsync(Id);
         arztbriefe = await ArztbriefService.GetByPatientAsync(Id);
+        await AuditService.LogAsync(MediPrax.Core.Enums.AuditAction.Read, "Patient", Id, $"Patientenakte geöffnet: {patient.FullName}");
     }
 
     private void HandleDelete() => showDeleteConfirm = true;
