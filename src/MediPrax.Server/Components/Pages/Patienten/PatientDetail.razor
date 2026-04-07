@@ -18,6 +18,7 @@ else
     <div class="page-header">
         <h1>@patient.FullName</h1>
         <div class="header-actions">
+            <a href="/patienten/@Id/formulare" class="btn btn-secondary">Formulare</a>
             <a href="/patienten/@Id/bearbeiten" class="btn btn-primary">Bearbeiten</a>
             <button @onclick="HandleDelete" class="btn btn-danger">Löschen</button>
         </div>

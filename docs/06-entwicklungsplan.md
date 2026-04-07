@@ -98,6 +98,68 @@ M8: Benutzerverwaltung & RBAC
 
 Produktionsreifes System mit Patientenverwaltung, Terminplanung, klinischer Dokumentation, Arztbriefen, Abrechnung, Audit-Trail und Docker-Deployment. Bereit für Parallelbetrieb.
 
+### Zusätzlich umgesetzt (über Plan hinaus)
+
+- ✅ TI-Integration Simulation (eGK, E-Rezept, KIM, ePA mit Mock-Services)
+- ✅ CI/CD Pipeline (GitHub Actions: Build, Test, Docker Push zu GHCR)
+- ✅ KVDT-Export (EBM-Positionen für KVHB)
+- ✅ CSV-Datenimport (Patientenmigration aus Medistar)
+- ✅ 45 Tests (Unit + Integration)
+
+## 6.2b Phase 1b: UI/UX und klinische Erweiterungen
+
+**Ziel:** System für den Praxisalltag optimieren — Responsive Design, Druckformulare, Medikamentenplan.
+
+#### Meilenstein 13: UI/UX Verbesserungen
+
+Responsive Design und visuelle Optimierungen für Tablet und Desktop.
+
+- **Responsive Layout** — Sidebar collapsible, mobile-friendly Tabellen und Formulare
+- **Dark Mode** — Toggle hell/dunkel im Sidebar, CSS-Variablen für beide Themes
+- **Druckvorlagen (QuestPDF)** — Rezept, Überweisung, AU-Bescheinigung als PDF
+- **Toast-Benachrichtigungen** — Erfolgs-/Fehlermeldungen als temporäre Overlays
+- **Tastaturkürzel** — Ctrl+K (Suche), Ctrl+N (Neuer Patient), Ctrl+T (Neuer Termin)
+
+#### Meilenstein 14: Klinische Erweiterungen
+
+Funktionen die den ärztlichen Arbeitsablauf direkt unterstützen.
+
+- **Medikamentenplan** — Aktive Medikation pro Patient (Wirkstoff, Dosis, Häufigkeit, seit wann)
+- **Überweisungsformular** — PDF-Überweisungsschein (Muster 6) mit Diagnose und Ziel-Fachrichtung
+- **AU-Bescheinigung** — PDF AU-Formular (Muster 1) mit Zeitraum und Diagnose
+- **Rezeptdruck** — Kassenrezept (Muster 16) und Privatrezept PDF
+- **Wiedervorlagen** — Erinnerungssystem für Nachsorgetermine
+
+#### Meilenstein 15: Infrastruktur und Stabilität
+
+Absicherung und Monitoring für den Dauerbetrieb.
+
+- **PostgreSQL Backup** — Automatisiertes pg_dump-Skript (täglich, wöchentlich)
+- **SignalR Notifications** — Echtzeit-Wartezimmer-Updates, neue KIM-Nachrichten
+- **Mehr Tests** — EncounterService, DashboardService, ReportService, KVDT-Export
+- **Health Checks** — /health Endpoint für DB-Verbindung und Systemstatus
+- **Structured Logging** — Serilog mit JSON-Output für Monitoring
+- **Rate Limiting** — Login-Endpoint absichern gegen Brute-Force
+
+#### Meilenstein 16: Phase 2 Vorbereitung
+
+Vorarbeiten für die TI-Anbindung die keine Zugänge erfordern.
+
+- **gematik-Registrierung starten** — Antrag als Primärsystem-Hersteller
+- **KBV-Prüfpaket herunterladen** — KVDT-Validierungstool für Abrechnungsdateien
+- **FHIR-Grundlagen** — Firely SDK einbinden, FHIR Patient/Encounter/MedicationRequest-Ressourcen
+- **Konnektor-Client vorbereiten** — SOAP/REST-Client-Struktur für Konnektor-API
+- **Zertifizierungsdokumentation** — Technische Dokumentation für KBV/gematik vorbereiten
+
+### Abhängigkeiten Phase 1b
+
+```
+M13: UI/UX (unabhängig)
+M14: Klinische Erweiterungen (unabhängig, parallel zu M13)
+M15: Infrastruktur (nach M13/M14, nutzt deren Ergebnisse)
+M16: Phase 2 Vorbereitung (nach M15, vor TI-Phase)
+```
+
 ## 6.3 Phase 2: TI-Integration (Monate 7–12)
 
 **Ziel:** Anbindung an die Telematikinfrastruktur

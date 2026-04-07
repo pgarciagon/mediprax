@@ -9,6 +9,7 @@ using MediPrax.Server.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -146,6 +147,56 @@ app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbri
     await auditService.LogAsync(AuditAction.Export, "Document", id, "PDF heruntergeladen");
     return Results.File(pdf, "application/pdf", $"Arztbrief-{id:N}.pdf");
 });
+
+// Formulare PDF endpoints
+app.MapGet("/api/formulare/rezept", async (Guid patientId, string medikament, string? dosierung, string? pzn, int menge, bool privat, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.RezeptDocument(new MediPrax.Reporting.Formulare.RezeptData
+    {
+        PatientName = patient.FullName, PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        PatientAdresse = $"{patient.Street}, {patient.PostalCode} {patient.City}",
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy"), IsPrivat = privat,
+        Positionen = [new() { Medikament = medikament, Pzn = pzn, Dosierung = dosierung, Menge = menge }]
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"Rezept_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
+app.MapGet("/api/formulare/ueberweisung", async (Guid patientId, string fachrichtung, string? arzt, string diagnose, string? frage, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.UeberweisungDocument(new MediPrax.Reporting.Formulare.UeberweisungData
+    {
+        PatientName = patient.FullName, PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        AnFachrichtung = fachrichtung, AnArzt = arzt, Diagnose = diagnose, Fragestellung = frage,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"Ueberweisung_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
+app.MapGet("/api/formulare/au", async (Guid patientId, DateOnly von, DateOnly bis, bool erst, string diagnose, string? icd, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.AuDocument(new MediPrax.Reporting.Formulare.AuData
+    {
+        PatientName = patient.FullName, PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        VonDatum = von, BisDatum = bis, Erstbescheinigung = erst, Diagnose = diagnose, IcdCode = icd,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"AU_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
 
 // KVDT export endpoint
 app.MapGet("/api/kvdt-export/{quarter}", async (string quarter, IKvdtExportService kvdtService, IAuditService auditService) =>

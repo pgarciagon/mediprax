@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject IJSRuntime JS
 
 <div class="app-layout">
     <nav class="sidebar">
@@ -117,7 +118,8 @@
                         </div>
                     </div>
                     <div class="user-actions">
-                        <a href="/konto/passwort" class="user-action-link">Passwort ändern</a>
+                        <a href="/konto/passwort" class="user-action-link">Passwort</a>
+                        <button class="user-action-link" @onclick="ToggleTheme">@(isDark ? "☀" : "☾")</button>
                         <a href="/api/logout" class="logout-btn">Abmelden</a>
                     </div>
                 </Authorized>
@@ -138,3 +140,13 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">&#x2717;</span>
 </div>
+
+@code {
+    private bool isDark;
+
+    private async Task ToggleTheme()
+    {
+        isDark = !isDark;
+        await JS.InvokeVoidAsync("eval", $"document.documentElement.setAttribute('data-theme', '{(isDark ? "dark" : "light")}')");
+    }
+}

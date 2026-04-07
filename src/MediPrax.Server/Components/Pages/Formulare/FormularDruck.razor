@@ -1,0 +1,197 @@
+@page "/patienten/{PatientId:guid}/formulare"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPatientService PatientService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Formulare drucken</PageTitle>
+
+<div class="page-header">
+    <h1>Formulare</h1>
+    @if (patient is not null) { <span class="patient-context">@patient.FullName</span> }
+</div>
+
+@if (patient is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="form-cards">
+        <div class="form-card" @onclick='() => activeForm = "rezept"'>
+            <h3>Rezept</h3>
+            <p>Kassenrezept / Privatrezept</p>
+        </div>
+        <div class="form-card" @onclick='() => activeForm = "ueberweisung"'>
+            <h3>Überweisung</h3>
+            <p>Muster 6</p>
+        </div>
+        <div class="form-card" @onclick='() => activeForm = "au"'>
+            <h3>AU-Bescheinigung</h3>
+            <p>Muster 1</p>
+        </div>
+    </div>
+
+    @if (activeForm == "rezept")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Rezept</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Medikament *</label>
+                        <InputText @bind-Value="rezept.Medikament" class="form-control" placeholder="z.B. Sertralin 50mg N3" />
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>PZN</label>
+                        <InputText @bind-Value="rezept.Pzn" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dosierung</label>
+                        <InputText @bind-Value="rezept.Dosierung" class="form-control" placeholder="z.B. 1-0-0-0" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>Menge</label>
+                        <InputNumber @bind-Value="rezept.Menge" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>Typ</label>
+                        <select @bind="rezept.IsPrivat" class="form-control">
+                            <option value="false">Kassenrezept</option>
+                            <option value="true">Privatrezept</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateRezept">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
+
+    @if (activeForm == "ueberweisung")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Überweisung</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>An Fachrichtung *</label>
+                        <InputText @bind-Value="ueberweisung.AnFachrichtung" class="form-control" placeholder="z.B. Radiologie" />
+                    </div>
+                    <div class="form-group">
+                        <label>An Arzt (optional)</label>
+                        <InputText @bind-Value="ueberweisung.AnArzt" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Diagnose / Verdacht *</label>
+                    <InputText @bind-Value="ueberweisung.Diagnose" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Fragestellung</label>
+                    <InputTextArea @bind-Value="ueberweisung.Fragestellung" class="form-control" rows="2" />
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateUeberweisung">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
+
+    @if (activeForm == "au")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>AU-Bescheinigung</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Von *</label>
+                        <InputDate @bind-Value="au.Von" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Bis *</label>
+                        <InputDate @bind-Value="au.Bis" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Art</label>
+                        <select @bind="au.Erst" class="form-control">
+                            <option value="true">Erstbescheinigung</option>
+                            <option value="false">Folgebescheinigung</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Diagnose *</label>
+                        <InputText @bind-Value="au.Diagnose" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>ICD-10</label>
+                        <InputText @bind-Value="au.IcdCode" class="form-control" placeholder="z.B. F32.1" />
+                    </div>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateAu">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    private PatientDto? patient;
+    private string activeForm = "";
+
+    private RezeptForm rezept = new();
+    private UeberweisungForm ueberweisung = new();
+    private AuForm au = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        patient = await PatientService.GetByIdAsync(PatientId);
+        if (patient is null) Navigation.NavigateTo("/patienten");
+    }
+
+    private void GenerateRezept()
+    {
+        // In production: generate PDF and open in new tab
+        // For now: navigate to a PDF endpoint (to be added)
+        Navigation.NavigateTo($"/api/formulare/rezept?patientId={PatientId}&medikament={Uri.EscapeDataString(rezept.Medikament)}&dosierung={Uri.EscapeDataString(rezept.Dosierung ?? "")}&pzn={rezept.Pzn}&menge={rezept.Menge}&privat={rezept.IsPrivat}", forceLoad: true);
+    }
+
+    private void GenerateUeberweisung()
+    {
+        Navigation.NavigateTo($"/api/formulare/ueberweisung?patientId={PatientId}&fachrichtung={Uri.EscapeDataString(ueberweisung.AnFachrichtung)}&arzt={Uri.EscapeDataString(ueberweisung.AnArzt ?? "")}&diagnose={Uri.EscapeDataString(ueberweisung.Diagnose)}&frage={Uri.EscapeDataString(ueberweisung.Fragestellung ?? "")}", forceLoad: true);
+    }
+
+    private void GenerateAu()
+    {
+        Navigation.NavigateTo($"/api/formulare/au?patientId={PatientId}&von={au.Von:yyyy-MM-dd}&bis={au.Bis:yyyy-MM-dd}&erst={au.Erst}&diagnose={Uri.EscapeDataString(au.Diagnose)}&icd={Uri.EscapeDataString(au.IcdCode ?? "")}", forceLoad: true);
+    }
+
+    private class RezeptForm
+    {
+        public string Medikament { get; set; } = "";
+        public string? Pzn { get; set; }
+        public string? Dosierung { get; set; }
+        public int Menge { get; set; } = 1;
+        public bool IsPrivat { get; set; }
+    }
+
+    private class UeberweisungForm
+    {
+        public string AnFachrichtung { get; set; } = "";
+        public string? AnArzt { get; set; }
+        public string Diagnose { get; set; } = "";
+        public string? Fragestellung { get; set; }
+    }
+
+    private class AuForm
+    {
+        public DateOnly Von { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public DateOnly Bis { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(7));
+        public bool Erst { get; set; } = true;
+        public string Diagnose { get; set; } = "";
+        public string? IcdCode { get; set; }
+    }
+}
