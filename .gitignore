@@ -21,3 +21,4 @@ Thumbs.db
 appsettings.Development.json
 appsettings.Local.json
 *.pfx
+.claude/worktrees/
