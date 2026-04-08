@@ -1,0 +1,369 @@
+@page "/therapie/{Id:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject ITherapyCaseService TherapyCaseService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Therapiefall — @(therapyCase?.PatientName ?? "Laden...")</PageTitle>
+
+@if (therapyCase is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>@therapyCase.PatientName — @therapyCase.TherapyTypeName</h1>
+        <div class="header-actions">
+            <a href="/therapie/@Id/bearbeiten" class="btn btn-primary">Bearbeiten</a>
+        </div>
+    </div>
+
+    @* Status badge *@
+    <div style="margin-bottom:1rem;">
+        <span class="status-badge status-@therapyCase.Status.ToString().ToLower()" style="font-size:0.9rem;padding:0.3rem 0.8rem;">
+            @GetStatusLabel(therapyCase.Status)
+        </span>
+    </div>
+
+    @* Warning banner *@
+    @if (contingent is not null && contingent.WarningLevel == "Yellow")
+    {
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#92400e;">
+            Nur noch @contingent.RemainingSessions Sitzungen verbleibend.
+        </div>
+    }
+    else if (contingent is not null && contingent.WarningLevel == "Red")
+    {
+        <div style="background:#fee2e2;border:1px solid #ef4444;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#991b1b;">
+            Kontingent erschoepft — keine Sitzungen mehr verfuegbar.
+        </div>
+    }
+
+    <div class="detail-grid">
+        @* Contingent card *@
+        <section class="detail-card">
+            <h3>Kontingent</h3>
+            @if (contingent is not null)
+            {
+                <div style="font-size:1.5rem;font-weight:bold;margin-bottom:.5rem;">
+                    Sitzung @contingent.CompletedSessions von @contingent.ApprovedSessions
+                </div>
+                <div style="margin-bottom:.5rem;">@contingent.RemainingSessions verbleibend</div>
+                <div class="progress-bar-container" style="width:100%;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">
+                    @{
+                        var pct = contingent.ApprovedSessions > 0 ? (int)(100.0 * contingent.CompletedSessions / contingent.ApprovedSessions) : 0;
+                        var color = contingent.WarningLevel switch { "Red" => "#ef4444", "Yellow" => "#f59e0b", _ => "#22c55e" };
+                    }
+                    <div style="width:@(Math.Min(pct,100))%;height:100%;background:@color;border-radius:5px;"></div>
+                </div>
+                @if (contingent.CanExtend)
+                {
+                    <div style="margin-top:.5rem;font-size:.85rem;color:#6b7280;">
+                        Verlaengerung moeglich: bis zu @contingent.ExtensionPossible weitere Sitzungen (max. @contingent.MaxTotal gesamt)
+                    </div>
+                }
+            }
+        </section>
+
+        @* Info card *@
+        <section class="detail-card">
+            <h3>Informationen</h3>
+            <dl>
+                <dt>Therapeut</dt>
+                <dd>@therapyCase.TherapistName</dd>
+                <dt>Sitzungsdauer</dt>
+                <dd>@therapyCase.SessionDurationMinutes Min.</dd>
+                <dt>Gruppentherapie</dt>
+                <dd>@(therapyCase.IsGroupTherapy ? "Ja" : "Nein")</dd>
+                @if (therapyCase.GutachterStatus.HasValue)
+                {
+                    <dt>Gutachterstatus</dt>
+                    <dd>@therapyCase.GutachterStatus</dd>
+                }
+                <dt>Diagnosen</dt>
+                <dd>@(therapyCase.Diagnoses.Count > 0 ? string.Join(", ", therapyCase.Diagnoses) : "Keine")</dd>
+            </dl>
+        </section>
+    </div>
+
+    @* Session list *@
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>Sitzungen</h2>
+        </div>
+
+        @if (sessions is not null && sessions.Count > 0)
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Datum</th>
+                        <th>Dauer</th>
+                        <th>Typ</th>
+                        <th>Video</th>
+                        <th>GOP</th>
+                        <th>Notizen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in sessions)
+                    {
+                        <tr>
+                            <td>@s.SessionNumber</td>
+                            <td>@s.SessionDate.ToString("dd.MM.yyyy")</td>
+                            <td>@s.DurationMinutes Min.</td>
+                            <td>@s.SessionType</td>
+                            <td>@(s.IsVideoSession ? "Ja" : "Nein")</td>
+                            <td>@(s.BilledGop ?? "—")</td>
+                            <td>@(s.Notes ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-encounters">Noch keine Sitzungen dokumentiert.</div>
+        }
+
+        @* Add session inline form *@
+        <div class="inline-form" style="margin-top:1rem;padding:1rem;border:1px solid #e5e7eb;border-radius:6px;">
+            <h4>Neue Sitzung erfassen</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Datum</label>
+                    <InputDate @bind-Value="newSession.SessionDate" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Dauer (Min.)</label>
+                    <InputNumber @bind-Value="newSession.DurationMinutes" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Typ</label>
+                    <InputSelect @bind-Value="newSession.SessionType" class="form-control">
+                        <option value="Sprechstunde">Sprechstunde</option>
+                        <option value="Probatorik">Probatorik</option>
+                        <option value="Akut">Akut</option>
+                        <option value="Regular">Regulaer</option>
+                        <option value="Gruppe">Gruppe</option>
+                    </InputSelect>
+                </div>
+                <div class="form-group" style="align-self:end;">
+                    <label>
+                        <InputCheckbox @bind-Value="newSession.IsVideoSession" />
+                        Video
+                    </label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Notizen</label>
+                    <InputText @bind-Value="newSession.Notes" class="form-control" />
+                </div>
+                <div class="form-group" style="align-self:end;">
+                    <button class="btn btn-primary btn-sm" @onclick="AddSession">Sitzung hinzufuegen</button>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(sessionMessage))
+            {
+                <div style="margin-top:.5rem;color:#059669;font-size:.85rem;">@sessionMessage</div>
+            }
+        </div>
+    </div>
+
+    @* PTV Forms section *@
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>PTV-Formulare</h2>
+        </div>
+
+        @if (ptvForms is not null && ptvForms.Count > 0)
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Formular</th>
+                        <th>Erstellt</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in ptvForms)
+                    {
+                        <tr>
+                            <td>@f.FormTypeName</td>
+                            <td>@f.CreatedDate.ToString("dd.MM.yyyy")</td>
+                            <td>@f.Status</td>
+                            <td>
+                                @if (f.HasPdf)
+                                {
+                                    <a href="/api/ptv/@f.Id/pdf" target="_blank" class="btn-link">PDF herunterladen</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-encounters">Keine PTV-Formulare erstellt.</div>
+        }
+
+        <div style="margin-top:1rem;display:flex;gap:.5rem;">
+            <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV1)'>PTV 1 erstellen</button>
+            <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV2)'>PTV 2 erstellen</button>
+            <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV3)'>PTV 3 erstellen</button>
+            <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV10)'>PTV 10 erstellen</button>
+        </div>
+    </div>
+
+    @* Status actions *@
+    <div class="encounters-section">
+        <div class="section-header">
+            <h2>Aktionen</h2>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            @if (therapyCase.Status == TherapyCaseStatus.AntragGestellt || therapyCase.Status == TherapyCaseStatus.InGutachterverfahren)
+            {
+                <button class="btn btn-sm btn-primary" @onclick='() => ChangeStatus(TherapyCaseStatus.Bewilligt)'>Als bewilligt markieren</button>
+            }
+            @if (therapyCase.Status == TherapyCaseStatus.Bewilligt)
+            {
+                <button class="btn btn-sm btn-primary" @onclick='() => ChangeStatus(TherapyCaseStatus.InBehandlung)'>Behandlung starten</button>
+            }
+            @if (therapyCase.Status == TherapyCaseStatus.InBehandlung)
+            {
+                <button class="btn btn-sm btn-secondary" @onclick='() => ChangeStatus(TherapyCaseStatus.VerlaengerungBeantragt)'>Verlaengerung beantragen</button>
+                <button class="btn btn-sm btn-secondary" @onclick='() => ChangeStatus(TherapyCaseStatus.Abgeschlossen)'>Abschliessen</button>
+            }
+            @if (therapyCase.Status != TherapyCaseStatus.Abgeschlossen && therapyCase.Status != TherapyCaseStatus.Abgebrochen)
+            {
+                <button class="btn btn-sm btn-danger" @onclick='() => ChangeStatus(TherapyCaseStatus.Abgebrochen)'>Abbrechen</button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(therapyCase.Notes))
+    {
+        <div class="encounters-section">
+            <div class="section-header">
+                <h2>Notizen</h2>
+            </div>
+            <p>@therapyCase.Notes</p>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private TherapyCaseDto? therapyCase;
+    private ContingentStatusDto? contingent;
+    private IReadOnlyList<TherapySessionDto>? sessions;
+    private IReadOnlyList<PtvFormDto>? ptvForms;
+    private SessionFormModel newSession = new();
+    private string? sessionMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        therapyCase = await TherapyCaseService.GetByIdAsync(Id);
+        if (therapyCase is null)
+        {
+            Navigation.NavigateTo("/therapie");
+            return;
+        }
+        contingent = await TherapyCaseService.GetContingentStatusAsync(Id);
+        sessions = await TherapyCaseService.GetSessionsAsync(Id);
+        ptvForms = await TherapyCaseService.GetPtvFormsAsync(Id);
+
+        // Set defaults for new session based on therapy case
+        newSession.DurationMinutes = therapyCase.SessionDurationMinutes;
+    }
+
+    private async Task AddSession()
+    {
+        if (therapyCase is null) return;
+
+        await TherapyCaseService.AddSessionAsync(new CreateTherapySessionDto
+        {
+            TherapyCaseId = Id,
+            SessionDate = newSession.SessionDate,
+            DurationMinutes = newSession.DurationMinutes,
+            SessionType = Enum.TryParse<SessionType>(newSession.SessionType, out var st) ? st : SessionType.Regular,
+            IsVideoSession = newSession.IsVideoSession,
+            Notes = newSession.Notes
+        });
+
+        sessionMessage = "Sitzung erfolgreich hinzugefuegt.";
+        newSession = new() { DurationMinutes = therapyCase.SessionDurationMinutes };
+        await LoadAll();
+    }
+
+    private async Task GenerateForm(PtvFormType formType)
+    {
+        await TherapyCaseService.GeneratePtvFormAsync(new CreatePtvFormDto
+        {
+            TherapyCaseId = Id,
+            FormType = formType
+        });
+        ptvForms = await TherapyCaseService.GetPtvFormsAsync(Id);
+    }
+
+    private async Task ChangeStatus(TherapyCaseStatus newStatus)
+    {
+        if (therapyCase is null) return;
+
+        await TherapyCaseService.UpdateAsync(new UpdateTherapyCaseDto
+        {
+            Id = Id,
+            PatientId = therapyCase.PatientId,
+            TherapistId = therapyCase.TherapistId,
+            TherapyType = therapyCase.TherapyType,
+            StartDate = therapyCase.StartDate,
+            ApprovedSessions = therapyCase.ApprovedSessions,
+            SessionDurationMinutes = therapyCase.SessionDurationMinutes,
+            IsGroupTherapy = therapyCase.IsGroupTherapy,
+            Diagnoses = therapyCase.Diagnoses,
+            Notes = therapyCase.Notes,
+            Status = newStatus,
+            GutachterStatus = therapyCase.GutachterStatus,
+            EndDate = newStatus == TherapyCaseStatus.Abgeschlossen || newStatus == TherapyCaseStatus.Abgebrochen
+                ? DateOnly.FromDateTime(DateTime.Today) : therapyCase.EndDate
+        });
+
+        await LoadAll();
+    }
+
+    private static string GetStatusLabel(TherapyCaseStatus status) => status switch
+    {
+        TherapyCaseStatus.SprechstundePhase => "Sprechstunde",
+        TherapyCaseStatus.ProbatorikPhase => "Probatorik",
+        TherapyCaseStatus.AntragGestellt => "Antrag gestellt",
+        TherapyCaseStatus.InGutachterverfahren => "Gutachterverfahren",
+        TherapyCaseStatus.Bewilligt => "Bewilligt",
+        TherapyCaseStatus.Abgelehnt => "Abgelehnt",
+        TherapyCaseStatus.InBehandlung => "In Behandlung",
+        TherapyCaseStatus.VerlaengerungBeantragt => "Verlaengerung",
+        TherapyCaseStatus.Abgeschlossen => "Abgeschlossen",
+        TherapyCaseStatus.Abgebrochen => "Abgebrochen",
+        _ => status.ToString()
+    };
+
+    private class SessionFormModel
+    {
+        public DateOnly SessionDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public int DurationMinutes { get; set; } = 50;
+        public string SessionType { get; set; } = "Regular";
+        public bool IsVideoSession { get; set; }
+        public string? Notes { get; set; }
+    }
+}

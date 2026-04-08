@@ -44,6 +44,7 @@ builder.Services.AddScoped<IKvdtExportService, KvdtExportService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPsychometricTestService, PsychometricTestService>();
+builder.Services.AddScoped<ITherapyCaseService, TherapyCaseService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
 
 // Telematik — Mock services (replace with real implementations when TI access is available)
@@ -238,6 +239,14 @@ app.MapGet("/api/formulare/au", async (Guid patientId, DateOnly von, DateOnly bi
     });
     var pdf = doc.GeneratePdf();
     return Results.File(pdf, "application/pdf", $"AU_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
+// PTV form PDF endpoint
+app.MapGet("/api/ptv/{formId:guid}/pdf", async (Guid formId, ITherapyCaseService therapyCaseService) =>
+{
+    var pdf = await therapyCaseService.GetPtvFormPdfAsync(formId);
+    if (pdf is null) return Results.NotFound();
+    return Results.File(pdf, "application/pdf", $"PTV-{formId:N}.pdf");
 }).RequireAuthorization("Klinisch");
 
 // KVDT export endpoint
