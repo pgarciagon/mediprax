@@ -1,7 +1,10 @@
+using System.Text.Json;
 using MediPrax.Core.Entities;
+using MediPrax.Core.ValueObjects;
 using MediPrax.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace MediPrax.IntegrationTests;
 
@@ -63,5 +66,13 @@ public class TestMediPraxDbContext(DbContextOptions<MediPraxDbContext> options) 
                     index.SetFilter(null);
             }
         }
+
+        // SQLite doesn't support jsonb for complex types — use JSON value converter
+        modelBuilder.Entity<PsychopathologicalFinding>()
+            .Property(f => f.Findings)
+            .HasColumnType(null)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => JsonSerializer.Deserialize<List<SymptomFinding>>(v, (JsonSerializerOptions?)null) ?? new List<SymptomFinding>());
     }
 }
