@@ -196,6 +196,12 @@ else
             <button type="submit" class="btn btn-primary" disabled="@saving">
                 @(saving ? "Speichern..." : "Speichern")
             </button>
+            @if (isEdit)
+            {
+                <a href="@($"/dokumentation/neurologischer-befund/{Id}")" class="btn btn-secondary">
+                    Neurologischer Befund
+                </a>
+            }
             <a href="@backUrl" class="btn btn-secondary">Abbrechen</a>
         </div>
     </EditForm>

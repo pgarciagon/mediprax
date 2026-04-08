@@ -1,0 +1,852 @@
+@page "/dokumentation/neurologischer-befund/{EncounterId:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject INeurologicalExamService NeuroExamService
+@inject IEncounterService EncounterService
+@inject IPatientService PatientService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Neurologischer Befund</PageTitle>
+
+<div class="page-header">
+    <h1>Neurologischer Befund</h1>
+    @if (patientName is not null)
+    {
+        <span class="patient-context">@patientName &mdash; @form.ExamDate.ToString("dd.MM.yyyy")</span>
+    }
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <!-- Tabs -->
+    <div class="neuro-tabs">
+        <div class="tab-bar">
+            @foreach (var tab in tabs)
+            {
+                <button type="button"
+                        class="tab-btn @(activeTab == tab.Key ? "active" : "")"
+                        @onclick="() => SwitchTab(tab.Key)">
+                    @tab.Value
+                </button>
+            }
+        </div>
+
+        <div class="tab-content">
+            @if (activeTab == "hirnnerven")
+            {
+                <fieldset>
+                    <legend>I - N. olfactorius</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Geruchssinn</label>
+                            <select @bind="form.CranialNerves.OlfactoryStatus" class="form-control">
+                                <option value="normal">Normal</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                                <option value="aufgehoben">Aufgehoben</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.CranialNerves.OlfactoryComment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>II - N. opticus</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Visus</label>
+                            <select @bind="form.CranialNerves.VisualAcuity" class="form-control">
+                                <option value="normal">Normal</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Gesichtsfeld</label>
+                            <select @bind="form.CranialNerves.VisualFields" class="form-control">
+                                <option value="normal">Normal</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pupillen</label>
+                            <select @bind="form.CranialNerves.PupilsStatus" class="form-control">
+                                <option value="isokor, prompt reagibel">Isokor, prompt reagibel</option>
+                                <option value="anisokor">Anisokor</option>
+                                <option value="weit, verzögert reagibel">Weit, verzögert reagibel</option>
+                                <option value="eng, lichtstarr">Eng, lichtstarr</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fundoskopie</label>
+                            <input type="text" @bind="form.CranialNerves.FundoscopyComment" class="form-control" placeholder="optional" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>III, IV, VI - Augenmotorik</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Augenbewegungen</label>
+                            <select @bind="form.CranialNerves.EyeMovements" class="form-control">
+                                <option value="frei in alle Richtungen">Frei in alle Richtungen</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nystagmus</label>
+                            <select @bind="form.CranialNerves.NystagmusStatus" class="form-control">
+                                <option value="kein Nystagmus">Kein Nystagmus</option>
+                                <option value="horizontaler Nystagmus">Horizontaler Nystagmus</option>
+                                <option value="vertikaler Nystagmus">Vertikaler Nystagmus</option>
+                                <option value="rotatorischer Nystagmus">Rotatorischer Nystagmus</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label>
+                                <input type="checkbox" @bind="form.CranialNerves.DoubleVision" />
+                                Doppelbilder
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>V - N. trigeminus</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sensibilität</label>
+                            <select @bind="form.CranialNerves.TrigeminalSensory" class="form-control">
+                                <option value="seitengleich intakt">Seitengleich intakt</option>
+                                <option value="eingeschränkt rechts">Eingeschränkt rechts</option>
+                                <option value="eingeschränkt links">Eingeschränkt links</option>
+                                <option value="beidseits eingeschränkt">Beidseits eingeschränkt</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Masseterreflex</label>
+                            <select @bind="form.CranialNerves.MasseterReflex" class="form-control">
+                                <option value="normal">Normal</option>
+                                <option value="gesteigert">Gesteigert</option>
+                                <option value="abgeschwächt">Abgeschwächt</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Kornealreflex</label>
+                            <select @bind="form.CranialNerves.CornealReflex" class="form-control">
+                                <option value="beidseits auslösbar">Beidseits auslösbar</option>
+                                <option value="rechts abgeschwächt">Rechts abgeschwächt</option>
+                                <option value="links abgeschwächt">Links abgeschwächt</option>
+                                <option value="beidseits nicht auslösbar">Beidseits nicht auslösbar</option>
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>VII - N. facialis</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Fazialis-Status</label>
+                            <select @bind="form.CranialNerves.FacialNerveStatus" class="form-control">
+                                <option value="seitengleich innerviert">Seitengleich innerviert</option>
+                                <option value="Parese rechts">Parese rechts</option>
+                                <option value="Parese links">Parese links</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.CranialNerves.FacialComment" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label>
+                                <input type="checkbox" @bind="form.CranialNerves.ForeheadWrinkleSymmetric" />
+                                Stirnrunzeln symmetrisch
+                            </label>
+                        </div>
+                        <div class="form-group check-group">
+                            <label>
+                                <input type="checkbox" @bind="form.CranialNerves.MouthCornerSymmetric" />
+                                Mundwinkel symmetrisch
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>VIII - N. vestibulocochlearis</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gehör</label>
+                            <select @bind="form.CranialNerves.HearingStatus" class="form-control">
+                                <option value="beidseits intakt">Beidseits intakt</option>
+                                <option value="rechts eingeschränkt">Rechts eingeschränkt</option>
+                                <option value="links eingeschränkt">Links eingeschränkt</option>
+                                <option value="beidseits eingeschränkt">Beidseits eingeschränkt</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label>
+                                <input type="checkbox" @bind="form.CranialNerves.Vertigo" />
+                                Schwindel
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Schwindel-Kommentar</label>
+                            <input type="text" @bind="form.CranialNerves.VertigoComment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>IX, X - N. glossopharyngeus / vagus</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gaumensegel</label>
+                            <select @bind="form.CranialNerves.PalatumStatus" class="form-control">
+                                <option value="Gaumensegel hebt seitengleich">Hebt seitengleich</option>
+                                <option value="Gaumensegel Abweichung rechts">Abweichung rechts</option>
+                                <option value="Gaumensegel Abweichung links">Abweichung links</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Schlucken</label>
+                            <select @bind="form.CranialNerves.SwallowingStatus" class="form-control">
+                                <option value="ungestört">Ungestört</option>
+                                <option value="Dysphagie">Dysphagie</option>
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>XI - N. accessorius</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kopfdrehung</label>
+                            <select @bind="form.CranialNerves.HeadRotation" class="form-control">
+                                <option value="seitengleich kräftig">Seitengleich kräftig</option>
+                                <option value="abgeschwächt rechts">Abgeschwächt rechts</option>
+                                <option value="abgeschwächt links">Abgeschwächt links</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Schulterheben</label>
+                            <select @bind="form.CranialNerves.ShoulderShrug" class="form-control">
+                                <option value="seitengleich kräftig">Seitengleich kräftig</option>
+                                <option value="abgeschwächt rechts">Abgeschwächt rechts</option>
+                                <option value="abgeschwächt links">Abgeschwächt links</option>
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>XII - N. hypoglossus</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Zunge</label>
+                            <select @bind="form.CranialNerves.TongueStatus" class="form-control">
+                                <option value="gerade herausgestreckt, keine Atrophie">Gerade, keine Atrophie</option>
+                                <option value="Abweichung nach rechts">Abweichung nach rechts</option>
+                                <option value="Abweichung nach links">Abweichung nach links</option>
+                                <option value="Atrophie vorhanden">Atrophie vorhanden</option>
+                            </select>
+                        </div>
+                        <div class="form-group check-group">
+                            <label>
+                                <input type="checkbox" @bind="form.CranialNerves.TongueFasciculations" />
+                                Faszikulationen
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            }
+
+            @if (activeTab == "motorik")
+            {
+                <fieldset>
+                    <legend>Kraft (MRC-Skala 0-5) / Tonus / Trophik</legend>
+                    <table class="motor-table">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Kraft (0-5)</th>
+                                <th>Tonus</th>
+                                <th>Trophik</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Rechter Arm</td>
+                                <td><select @bind="form.MotorSystem.StrengthRightArm" class="form-control">@for(int i=0;i<=5;i++){<option value="@i">@i/5</option>}</select></td>
+                                <td><select @bind="form.MotorSystem.ToneRightArm" class="form-control"><option value="normal">Normal</option><option value="spastisch">Spastisch</option><option value="rigide">Rigide</option><option value="schlaff">Schlaff</option></select></td>
+                                <td><select @bind="form.MotorSystem.BulkRightArm" class="form-control"><option value="normal">Normal</option><option value="Atrophie">Atrophie</option></select></td>
+                            </tr>
+                            <tr>
+                                <td>Linker Arm</td>
+                                <td><select @bind="form.MotorSystem.StrengthLeftArm" class="form-control">@for(int i=0;i<=5;i++){<option value="@i">@i/5</option>}</select></td>
+                                <td><select @bind="form.MotorSystem.ToneLeftArm" class="form-control"><option value="normal">Normal</option><option value="spastisch">Spastisch</option><option value="rigide">Rigide</option><option value="schlaff">Schlaff</option></select></td>
+                                <td><select @bind="form.MotorSystem.BulkLeftArm" class="form-control"><option value="normal">Normal</option><option value="Atrophie">Atrophie</option></select></td>
+                            </tr>
+                            <tr>
+                                <td>Rechtes Bein</td>
+                                <td><select @bind="form.MotorSystem.StrengthRightLeg" class="form-control">@for(int i=0;i<=5;i++){<option value="@i">@i/5</option>}</select></td>
+                                <td><select @bind="form.MotorSystem.ToneRightLeg" class="form-control"><option value="normal">Normal</option><option value="spastisch">Spastisch</option><option value="rigide">Rigide</option><option value="schlaff">Schlaff</option></select></td>
+                                <td><select @bind="form.MotorSystem.BulkRightLeg" class="form-control"><option value="normal">Normal</option><option value="Atrophie">Atrophie</option></select></td>
+                            </tr>
+                            <tr>
+                                <td>Linkes Bein</td>
+                                <td><select @bind="form.MotorSystem.StrengthLeftLeg" class="form-control">@for(int i=0;i<=5;i++){<option value="@i">@i/5</option>}</select></td>
+                                <td><select @bind="form.MotorSystem.ToneLeftLeg" class="form-control"><option value="normal">Normal</option><option value="spastisch">Spastisch</option><option value="rigide">Rigide</option><option value="schlaff">Schlaff</option></select></td>
+                                <td><select @bind="form.MotorSystem.BulkLeftLeg" class="form-control"><option value="normal">Normal</option><option value="Atrophie">Atrophie</option></select></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Faszikulationen</legend>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label>
+                                <input type="checkbox" @bind="form.MotorSystem.FasciculationsPresent" />
+                                Faszikulationen vorhanden
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Lokalisation</label>
+                            <input type="text" @bind="form.MotorSystem.FasciculationsLocation" class="form-control" placeholder="z.B. Oberarm beidseits" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.MotorSystem.Comment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+            }
+
+            @if (activeTab == "reflexe")
+            {
+                <fieldset>
+                    <legend>Muskeleigenreflexe (0-4)</legend>
+                    <table class="reflex-table">
+                        <thead>
+                            <tr>
+                                <th>Reflex</th>
+                                <th>Rechts (0-4)</th>
+                                <th>Links (0-4)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>BSR (Bizeps)</td>
+                                <td><select @bind="form.Reflexes.BicepsRight" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                                <td><select @bind="form.Reflexes.BicepsLeft" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                            </tr>
+                            <tr>
+                                <td>TSR (Trizeps)</td>
+                                <td><select @bind="form.Reflexes.TricepsRight" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                                <td><select @bind="form.Reflexes.TricepsLeft" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                            </tr>
+                            <tr>
+                                <td>RPR (Brachioradialis)</td>
+                                <td><select @bind="form.Reflexes.BrachioradialRight" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                                <td><select @bind="form.Reflexes.BrachioradialLeft" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                            </tr>
+                            <tr>
+                                <td>PSR (Patella)</td>
+                                <td><select @bind="form.Reflexes.PatellarRight" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                                <td><select @bind="form.Reflexes.PatellarLeft" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                            </tr>
+                            <tr>
+                                <td>ASR (Achilles)</td>
+                                <td><select @bind="form.Reflexes.AchillesRight" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                                <td><select @bind="form.Reflexes.AchillesLeft" class="form-control">@for(int i=0;i<=4;i++){<option value="@i">@i</option>}</select></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Pathologische Reflexe</legend>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.Reflexes.BabinskiRight" /> Babinski rechts</label>
+                        </div>
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.Reflexes.BabinskiLeft" /> Babinski links</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.Reflexes.HoffmannTroemnerRight" /> Hoffmann-Trömner rechts</label>
+                        </div>
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.Reflexes.HoffmannTroemnerLeft" /> Hoffmann-Trömner links</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.Reflexes.GordonRight" /> Gordon rechts</label>
+                        </div>
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.Reflexes.GordonLeft" /> Gordon links</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.Reflexes.Comment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+            }
+
+            @if (activeTab == "sensibilitaet")
+            {
+                <fieldset>
+                    <legend>Oberflächensensibilität</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Berührungsempfinden</label>
+                            <select @bind="form.SensorySystem.TouchSensation" class="form-control">
+                                <option value="intakt">Intakt</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                                <option value="aufgehoben">Aufgehoben</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Verteilung</label>
+                            <input type="text" @bind="form.SensorySystem.TouchDistribution" class="form-control" placeholder="z.B. handschuhförmig" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Schmerzempfinden</label>
+                            <select @bind="form.SensorySystem.PainSensation" class="form-control">
+                                <option value="intakt">Intakt</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                                <option value="aufgehoben">Aufgehoben</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Verteilung</label>
+                            <input type="text" @bind="form.SensorySystem.PainDistribution" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Temperaturempfinden</label>
+                            <select @bind="form.SensorySystem.TemperatureSensation" class="form-control">
+                                <option value="intakt">Intakt</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                                <option value="aufgehoben">Aufgehoben</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Verteilung</label>
+                            <input type="text" @bind="form.SensorySystem.TemperatureDistribution" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Tiefensensibilität</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pallästhesie rechts</label>
+                            <input type="text" @bind="form.SensorySystem.VibrationSenseRight" class="form-control" placeholder="normal oder z.B. 6/8" />
+                        </div>
+                        <div class="form-group">
+                            <label>Pallästhesie links</label>
+                            <input type="text" @bind="form.SensorySystem.VibrationSenseLeft" class="form-control" placeholder="normal oder z.B. 6/8" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lagesinn</label>
+                            <select @bind="form.SensorySystem.Proprioception" class="form-control">
+                                <option value="intakt">Intakt</option>
+                                <option value="eingeschränkt">Eingeschränkt</option>
+                                <option value="aufgehoben">Aufgehoben</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.SensorySystem.Comment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+            }
+
+            @if (activeTab == "koordination")
+            {
+                <fieldset>
+                    <legend>Koordinationsprüfungen</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Finger-Nase-Versuch</label>
+                            <select @bind="form.Coordination.FingerNoseTest" class="form-control">
+                                <option value="zielsicher">Zielsicher</option>
+                                <option value="Dysmetrie">Dysmetrie</option>
+                                <option value="Intentionstremor">Intentionstremor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Knie-Hacke-Versuch</label>
+                            <select @bind="form.Coordination.HeelShinTest" class="form-control">
+                                <option value="zielsicher">Zielsicher</option>
+                                <option value="Dysmetrie">Dysmetrie</option>
+                                <option value="unsicher">Unsicher</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Romberg-Stehversuch</label>
+                            <select @bind="form.Coordination.RombergTest" class="form-control">
+                                <option value="sicher">Sicher</option>
+                                <option value="unsicher">Unsicher</option>
+                                <option value="pathologisch">Pathologisch</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tandemgang</label>
+                            <select @bind="form.Coordination.TandemGait" class="form-control">
+                                <option value="sicher">Sicher</option>
+                                <option value="unsicher">Unsicher</option>
+                                <option value="nicht möglich">Nicht möglich</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Diadochokinese</label>
+                            <select @bind="form.Coordination.Diadochokinesis" class="form-control">
+                                <option value="unauffällig">Unauffällig</option>
+                                <option value="Dysdiadochokinese">Dysdiadochokinese</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.Coordination.Comment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+            }
+
+            @if (activeTab == "gang")
+            {
+                <fieldset>
+                    <legend>Gangprüfung</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gangbild</label>
+                            <select @bind="form.Gait.GaitPattern" class="form-control">
+                                <option value="unauffällig">Unauffällig</option>
+                                <option value="spastisch">Spastisch</option>
+                                <option value="ataktisch">Ataktisch</option>
+                                <option value="kleinschrittig">Kleinschrittig</option>
+                                <option value="Steppergang">Steppergang</option>
+                                <option value="hinkend">Hinkend</option>
+                                <option value="breitbasig">Breitbasig</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Armpendel</label>
+                            <select @bind="form.Gait.ArmSwing" class="form-control">
+                                <option value="seitengleich">Seitengleich</option>
+                                <option value="vermindert rechts">Vermindert rechts</option>
+                                <option value="vermindert links">Vermindert links</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Stabilität</label>
+                            <select @bind="form.Gait.Stability" class="form-control">
+                                <option value="sicher">Sicher</option>
+                                <option value="unsicher">Unsicher</option>
+                                <option value="Fallneigung">Fallneigung</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.Gait.Comment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+            }
+
+            @if (activeTab == "meningismus")
+            {
+                <fieldset>
+                    <legend>Meningismus-Zeichen</legend>
+                    <div class="form-row">
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.MeningealSigns.NeckStiffness" /> Nackensteifigkeit</label>
+                        </div>
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.MeningealSigns.KernigSign" /> Kernig-Zeichen</label>
+                        </div>
+                        <div class="form-group check-group">
+                            <label><input type="checkbox" @bind="form.MeningealSigns.BrudzinskiSign" /> Brudzinski-Zeichen</label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Lasègue-Zeichen</legend>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Rechts (Grad, leer = negativ)</label>
+                            <input type="number" @bind="form.MeningealSigns.LasegueRight" class="form-control" min="0" max="180" placeholder="negativ" />
+                        </div>
+                        <div class="form-group">
+                            <label>Links (Grad, leer = negativ)</label>
+                            <input type="number" @bind="form.MeningealSigns.LasegueLeft" class="form-control" min="0" max="180" placeholder="negativ" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kommentar</label>
+                            <input type="text" @bind="form.MeningealSigns.Comment" class="form-control" />
+                        </div>
+                    </div>
+                </fieldset>
+            }
+        </div>
+    </div>
+
+    <!-- Bottom section - always visible -->
+    <div class="bottom-section">
+        <div class="bottom-actions-row">
+            <button type="button" class="btn btn-secondary" @onclick="SetNormalDefaults">
+                Normalbefund
+            </button>
+            <button type="button" class="btn btn-outline" @onclick="RegenerateNarrative">
+                Befundtext aktualisieren
+            </button>
+        </div>
+
+        <fieldset>
+            <legend>Befundtext</legend>
+            <textarea @bind="form.NarrativeText" class="form-control narrative-area" rows="8"></textarea>
+        </fieldset>
+
+        <fieldset>
+            <legend>Zusätzliche Notizen</legend>
+            <textarea @bind="form.Notes" class="form-control" rows="3" placeholder="Weitere Anmerkungen..."></textarea>
+        </fieldset>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="success-message">@successMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@saving">
+                @(saving ? "Speichern..." : "Speichern")
+            </button>
+            <a href="@($"/dokumentation/{EncounterId}/bearbeiten")" class="btn btn-secondary">Zurück</a>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid EncounterId { get; set; }
+
+    private NeuroExamFormModel form = new();
+    private string? patientName;
+    private Guid patientId;
+    private Guid? existingExamId;
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+    private string? successMessage;
+    private string activeTab = "hirnnerven";
+
+    private readonly Dictionary<string, string> tabs = new()
+    {
+        ["hirnnerven"] = "Hirnnerven",
+        ["motorik"] = "Motorik",
+        ["reflexe"] = "Reflexe",
+        ["sensibilitaet"] = "Sensibilität",
+        ["koordination"] = "Koordination",
+        ["gang"] = "Gang",
+        ["meningismus"] = "Meningismus"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var encounter = await EncounterService.GetByIdAsync(EncounterId);
+        if (encounter is null) { Navigation.NavigateTo("/patienten"); return; }
+
+        patientId = encounter.PatientId;
+        patientName = encounter.PatientName;
+        doctors = await UserService.GetDoctorsAsync();
+
+        // Load existing examination if one exists
+        var existing = await NeuroExamService.GetByEncounterAsync(EncounterId);
+        if (existing is not null)
+        {
+            existingExamId = existing.Id;
+            form = new NeuroExamFormModel
+            {
+                ExamDate = existing.ExamDate,
+                ExaminedById = encounter.DoctorId.ToString(),
+                CranialNerves = existing.CranialNerves,
+                MotorSystem = existing.MotorSystem,
+                Reflexes = existing.Reflexes,
+                SensorySystem = existing.SensorySystem,
+                Coordination = existing.Coordination,
+                Gait = existing.Gait,
+                MeningealSigns = existing.MeningealSigns,
+                NarrativeText = existing.NarrativeText,
+                Notes = existing.Notes
+            };
+        }
+        else
+        {
+            form.ExamDate = encounter.EncounterDate;
+            form.ExaminedById = encounter.DoctorId.ToString();
+            RegenerateNarrative();
+        }
+
+        loading = false;
+    }
+
+    private void SwitchTab(string tab)
+    {
+        activeTab = tab;
+        RegenerateNarrative();
+    }
+
+    private void SetNormalDefaults()
+    {
+        form.CranialNerves = new();
+        form.MotorSystem = new();
+        form.Reflexes = new();
+        form.SensorySystem = new();
+        form.Coordination = new();
+        form.Gait = new();
+        form.MeningealSigns = new();
+        RegenerateNarrative();
+    }
+
+    private void RegenerateNarrative()
+    {
+        form.NarrativeText = MediPrax.Application.Services.NeuroExamTextGenerator.GenerateFromDto(
+            form.CranialNerves, form.MotorSystem, form.Reflexes,
+            form.SensorySystem, form.Coordination, form.Gait, form.MeningealSigns);
+    }
+
+    private async Task HandleSave()
+    {
+        saving = true;
+        errorMessage = null;
+        successMessage = null;
+
+        if (!Guid.TryParse(form.ExaminedById, out var examinedById))
+        {
+            errorMessage = "Bitte wählen Sie einen Untersucher.";
+            saving = false;
+            return;
+        }
+
+        try
+        {
+            if (existingExamId.HasValue)
+            {
+                await NeuroExamService.UpdateAsync(new UpdateNeurologicalExamDto
+                {
+                    Id = existingExamId.Value,
+                    EncounterId = EncounterId,
+                    PatientId = patientId,
+                    ExaminedById = examinedById,
+                    ExamDate = form.ExamDate,
+                    CranialNerves = form.CranialNerves,
+                    MotorSystem = form.MotorSystem,
+                    Reflexes = form.Reflexes,
+                    SensorySystem = form.SensorySystem,
+                    Coordination = form.Coordination,
+                    Gait = form.Gait,
+                    MeningealSigns = form.MeningealSigns,
+                    NarrativeText = form.NarrativeText,
+                    Notes = form.Notes
+                });
+            }
+            else
+            {
+                var created = await NeuroExamService.CreateAsync(new CreateNeurologicalExamDto
+                {
+                    EncounterId = EncounterId,
+                    PatientId = patientId,
+                    ExaminedById = examinedById,
+                    ExamDate = form.ExamDate,
+                    CranialNerves = form.CranialNerves,
+                    MotorSystem = form.MotorSystem,
+                    Reflexes = form.Reflexes,
+                    SensorySystem = form.SensorySystem,
+                    Coordination = form.Coordination,
+                    Gait = form.Gait,
+                    MeningealSigns = form.MeningealSigns,
+                    NarrativeText = form.NarrativeText,
+                    Notes = form.Notes
+                });
+                existingExamId = created.Id;
+            }
+
+            successMessage = "Neurologischer Befund gespeichert.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+
+        saving = false;
+    }
+
+    private class NeuroExamFormModel
+    {
+        public DateOnly ExamDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public string ExaminedById { get; set; } = string.Empty;
+        public MediPrax.Core.ValueObjects.CranialNerveFindings CranialNerves { get; set; } = new();
+        public MediPrax.Core.ValueObjects.MotorFindings MotorSystem { get; set; } = new();
+        public MediPrax.Core.ValueObjects.ReflexFindings Reflexes { get; set; } = new();
+        public MediPrax.Core.ValueObjects.SensoryFindings SensorySystem { get; set; } = new();
+        public MediPrax.Core.ValueObjects.CoordinationFindings Coordination { get; set; } = new();
+        public MediPrax.Core.ValueObjects.GaitFindings Gait { get; set; } = new();
+        public MediPrax.Core.ValueObjects.MeningealFindings MeningealSigns { get; set; } = new();
+        public string? NarrativeText { get; set; }
+        public string? Notes { get; set; }
+    }
+}
