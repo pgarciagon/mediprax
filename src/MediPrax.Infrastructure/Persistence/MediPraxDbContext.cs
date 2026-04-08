@@ -17,6 +17,9 @@ public class MediPraxDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<Recall> Recalls => Set<Recall>();
+    public DbSet<TherapyCase> TherapyCases => Set<TherapyCase>();
+    public DbSet<TherapySession> TherapySessions => Set<TherapySession>();
+    public DbSet<PtvForm> PtvForms => Set<PtvForm>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +32,9 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<Prescription>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Document>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<BillingItem>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<TherapyCase>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<TherapySession>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<PtvForm>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

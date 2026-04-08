@@ -1,0 +1,108 @@
+@page "/therapie"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject ITherapyCaseService TherapyCaseService
+@rendermode InteractiveServer
+
+<PageTitle>Therapiefaelle</PageTitle>
+
+<div class="page-header">
+    <h1>Therapiefaelle</h1>
+    <a href="/therapie/neu" class="btn btn-primary">+ Neuer Therapiefall</a>
+</div>
+
+<div class="filter-bar" style="display:flex;gap:1rem;margin-bottom:1rem;">
+    <select @bind="filterStatus" @bind:after="LoadCases" class="form-control" style="max-width:200px">
+        <option value="">Alle Status</option>
+        <option value="SprechstundePhase">Sprechstunde</option>
+        <option value="ProbatorikPhase">Probatorik</option>
+        <option value="AntragGestellt">Antrag gestellt</option>
+        <option value="Bewilligt">Bewilligt</option>
+        <option value="InBehandlung">In Behandlung</option>
+        <option value="Abgeschlossen">Abgeschlossen</option>
+        <option value="Abgebrochen">Abgebrochen</option>
+    </select>
+</div>
+
+@if (cases is null)
+{
+    <p>Laden...</p>
+}
+else if (cases.Count == 0)
+{
+    <p class="empty-state">Keine Therapiefaelle gefunden.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Therapieverfahren</th>
+                <th>Status</th>
+                <th>Sitzungen</th>
+                <th>Fortschritt</th>
+                <th>Startdatum</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in filteredCases)
+            {
+                <tr>
+                    <td><a href="/therapie/@c.Id">@c.PatientName</a></td>
+                    <td>@c.TherapyTypeName</td>
+                    <td>
+                        <span class="status-badge status-@c.Status.ToString().ToLower()">@GetStatusLabel(c.Status)</span>
+                    </td>
+                    <td>@c.CompletedSessions / @c.ApprovedSessions</td>
+                    <td>
+                        <div class="progress-bar-container" style="width:120px;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
+                            @{
+                                var pct = c.ApprovedSessions > 0 ? (int)(100.0 * c.CompletedSessions / c.ApprovedSessions) : 0;
+                                var color = c.WarningLevel switch { "Red" => "#ef4444", "Yellow" => "#f59e0b", _ => "#22c55e" };
+                            }
+                            <div style="width:@(Math.Min(pct,100))%;height:100%;background:@color;border-radius:4px;"></div>
+                        </div>
+                    </td>
+                    <td>@c.StartDate.ToString("dd.MM.yyyy")</td>
+                    <td>
+                        <a href="/therapie/@c.Id" class="btn-link">Details</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<TherapyCaseListItemDto>? cases;
+    private string filterStatus = string.Empty;
+
+    private IEnumerable<TherapyCaseListItemDto> filteredCases =>
+        cases?.Where(c => string.IsNullOrEmpty(filterStatus) || c.Status.ToString() == filterStatus) ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCases();
+    }
+
+    private async Task LoadCases()
+    {
+        cases = await TherapyCaseService.GetAllActiveAsync();
+    }
+
+    private static string GetStatusLabel(TherapyCaseStatus status) => status switch
+    {
+        TherapyCaseStatus.SprechstundePhase => "Sprechstunde",
+        TherapyCaseStatus.ProbatorikPhase => "Probatorik",
+        TherapyCaseStatus.AntragGestellt => "Antrag gestellt",
+        TherapyCaseStatus.InGutachterverfahren => "Gutachterverfahren",
+        TherapyCaseStatus.Bewilligt => "Bewilligt",
+        TherapyCaseStatus.Abgelehnt => "Abgelehnt",
+        TherapyCaseStatus.InBehandlung => "In Behandlung",
+        TherapyCaseStatus.VerlaengerungBeantragt => "Verlaengerung",
+        TherapyCaseStatus.Abgeschlossen => "Abgeschlossen",
+        TherapyCaseStatus.Abgebrochen => "Abgebrochen",
+        _ => status.ToString()
+    };
+}

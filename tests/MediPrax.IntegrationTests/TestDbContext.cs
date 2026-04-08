@@ -1,7 +1,9 @@
+using System.Text.Json;
 using MediPrax.Core.Entities;
 using MediPrax.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace MediPrax.IntegrationTests;
 
@@ -51,6 +53,26 @@ public class TestMediPraxDbContext(DbContextOptions<MediPraxDbContext> options) 
             {
                 idProp.SetDefaultValueSql(null);
                 idProp.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.OnAdd;
+            }
+        }
+
+        // SQLite doesn't support jsonb — convert to TEXT and add value converters for Dictionary types
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.GetColumnType() == "jsonb")
+                {
+                    property.SetColumnType("TEXT");
+
+                    if (property.ClrType == typeof(Dictionary<string, string>))
+                    {
+                        var converter = new ValueConverter<Dictionary<string, string>, string>(
+                            v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                            v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null) ?? new());
+                        property.SetValueConverter(converter);
+                    }
+                }
             }
         }
 

@@ -1,0 +1,311 @@
+@page "/therapie/neu"
+@page "/therapie/{Id:guid}/bearbeiten"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject ITherapyCaseService TherapyCaseService
+@inject IPatientService PatientService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(isEdit ? "Therapiefall bearbeiten" : "Neuer Therapiefall")</PageTitle>
+
+<div class="page-header">
+    <h1>@(isEdit ? "Therapiefall bearbeiten" : "Neuer Therapiefall")</h1>
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="therapyCaseForm">
+        <DataAnnotationsValidator />
+
+        <fieldset>
+            <legend>Falldaten</legend>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Patient *</label>
+                    <InputSelect @bind-Value="form.PatientId" class="form-control">
+                        <option value="@Guid.Empty">-- Patient waehlen --</option>
+                        @if (patients is not null)
+                        {
+                            @foreach (var p in patients)
+                            {
+                                <option value="@p.Id">@p.FullName (@p.DateOfBirth.ToString("dd.MM.yyyy"))</option>
+                            }
+                        }
+                    </InputSelect>
+                </div>
+                <div class="form-group">
+                    <label>Therapeut *</label>
+                    <InputSelect @bind-Value="form.TherapistId" class="form-control">
+                        <option value="@Guid.Empty">-- Therapeut waehlen --</option>
+                        @if (therapists is not null)
+                        {
+                            @foreach (var t in therapists)
+                            {
+                                <option value="@t.Id">@t.FullName</option>
+                            }
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Therapieverfahren *</label>
+                    <InputSelect @bind-Value="form.TherapyType" @bind-Value:after="OnTherapyTypeChanged" class="form-control">
+                        <option value="PsychotherapeutischeSprechstunde">Psychotherapeutische Sprechstunde</option>
+                        <option value="Probatorik">Probatorik</option>
+                        <option value="Akutbehandlung">Akutbehandlung</option>
+                        <option value="KurzzeittherapieKZT1">Kurzzeittherapie (KZT1)</option>
+                        <option value="KurzzeittherapieKZT2">Kurzzeittherapie (KZT2)</option>
+                        <option value="LangzeittherapieVT">Langzeittherapie VT</option>
+                        <option value="LangzeittherapieTP">Langzeittherapie TP</option>
+                        <option value="LangzeittherapieAP">Langzeittherapie AP</option>
+                        <option value="LangzeittherapieST">Langzeittherapie ST</option>
+                        <option value="NeuropsychologischeTherapie">Neuropsychologische Therapie</option>
+                    </InputSelect>
+                </div>
+                <div class="form-group">
+                    <label>Startdatum *</label>
+                    <InputDate @bind-Value="form.StartDate" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Bewilligte Sitzungen</label>
+                    <InputNumber @bind-Value="form.ApprovedSessions" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Sitzungsdauer (Min.)</label>
+                    <InputNumber @bind-Value="form.SessionDurationMinutes" class="form-control" />
+                </div>
+                <div class="form-group" style="align-self:end;">
+                    <label>
+                        <InputCheckbox @bind-Value="form.IsGroupTherapy" />
+                        Gruppentherapie
+                    </label>
+                </div>
+            </div>
+
+            @if (isEdit)
+            {
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <InputSelect @bind-Value="form.Status" class="form-control">
+                            <option value="SprechstundePhase">Sprechstunde</option>
+                            <option value="ProbatorikPhase">Probatorik</option>
+                            <option value="AntragGestellt">Antrag gestellt</option>
+                            <option value="InGutachterverfahren">Gutachterverfahren</option>
+                            <option value="Bewilligt">Bewilligt</option>
+                            <option value="Abgelehnt">Abgelehnt</option>
+                            <option value="InBehandlung">In Behandlung</option>
+                            <option value="VerlaengerungBeantragt">Verlaengerung</option>
+                            <option value="Abgeschlossen">Abgeschlossen</option>
+                            <option value="Abgebrochen">Abgebrochen</option>
+                        </InputSelect>
+                    </div>
+                    <div class="form-group">
+                        <label>Enddatum</label>
+                        <InputDate @bind-Value="form.EndDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Kassengenehmigung Ref.</label>
+                        <InputText @bind-Value="form.InsuranceApprovalRef" class="form-control" />
+                    </div>
+                </div>
+            }
+        </fieldset>
+
+        <fieldset>
+            <legend>Diagnosen (ICD-10)</legend>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ICD-10 Code hinzufuegen</label>
+                    <div style="display:flex;gap:.5rem;">
+                        <InputText @bind-Value="newDiagnosis" class="form-control" placeholder="z.B. F32.1" />
+                        <button type="button" class="btn btn-secondary btn-sm" @onclick="AddDiagnosis">+</button>
+                    </div>
+                </div>
+            </div>
+            @if (form.Diagnoses.Count > 0)
+            {
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;">
+                    @foreach (var d in form.Diagnoses)
+                    {
+                        <span class="badge" style="background:#e5e7eb;padding:.25rem .5rem;border-radius:4px;display:flex;align-items:center;gap:.25rem;">
+                            @d
+                            <button type="button" style="background:none;border:none;cursor:pointer;padding:0;font-size:14px;" @onclick="() => RemoveDiagnosis(d)">x</button>
+                        </span>
+                    }
+                </div>
+            }
+        </fieldset>
+
+        <fieldset>
+            <legend>Notizen</legend>
+            <div class="form-group">
+                <InputTextArea @bind-Value="form.Notes" class="form-control" rows="3" />
+            </div>
+        </fieldset>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "Speichern..." : "Speichern")
+            </button>
+            <a href="@(isEdit ? $"/therapie/{Id}" : "/therapie")" class="btn btn-secondary">Abbrechen</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private TherapyCaseFormModel form = new();
+    private bool isEdit => Id.HasValue;
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+    private string newDiagnosis = string.Empty;
+    private IReadOnlyList<PatientListItemDto>? patients;
+    private IReadOnlyList<UserListItemDto>? therapists;
+
+    protected override async Task OnInitializedAsync()
+    {
+        patients = (await PatientService.SearchAsync(new PatientSearchDto { PageSize = 500 })).Items;
+        therapists = await UserService.GetAllAsync();
+
+        if (isEdit)
+        {
+            var tc = await TherapyCaseService.GetByIdAsync(Id!.Value);
+            if (tc is null)
+            {
+                Navigation.NavigateTo("/therapie");
+                return;
+            }
+            form = new TherapyCaseFormModel
+            {
+                PatientId = tc.PatientId,
+                TherapistId = tc.TherapistId,
+                TherapyType = tc.TherapyType.ToString(),
+                StartDate = tc.StartDate,
+                ApprovedSessions = tc.ApprovedSessions,
+                SessionDurationMinutes = tc.SessionDurationMinutes,
+                IsGroupTherapy = tc.IsGroupTherapy,
+                Diagnoses = tc.Diagnoses.ToList(),
+                Notes = tc.Notes,
+                Status = tc.Status.ToString(),
+                EndDate = tc.EndDate,
+                InsuranceApprovalRef = tc.Notes
+            };
+        }
+        loading = false;
+    }
+
+    private void OnTherapyTypeChanged()
+    {
+        if (Enum.TryParse<TherapyType>(form.TherapyType, out var tt))
+        {
+            var info = MediPrax.Application.Services.TherapyContingentRules.GetContingentInfo(tt);
+            form.ApprovedSessions = info.InitialSessions;
+            form.SessionDurationMinutes = info.SessionDurationMinutes;
+        }
+    }
+
+    private void AddDiagnosis()
+    {
+        if (!string.IsNullOrWhiteSpace(newDiagnosis) && !form.Diagnoses.Contains(newDiagnosis.Trim()))
+        {
+            form.Diagnoses.Add(newDiagnosis.Trim());
+            newDiagnosis = string.Empty;
+        }
+    }
+
+    private void RemoveDiagnosis(string d) => form.Diagnoses.Remove(d);
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            if (!Enum.TryParse<TherapyType>(form.TherapyType, out var therapyType))
+            {
+                errorMessage = "Ungueltiger Therapietyp.";
+                saving = false;
+                return;
+            }
+
+            if (isEdit)
+            {
+                Enum.TryParse<TherapyCaseStatus>(form.Status, out var status);
+                await TherapyCaseService.UpdateAsync(new UpdateTherapyCaseDto
+                {
+                    Id = Id!.Value,
+                    PatientId = form.PatientId,
+                    TherapistId = form.TherapistId,
+                    TherapyType = therapyType,
+                    StartDate = form.StartDate,
+                    ApprovedSessions = form.ApprovedSessions,
+                    SessionDurationMinutes = form.SessionDurationMinutes,
+                    IsGroupTherapy = form.IsGroupTherapy,
+                    Diagnoses = form.Diagnoses,
+                    Notes = form.Notes,
+                    Status = status,
+                    EndDate = form.EndDate,
+                    InsuranceApprovalRef = form.InsuranceApprovalRef
+                });
+                Navigation.NavigateTo($"/therapie/{Id}");
+            }
+            else
+            {
+                var created = await TherapyCaseService.CreateAsync(new CreateTherapyCaseDto
+                {
+                    PatientId = form.PatientId,
+                    TherapistId = form.TherapistId,
+                    TherapyType = therapyType,
+                    StartDate = form.StartDate,
+                    ApprovedSessions = form.ApprovedSessions,
+                    SessionDurationMinutes = form.SessionDurationMinutes,
+                    IsGroupTherapy = form.IsGroupTherapy,
+                    Diagnoses = form.Diagnoses,
+                    Notes = form.Notes
+                });
+                Navigation.NavigateTo($"/therapie/{created.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            saving = false;
+        }
+    }
+
+    private class TherapyCaseFormModel
+    {
+        public Guid PatientId { get; set; }
+        public Guid TherapistId { get; set; }
+        public string TherapyType { get; set; } = "PsychotherapeutischeSprechstunde";
+        public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public int ApprovedSessions { get; set; } = 6;
+        public int SessionDurationMinutes { get; set; } = 25;
+        public bool IsGroupTherapy { get; set; }
+        public List<string> Diagnoses { get; set; } = [];
+        public string? Notes { get; set; }
+        public string Status { get; set; } = "SprechstundePhase";
+        public DateOnly? EndDate { get; set; }
+        public string? InsuranceApprovalRef { get; set; }
+    }
+}
