@@ -1,0 +1,260 @@
+@page "/verwaltung/icd10"
+@attribute [Authorize(Policy = "Admin")]
+@inject IIcd10CodeService Icd10Service
+@rendermode InteractiveServer
+
+<PageTitle>ICD-10 Verwaltung</PageTitle>
+
+<div class="page-header">
+    <h1>ICD-10 Katalog</h1>
+    <div class="header-actions">
+        <span style="color:#64748b;font-size:0.9rem;">@(codes?.Count ?? 0) Einträge</span>
+        <button class="btn btn-secondary" @onclick="SeedCatalog" disabled="@seeding">
+            @(seeding ? "Importieren..." : "Standardkatalog importieren")
+        </button>
+        <button class="btn btn-primary" @onclick="ShowAddForm">+ Neuer Code</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div style="background:#ecfdf5;border:1px solid #34d399;border-radius:6px;padding:0.75rem 1rem;margin:1rem 0;color:#065f46;">
+        @message
+    </div>
+}
+
+<div style="display:flex;gap:1rem;margin:1.5rem 0;">
+    <input type="text" @bind="searchTerm" @bind:event="oninput" @bind:after="FilterCodes"
+           placeholder="Code oder Beschreibung suchen..." class="form-control" style="max-width:400px;" />
+    <select @bind="filterCategory" @bind:after="FilterCodes" class="form-control" style="max-width:220px;">
+        <option value="">Alle Kategorien</option>
+        @if (categories is not null)
+        {
+            @foreach (var cat in categories)
+            {
+                <option value="@cat">@cat</option>
+            }
+        }
+    </select>
+    <select @bind="filterActive" @bind:after="FilterCodes" class="form-control" style="max-width:150px;">
+        <option value="true">Aktiv</option>
+        <option value="false">Inaktiv</option>
+        <option value="">Alle</option>
+    </select>
+</div>
+
+@if (showForm)
+{
+    <fieldset style="margin-bottom:1.5rem;padding:1.25rem;">
+        <legend>@(editingId.HasValue ? "Code bearbeiten" : "Neuer ICD-10 Code")</legend>
+        <div style="display:grid;grid-template-columns:150px 1fr 200px;gap:1rem;align-items:end;">
+            <div>
+                <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Code *</label>
+                <input @bind="formCode" class="form-control" placeholder="z.B. F32.1" />
+            </div>
+            <div>
+                <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Beschreibung *</label>
+                <input @bind="formDescription" class="form-control" placeholder="Mittelgradige depressive Episode" />
+            </div>
+            <div>
+                <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Kategorie</label>
+                <input @bind="formCategory" class="form-control" placeholder="z.B. Affektive Störungen" />
+            </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+            <button class="btn btn-primary" @onclick="SaveCode">Speichern</button>
+            <button class="btn btn-secondary" @onclick="CancelForm">Abbrechen</button>
+        </div>
+        @if (!string.IsNullOrEmpty(formError))
+        {
+            <div class="error-message" style="margin-top:0.5rem;">@formError</div>
+        }
+    </fieldset>
+}
+
+@if (filteredCodes is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width:100px;">Code</th>
+                <th>Beschreibung</th>
+                <th style="width:180px;">Kategorie</th>
+                <th style="width:80px;">Status</th>
+                <th style="width:150px;">Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var icd in filteredCodes)
+            {
+                <tr style="@(icd.IsActive ? "" : "opacity:0.5;")">
+                    <td><strong>@icd.Code</strong></td>
+                    <td>@icd.Description</td>
+                    <td><span style="font-size:0.8rem;color:#64748b;">@(icd.Category ?? "—")</span></td>
+                    <td>
+                        @if (icd.IsActive)
+                        {
+                            <span style="color:#059669;font-size:0.85rem;">Aktiv</span>
+                        }
+                        else
+                        {
+                            <span style="color:#dc2626;font-size:0.85rem;">Inaktiv</span>
+                        }
+                    </td>
+                    <td style="display:flex;gap:0.3rem;">
+                        <button class="btn btn-sm btn-secondary" @onclick="() => EditCode(icd)">Bearbeiten</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => ToggleActive(icd)">
+                            @(icd.IsActive ? "Deaktivieren" : "Aktivieren")
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<Icd10CodeDto>? codes;
+    private IReadOnlyList<Icd10CodeDto>? filteredCodes;
+    private IReadOnlyList<string>? categories;
+    private string searchTerm = string.Empty;
+    private string filterCategory = string.Empty;
+    private string filterActive = "true";
+    private string? message;
+
+    // Form state
+    private bool showForm;
+    private int? editingId;
+    private string formCode = string.Empty;
+    private string formDescription = string.Empty;
+    private string formCategory = string.Empty;
+    private string? formError;
+    private bool seeding;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        codes = await Icd10Service.GetAllAsync();
+        categories = await Icd10Service.GetCategoriesAsync();
+        FilterCodes();
+    }
+
+    private void FilterCodes()
+    {
+        if (codes is null) return;
+
+        var result = codes.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var lower = searchTerm.ToLower();
+            result = result.Where(c => c.Code.ToLower().Contains(lower) || c.Description.ToLower().Contains(lower));
+        }
+        if (!string.IsNullOrWhiteSpace(filterCategory))
+            result = result.Where(c => c.Category == filterCategory);
+        if (filterActive == "true")
+            result = result.Where(c => c.IsActive);
+        else if (filterActive == "false")
+            result = result.Where(c => !c.IsActive);
+
+        filteredCodes = result.ToList();
+    }
+
+    private void ShowAddForm()
+    {
+        editingId = null;
+        formCode = string.Empty;
+        formDescription = string.Empty;
+        formCategory = string.Empty;
+        formError = null;
+        showForm = true;
+    }
+
+    private void EditCode(Icd10CodeDto code)
+    {
+        editingId = code.Id;
+        formCode = code.Code;
+        formDescription = code.Description;
+        formCategory = code.Category ?? string.Empty;
+        formError = null;
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        formError = null;
+    }
+
+    private async Task SaveCode()
+    {
+        formError = null;
+        if (string.IsNullOrWhiteSpace(formCode) || string.IsNullOrWhiteSpace(formDescription))
+        {
+            formError = "Code und Beschreibung sind erforderlich.";
+            return;
+        }
+
+        try
+        {
+            if (editingId.HasValue)
+            {
+                await Icd10Service.UpdateAsync(new UpdateIcd10CodeDto
+                {
+                    Id = editingId.Value,
+                    Code = formCode,
+                    Description = formDescription,
+                    Category = string.IsNullOrWhiteSpace(formCategory) ? null : formCategory,
+                    IsActive = true
+                });
+                message = $"Code {formCode} aktualisiert.";
+            }
+            else
+            {
+                await Icd10Service.CreateAsync(new CreateIcd10CodeDto
+                {
+                    Code = formCode,
+                    Description = formDescription,
+                    Category = string.IsNullOrWhiteSpace(formCategory) ? null : formCategory
+                });
+                message = $"Code {formCode} hinzugefügt.";
+            }
+            showForm = false;
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            formError = ex.Message;
+        }
+    }
+
+    private async Task ToggleActive(Icd10CodeDto code)
+    {
+        await Icd10Service.UpdateAsync(new UpdateIcd10CodeDto
+        {
+            Id = code.Id,
+            Code = code.Code,
+            Description = code.Description,
+            Category = code.Category,
+            IsActive = !code.IsActive
+        });
+        await LoadAll();
+    }
+
+    private async Task SeedCatalog()
+    {
+        seeding = true;
+        var count = await Icd10Service.SeedFromCatalogAsync();
+        message = count > 0 ? $"{count} Codes aus Standardkatalog importiert." : "Alle Codes bereits vorhanden.";
+        seeding = false;
+        await LoadAll();
+    }
+}

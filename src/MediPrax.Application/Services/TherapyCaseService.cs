@@ -258,6 +258,16 @@ public class TherapyCaseService(DbContext context) : ITherapyCaseService
             var doc = new MediPrax.Reporting.PtvForms.Ptv2Document(ptvData, sprechstunden, probatorik);
             pdfBytes = doc.GeneratePdf();
         }
+        else if (dto.FormType == PtvFormType.PTV3)
+        {
+            var doc = new MediPrax.Reporting.PtvForms.Ptv3Document(ptvData);
+            pdfBytes = doc.GeneratePdf();
+        }
+        else if (dto.FormType == PtvFormType.PTV10)
+        {
+            var doc = new MediPrax.Reporting.PtvForms.Ptv10Document(ptvData);
+            pdfBytes = doc.GeneratePdf();
+        }
 
         var form = new PtvForm
         {

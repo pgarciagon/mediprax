@@ -4,6 +4,7 @@
 @inject ITherapyCaseService TherapyCaseService
 @inject IPatientService PatientService
 @inject IUserService UserService
+@inject IIcd10CodeService Icd10Service
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -134,25 +135,48 @@ else
         <fieldset>
             <legend>Diagnosen (ICD-10)</legend>
 
-            <div class="form-row">
-                <div class="form-group" style="flex:1;">
-                    <label>ICD-10 Code hinzufügen</label>
-                    <div style="display:flex;gap:0.5rem;">
-                        <InputText @bind-Value="newDiagnosis" class="form-control" placeholder="z.B. F32.1" />
-                        <button type="button" class="btn btn-secondary" @onclick="AddDiagnosis">+</button>
-                    </div>
+            <div style="position:relative;">
+                <label>Code oder Beschreibung suchen</label>
+                <div style="display:flex;gap:0;">
+                    <input type="text"
+                           @bind="icdSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchIcd"
+                           @onfocus="OnIcdFocus"
+                           placeholder="z.B. F32 oder Depression..."
+                           class="form-control"
+                           style="border-top-right-radius:0;border-bottom-right-radius:0;" />
+                    <button type="button"
+                            class="btn btn-secondary"
+                            style="border-top-left-radius:0;border-bottom-left-radius:0;padding:0 0.75rem;min-width:2.5rem;font-size:0.8rem;"
+                            @onclick="ToggleIcdDropdown">
+                        ▼
+                    </button>
                 </div>
+                @if (showIcdDropdown && icdDropdownItems.Count > 0)
+                {
+                    <div class="search-dropdown" style="max-height:250px;overflow-y:auto;">
+                        @foreach (var entry in icdDropdownItems)
+                        {
+                            <div class="search-item" @onclick="() => AddIcdFromSearch(entry)">
+                                <span class="icd-code">@entry.Code</span>
+                                <span class="icd-desc">@entry.Description</span>
+                            </div>
+                        }
+                    </div>
+                }
             </div>
 
             @if (form.Diagnoses.Count > 0)
             {
-                <div class="icd-tags" style="margin-top:0.5rem;">
+                <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem;">
                     @foreach (var d in form.Diagnoses)
                     {
-                        var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(d);
-                        <span class="icd-tag">
+                        var desc = icdDescriptions.GetValueOrDefault(d, "");
+                        <span style="display:inline-flex;align-items:center;gap:0.5rem;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:0.35rem 0.6rem;font-size:0.85rem;">
                             <strong>@d</strong> @desc
-                            <button type="button" class="tag-remove" @onclick="() => RemoveDiagnosis(d)">&times;</button>
+                            <button type="button" @onclick="() => RemoveDiagnosis(d)"
+                                    style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#64748b;padding:0 0.2rem;line-height:1;">&times;</button>
                         </span>
                     }
                 </div>
@@ -184,6 +208,32 @@ else
     </EditForm>
 }
 
+<style>
+    fieldset {
+        margin-bottom: 1.5rem;
+        padding: 1.25rem;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    .form-row:has(> :nth-child(3)) {
+        grid-template-columns: 1fr 1fr auto;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .form-group label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #374151;
+    }
+</style>
+
 @code {
     [Parameter] public Guid? Id { get; set; }
 
@@ -192,7 +242,10 @@ else
     private bool loading = true;
     private bool saving;
     private string? errorMessage;
-    private string newDiagnosis = string.Empty;
+    private string icdSearchTerm = string.Empty;
+    private bool showIcdDropdown;
+    private IReadOnlyList<Icd10CodeDto> icdDropdownItems = [];
+    private Dictionary<string, string> icdDescriptions = new();
     private IReadOnlyList<PatientListItemDto>? patients;
     private IReadOnlyList<UserListItemDto>? therapists;
 
@@ -224,6 +277,11 @@ else
                 EndDate = tc.EndDate,
                 InsuranceApprovalRef = tc.Notes
             };
+            foreach (var c in form.Diagnoses)
+            {
+                var desc = await Icd10Service.GetDescriptionAsync(c);
+                if (desc is not null) icdDescriptions[c] = desc;
+            }
         }
         loading = false;
     }
@@ -238,13 +296,54 @@ else
         }
     }
 
-    private void AddDiagnosis()
+    private async Task OnIcdFocus()
     {
-        if (!string.IsNullOrWhiteSpace(newDiagnosis) && !form.Diagnoses.Contains(newDiagnosis.Trim()))
+        if (!showIcdDropdown)
+            await ToggleIcdDropdown();
+    }
+
+    private async Task SearchIcd()
+    {
+        if (string.IsNullOrWhiteSpace(icdSearchTerm))
         {
-            form.Diagnoses.Add(newDiagnosis.Trim().ToUpper());
-            newDiagnosis = string.Empty;
+            showIcdDropdown = false;
+            icdDropdownItems = [];
         }
+        else
+        {
+            icdDropdownItems = await Icd10Service.SearchAsync(icdSearchTerm);
+            showIcdDropdown = icdDropdownItems.Count > 0;
+        }
+    }
+
+    private async Task ToggleIcdDropdown()
+    {
+        if (showIcdDropdown)
+        {
+            showIcdDropdown = false;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(icdSearchTerm))
+        {
+            icdDropdownItems = await Icd10Service.GetAllAsync();
+        }
+        else
+        {
+            icdDropdownItems = await Icd10Service.SearchAsync(icdSearchTerm);
+        }
+        showIcdDropdown = icdDropdownItems.Count > 0;
+    }
+
+    private void AddIcdFromSearch(Icd10CodeDto entry)
+    {
+        if (!form.Diagnoses.Contains(entry.Code))
+        {
+            form.Diagnoses.Add(entry.Code);
+            icdDescriptions[entry.Code] = entry.Description;
+        }
+        icdSearchTerm = string.Empty;
+        icdDropdownItems = [];
+        showIcdDropdown = false;
     }
 
     private void RemoveDiagnosis(string d) => form.Diagnoses.Remove(d);

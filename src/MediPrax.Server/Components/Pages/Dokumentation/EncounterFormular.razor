@@ -5,6 +5,7 @@
 @inject IPatientService PatientService
 @inject IUserService UserService
 @inject IBillingService BillingService
+@inject IIcd10CodeService Icd10Service
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -53,16 +54,26 @@ else
         <fieldset>
             <legend>ICD-10-GM Diagnosen</legend>
 
-            <div class="icd-search">
-                <input type="text"
-                       @bind="icdSearchTerm"
-                       @bind:event="oninput"
-                       @bind:after="SearchIcd"
-                       placeholder="ICD-10 Code oder Beschreibung suchen..."
-                       class="form-control" />
-                @if (icdResults.Count > 0)
+            <div class="icd-search" style="position:relative;">
+                <div style="display:flex;gap:0;">
+                    <input type="text"
+                           @bind="icdSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchIcd"
+                           @onfocus="OnIcdFocus"
+                           placeholder="ICD-10 Code oder Beschreibung suchen..."
+                           class="form-control"
+                           style="border-top-right-radius:0;border-bottom-right-radius:0;" />
+                    <button type="button"
+                            class="btn btn-secondary"
+                            style="border-top-left-radius:0;border-bottom-left-radius:0;padding:0 0.75rem;min-width:2.5rem;font-size:0.8rem;"
+                            @onclick="ToggleIcdDropdown">
+                        ▼
+                    </button>
+                </div>
+                @if (showIcdDropdown && icdResults.Count > 0)
                 {
-                    <div class="search-dropdown">
+                    <div class="search-dropdown" style="max-height:250px;overflow-y:auto;">
                         @foreach (var entry in icdResults)
                         {
                             <div class="search-item" @onclick="() => AddIcd(entry)">
@@ -74,13 +85,14 @@ else
                 }
             </div>
 
-            <div class="icd-tags">
+            <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
                 @foreach (var icd in form.Icd10Codes)
                 {
-                    var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(icd);
-                    <span class="icd-tag">
+                    var desc = icdDescriptions.GetValueOrDefault(icd, "");
+                    <span style="display:inline-flex;align-items:center;gap:0.5rem;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:0.35rem 0.6rem;font-size:0.85rem;">
                         <strong>@icd</strong> @desc
-                        <button type="button" class="tag-remove" @onclick="() => RemoveIcd(icd)">&times;</button>
+                        <button type="button" @onclick="() => RemoveIcd(icd)"
+                                style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#64748b;padding:0 0.2rem;line-height:1;">&times;</button>
                     </span>
                 }
                 @if (form.Icd10Codes.Count == 0)
@@ -222,10 +234,12 @@ else
 
     private EncounterFormModel form = new();
     private IReadOnlyList<DoctorListItemDto> doctors = [];
-    private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
+    private IReadOnlyList<Icd10CodeDto> icdResults = [];
+    private Dictionary<string, string> icdDescriptions = new();
     private IReadOnlyList<MediPrax.Application.Data.GopCatalog.GopEntry> gopResults = [];
     private List<BillingItemDto> billingItems = [];
     private string icdSearchTerm = string.Empty;
+    private bool showIcdDropdown;
     private string gopSearchTerm = string.Empty;
     private string? patientName;
     private string backUrl = "/patienten";
@@ -256,6 +270,12 @@ else
                 Icd10Codes = encounter.Icd10Codes.Select(c => c.Code).ToList(),
                 Status = encounter.Status.ToString()
             };
+            // Load descriptions for existing codes
+            foreach (var c in form.Icd10Codes)
+            {
+                var desc = await Icd10Service.GetDescriptionAsync(c);
+                if (desc is not null) icdDescriptions[c] = desc;
+            }
         }
         else if (PatientId.HasValue)
         {
@@ -268,22 +288,56 @@ else
         loading = false;
     }
 
-    private void SearchIcd()
+    private async Task SearchIcd()
     {
-        icdResults = MediPrax.Application.Data.Icd10Catalog.Search(icdSearchTerm);
+        if (string.IsNullOrWhiteSpace(icdSearchTerm))
+        {
+            showIcdDropdown = false;
+            icdResults = [];
+        }
+        else
+        {
+            icdResults = await Icd10Service.SearchAsync(icdSearchTerm);
+            showIcdDropdown = icdResults.Count > 0;
+        }
     }
 
-    private void AddIcd(MediPrax.Application.Data.Icd10Catalog.Icd10Entry entry)
+    private async Task OnIcdFocus()
+    {
+        if (!showIcdDropdown)
+            await ToggleIcdDropdown();
+    }
+
+    private async Task ToggleIcdDropdown()
+    {
+        if (showIcdDropdown) { showIcdDropdown = false; return; }
+        if (string.IsNullOrWhiteSpace(icdSearchTerm))
+        {
+            icdResults = await Icd10Service.GetAllAsync();
+        }
+        else
+        {
+            icdResults = await Icd10Service.SearchAsync(icdSearchTerm);
+        }
+        showIcdDropdown = icdResults.Count > 0;
+    }
+
+    private void AddIcd(Icd10CodeDto entry)
     {
         if (!form.Icd10Codes.Contains(entry.Code))
+        {
             form.Icd10Codes.Add(entry.Code);
+            icdDescriptions[entry.Code] = entry.Description;
+        }
         icdSearchTerm = string.Empty;
         icdResults = [];
+        showIcdDropdown = false;
     }
 
     private void RemoveIcd(string code)
     {
         form.Icd10Codes.Remove(code);
+        icdDescriptions.Remove(code);
     }
 
     private void SearchGop()

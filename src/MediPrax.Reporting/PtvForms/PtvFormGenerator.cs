@@ -258,3 +258,201 @@ public class Ptv2Document : IDocument
         });
     }
 }
+
+/// <summary>
+/// PTV 3 — Bericht an den Gutachter
+/// </summary>
+public class Ptv3Document : IDocument
+{
+    private readonly PtvFormData _data;
+    public Ptv3Document(PtvFormData data) => _data = data;
+
+    public void Compose(IDocumentContainer container)
+    {
+        container.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(30);
+            page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Helvetica"));
+
+            page.Header().Column(col =>
+            {
+                col.Item().Text("Bericht an den Gutachter (PTV 3)").Bold().FontSize(14);
+                col.Item().Text("Zum Antrag auf Langzeittherapie / Therapieverlängerung").FontSize(9).FontColor(Colors.Grey.Medium);
+                col.Item().PaddingTop(10).LineHorizontal(1).LineColor(Colors.Black);
+            });
+
+            page.Content().PaddingTop(15).Column(col =>
+            {
+                col.Item().Text("1. Angaben zum Patienten").Bold().FontSize(11);
+                col.Item().PaddingTop(6).Row(row =>
+                {
+                    row.RelativeItem().Column(c =>
+                    {
+                        FieldPair(c, "Name", _data.PatientName);
+                        FieldPair(c, "Geburtsdatum", _data.PatientGeburtsdatum);
+                    });
+                    row.RelativeItem().Column(c =>
+                    {
+                        FieldPair(c, "KVNR", _data.Kvnr);
+                        FieldPair(c, "Krankenkasse", _data.Krankenkasse);
+                    });
+                });
+
+                col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+
+                col.Item().PaddingTop(10).Text("2. Angaben zum Therapeuten").Bold().FontSize(11);
+                col.Item().PaddingTop(6).Column(c =>
+                {
+                    FieldPair(c, "Therapeut", _data.TherapeutName);
+                    FieldPair(c, "Therapieverfahren", _data.Therapieverfahren);
+                    FieldPair(c, "Beantragte Sitzungen", _data.BeantragteSitzungen);
+                });
+
+                col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+
+                col.Item().PaddingTop(10).Text("3. Diagnosen (ICD-10)").Bold().FontSize(11);
+                col.Item().PaddingTop(6).Text(_data.Diagnosen).FontSize(9);
+
+                col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+
+                col.Item().PaddingTop(10).Text("4. Relevante Angaben zur Lebensgeschichte").Bold().FontSize(11);
+                col.Item().PaddingTop(6).MinHeight(60).Border(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6)
+                    .Text("(Freitext)").FontSize(9).FontColor(Colors.Grey.Medium);
+
+                col.Item().PaddingTop(10).Text("5. Psychischer Befund").Bold().FontSize(11);
+                col.Item().PaddingTop(6).MinHeight(60).Border(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6)
+                    .Text("(Freitext)").FontSize(9).FontColor(Colors.Grey.Medium);
+
+                col.Item().PaddingTop(10).Text("6. Behandlungsplan und Prognose").Bold().FontSize(11);
+                col.Item().PaddingTop(6).MinHeight(60).Border(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(6)
+                    .Text("(Freitext)").FontSize(9).FontColor(Colors.Grey.Medium);
+
+                col.Item().PaddingTop(30).Row(row =>
+                {
+                    row.RelativeItem().Column(c =>
+                    {
+                        c.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        c.Item().PaddingTop(2).Text("Ort, Datum").FontSize(8).FontColor(Colors.Grey.Medium);
+                    });
+                    row.ConstantItem(40);
+                    row.RelativeItem().Column(c =>
+                    {
+                        c.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        c.Item().PaddingTop(2).Text("Unterschrift und Stempel des Therapeuten").FontSize(8).FontColor(Colors.Grey.Medium);
+                    });
+                });
+            });
+
+            page.Footer().Column(col =>
+            {
+                col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().PaddingTop(4).Text($"Erstellt am {_data.Datum}").FontSize(7).FontColor(Colors.Grey.Medium);
+            });
+        });
+    }
+
+    private static void FieldPair(ColumnDescriptor col, string label, string value)
+    {
+        col.Item().PaddingTop(3).Row(row =>
+        {
+            row.ConstantItem(180).Text($"{label}:").FontSize(9).FontColor(Colors.Grey.Darken1);
+            row.RelativeItem().Text(value).FontSize(9);
+        });
+    }
+}
+
+/// <summary>
+/// PTV 10 — Anzeige einer Akutbehandlung
+/// </summary>
+public class Ptv10Document : IDocument
+{
+    private readonly PtvFormData _data;
+    public Ptv10Document(PtvFormData data) => _data = data;
+
+    public void Compose(IDocumentContainer container)
+    {
+        container.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(30);
+            page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Helvetica"));
+
+            page.Header().Column(col =>
+            {
+                col.Item().Text("Anzeige einer Akutbehandlung (PTV 10)").Bold().FontSize(14);
+                col.Item().Text("Mitteilung an die Krankenkasse").FontSize(9).FontColor(Colors.Grey.Medium);
+                col.Item().PaddingTop(10).LineHorizontal(1).LineColor(Colors.Black);
+            });
+
+            page.Content().PaddingTop(15).Column(col =>
+            {
+                col.Item().Text("1. Angaben zum Versicherten").Bold().FontSize(11);
+                col.Item().PaddingTop(6).Row(row =>
+                {
+                    row.RelativeItem().Column(c =>
+                    {
+                        FieldPair(c, "Name", _data.PatientName);
+                        FieldPair(c, "Geburtsdatum", _data.PatientGeburtsdatum);
+                    });
+                    row.RelativeItem().Column(c =>
+                    {
+                        FieldPair(c, "KVNR", _data.Kvnr);
+                        FieldPair(c, "Krankenkasse", _data.Krankenkasse);
+                    });
+                });
+
+                col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+
+                col.Item().PaddingTop(10).Text("2. Angaben zum Therapeuten").Bold().FontSize(11);
+                col.Item().PaddingTop(6).Column(c =>
+                {
+                    FieldPair(c, "Therapeut", _data.TherapeutName);
+                    FieldPair(c, "Praxis", $"{_data.PraxisName}, {_data.PraxisAdresse}");
+                });
+
+                col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+
+                col.Item().PaddingTop(10).Text("3. Angaben zur Akutbehandlung").Bold().FontSize(11);
+                col.Item().PaddingTop(6).Column(c =>
+                {
+                    FieldPair(c, "Diagnosen (ICD-10)", _data.Diagnosen);
+                    FieldPair(c, "Geplante Sitzungszahl", _data.BeantragteSitzungen);
+                    FieldPair(c, "Sitzungsdauer", "25 Minuten");
+                });
+
+                col.Item().PaddingTop(8).Text("Die Akutbehandlung umfasst maximal 24 Sitzungen à 25 Minuten.").FontSize(8).FontColor(Colors.Grey.Medium);
+
+                col.Item().PaddingTop(30).Row(row =>
+                {
+                    row.RelativeItem().Column(c =>
+                    {
+                        c.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        c.Item().PaddingTop(2).Text("Ort, Datum").FontSize(8).FontColor(Colors.Grey.Medium);
+                    });
+                    row.ConstantItem(40);
+                    row.RelativeItem().Column(c =>
+                    {
+                        c.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        c.Item().PaddingTop(2).Text("Unterschrift und Stempel des Therapeuten").FontSize(8).FontColor(Colors.Grey.Medium);
+                    });
+                });
+            });
+
+            page.Footer().Column(col =>
+            {
+                col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().PaddingTop(4).Text($"Erstellt am {_data.Datum}").FontSize(7).FontColor(Colors.Grey.Medium);
+            });
+        });
+    }
+
+    private static void FieldPair(ColumnDescriptor col, string label, string value)
+    {
+        col.Item().PaddingTop(3).Row(row =>
+        {
+            row.ConstantItem(180).Text($"{label}:").FontSize(9).FontColor(Colors.Grey.Darken1);
+            row.RelativeItem().Text(value).FontSize(9);
+        });
+    }
+}

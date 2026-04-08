@@ -23,6 +23,7 @@ public class MediPraxDbContext : DbContext
     public DbSet<TherapySession> TherapySessions => Set<TherapySession>();
     public DbSet<PtvForm> PtvForms => Set<PtvForm>();
     public DbSet<NeurologicalExamination> NeurologicalExaminations => Set<NeurologicalExamination>();
+    public DbSet<Icd10Code> Icd10Codes => Set<Icd10Code>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
