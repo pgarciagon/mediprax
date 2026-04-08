@@ -567,6 +567,69 @@ namespace MediPrax.Infrastructure.Migrations
                     b.ToTable("prescriptions", (string)null);
                 });
 
+            modelBuilder.Entity("MediPrax.Core.Entities.PsychometricTest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("AdministeredById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EncounterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Interpretation")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<List<TestResponse>>("Responses")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("TestDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("TestType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalScore")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdministeredById");
+
+                    b.HasIndex("EncounterId");
+
+                    b.HasIndex("PatientId", "TestType", "TestDate");
+
+                    b.ToTable("psychometric_tests", (string)null);
+                });
+
             modelBuilder.Entity("MediPrax.Core.Entities.PsychopathologicalFinding", b =>
                 {
                     b.Property<Guid>("Id")
@@ -618,6 +681,51 @@ namespace MediPrax.Infrastructure.Migrations
                     b.HasIndex("PatientId", "AssessmentDate");
 
                     b.ToTable("psychopathological_findings", (string)null);
+                });
+
+            modelBuilder.Entity("MediPrax.Core.Entities.PtvForm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("CreatedDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Dictionary<string, string>>("FormData")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("FormType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<byte[]>("PdfData")
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TherapyCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TherapyCaseId", "FormType");
+
+                    b.ToTable("ptv_forms", (string)null);
                 });
 
             modelBuilder.Entity("MediPrax.Core.Entities.Recall", b =>
@@ -672,6 +780,145 @@ namespace MediPrax.Infrastructure.Migrations
                     b.HasIndex("DueDate", "Status");
 
                     b.ToTable("recalls", (string)null);
+                });
+
+            modelBuilder.Entity("MediPrax.Core.Entities.TherapyCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int>("ApprovedSessions")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CompletedSessions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<string>("Diagnoses")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("GutachterStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("InsuranceApprovalDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("InsuranceApprovalRef")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsGroupTherapy")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SessionDurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TherapistId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TherapyType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TherapistId");
+
+                    b.ToTable("therapy_cases", (string)null);
+                });
+
+            modelBuilder.Entity("MediPrax.Core.Entities.TherapySession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid?>("AppointmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BilledGop")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("EncounterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVideoSession")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("SessionDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("SessionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SessionType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TherapyCaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("EncounterId");
+
+                    b.HasIndex("SessionDate");
+
+                    b.HasIndex("TherapyCaseId", "SessionNumber")
+                        .IsUnique();
+
+                    b.ToTable("therapy_sessions", (string)null);
                 });
 
             modelBuilder.Entity("MediPrax.Core.Entities.User", b =>
@@ -1227,6 +1474,31 @@ namespace MediPrax.Infrastructure.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("MediPrax.Core.Entities.PsychometricTest", b =>
+                {
+                    b.HasOne("MediPrax.Core.Entities.User", "AdministeredBy")
+                        .WithMany("AdministeredTests")
+                        .HasForeignKey("AdministeredById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MediPrax.Core.Entities.Encounter", "Encounter")
+                        .WithMany()
+                        .HasForeignKey("EncounterId");
+
+                    b.HasOne("MediPrax.Core.Entities.Patient", "Patient")
+                        .WithMany("PsychometricTests")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AdministeredBy");
+
+                    b.Navigation("Encounter");
+
+                    b.Navigation("Patient");
+                });
+
             modelBuilder.Entity("MediPrax.Core.Entities.PsychopathologicalFinding", b =>
                 {
                     b.HasOne("MediPrax.Core.Entities.User", "AssessedBy")
@@ -1254,6 +1526,17 @@ namespace MediPrax.Infrastructure.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("MediPrax.Core.Entities.PtvForm", b =>
+                {
+                    b.HasOne("MediPrax.Core.Entities.TherapyCase", "TherapyCase")
+                        .WithMany("PtvForms")
+                        .HasForeignKey("TherapyCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TherapyCase");
+                });
+
             modelBuilder.Entity("MediPrax.Core.Entities.Recall", b =>
                 {
                     b.HasOne("MediPrax.Core.Entities.User", "CreatedBy")
@@ -1271,6 +1554,48 @@ namespace MediPrax.Infrastructure.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("MediPrax.Core.Entities.TherapyCase", b =>
+                {
+                    b.HasOne("MediPrax.Core.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MediPrax.Core.Entities.User", "Therapist")
+                        .WithMany()
+                        .HasForeignKey("TherapistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Therapist");
+                });
+
+            modelBuilder.Entity("MediPrax.Core.Entities.TherapySession", b =>
+                {
+                    b.HasOne("MediPrax.Core.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId");
+
+                    b.HasOne("MediPrax.Core.Entities.Encounter", "Encounter")
+                        .WithMany()
+                        .HasForeignKey("EncounterId");
+
+                    b.HasOne("MediPrax.Core.Entities.TherapyCase", "TherapyCase")
+                        .WithMany("Sessions")
+                        .HasForeignKey("TherapyCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Encounter");
+
+                    b.Navigation("TherapyCase");
                 });
 
             modelBuilder.Entity("MediPrax.Core.Entities.Appointment", b =>
@@ -1299,11 +1624,22 @@ namespace MediPrax.Infrastructure.Migrations
 
                     b.Navigation("Prescriptions");
 
+                    b.Navigation("PsychometricTests");
+
                     b.Navigation("Recalls");
+                });
+
+            modelBuilder.Entity("MediPrax.Core.Entities.TherapyCase", b =>
+                {
+                    b.Navigation("PtvForms");
+
+                    b.Navigation("Sessions");
                 });
 
             modelBuilder.Entity("MediPrax.Core.Entities.User", b =>
                 {
+                    b.Navigation("AdministeredTests");
+
                     b.Navigation("Appointments");
 
                     b.Navigation("Encounters");

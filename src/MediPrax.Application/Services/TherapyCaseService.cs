@@ -3,6 +3,7 @@ using MediPrax.Application.Interfaces;
 using MediPrax.Core.Entities;
 using MediPrax.Core.Enums;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 
 namespace MediPrax.Application.Services;
 
@@ -229,12 +230,42 @@ public class TherapyCaseService(DbContext context) : ITherapyCaseService
             ["Datum"] = DateOnly.FromDateTime(DateTime.Today).ToString("dd.MM.yyyy")
         };
 
+        // Generate PDF
+        var ptvData = new MediPrax.Reporting.PtvForms.PtvFormData
+        {
+            PatientName = formData["PatientName"],
+            PatientGeburtsdatum = formData["PatientGeburtsdatum"],
+            Kvnr = formData["Kvnr"],
+            Krankenkasse = formData["Krankenkasse"],
+            Versichertennummer = formData["Versichertennummer"],
+            TherapeutName = formData["TherapeutName"],
+            Therapieverfahren = formData["Therapieverfahren"],
+            BeantragteSitzungen = formData["BeantragteSitzungen"],
+            Diagnosen = formData["Diagnosen"],
+            Datum = formData["Datum"]
+        };
+
+        byte[]? pdfBytes = null;
+        if (dto.FormType == PtvFormType.PTV1)
+        {
+            var doc = new MediPrax.Reporting.PtvForms.Ptv1Document(ptvData);
+            pdfBytes = doc.GeneratePdf();
+        }
+        else if (dto.FormType == PtvFormType.PTV2)
+        {
+            var sprechstunden = await TherapySessions.CountAsync(s => s.TherapyCaseId == dto.TherapyCaseId && s.SessionType == SessionType.Sprechstunde, ct);
+            var probatorik = await TherapySessions.CountAsync(s => s.TherapyCaseId == dto.TherapyCaseId && s.SessionType == SessionType.Probatorik, ct);
+            var doc = new MediPrax.Reporting.PtvForms.Ptv2Document(ptvData, sprechstunden, probatorik);
+            pdfBytes = doc.GeneratePdf();
+        }
+
         var form = new PtvForm
         {
             TherapyCaseId = dto.TherapyCaseId,
             FormType = dto.FormType,
             CreatedDate = DateOnly.FromDateTime(DateTime.Today),
             FormData = formData,
+            PdfData = pdfBytes,
             Status = PtvFormStatus.Draft
         };
 
@@ -267,6 +298,14 @@ public class TherapyCaseService(DbContext context) : ITherapyCaseService
         var form = await PtvForms
             .FirstOrDefaultAsync(f => f.Id == formId, ct);
         return form?.PdfData;
+    }
+
+    public async Task UpdatePtvFormStatusAsync(Guid formId, PtvFormStatus newStatus, CancellationToken ct = default)
+    {
+        var form = await PtvForms.FindAsync([formId], ct)
+            ?? throw new KeyNotFoundException($"PtvForm {formId} not found");
+        form.Status = newStatus;
+        await context.SaveChangesAsync(ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)

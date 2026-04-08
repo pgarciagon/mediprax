@@ -23,13 +23,13 @@ else
         <DataAnnotationsValidator />
 
         <fieldset>
-            <legend>Falldaten</legend>
+            <legend>Patient &amp; Therapeut</legend>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Patient *</label>
                     <InputSelect @bind-Value="form.PatientId" class="form-control">
-                        <option value="@Guid.Empty">-- Patient waehlen --</option>
+                        <option value="@Guid.Empty">— Patient wählen —</option>
                         @if (patients is not null)
                         {
                             @foreach (var p in patients)
@@ -42,7 +42,7 @@ else
                 <div class="form-group">
                     <label>Therapeut *</label>
                     <InputSelect @bind-Value="form.TherapistId" class="form-control">
-                        <option value="@Guid.Empty">-- Therapeut waehlen --</option>
+                        <option value="@Guid.Empty">— Therapeut wählen —</option>
                         @if (therapists is not null)
                         {
                             @foreach (var t in therapists)
@@ -53,10 +53,14 @@ else
                     </InputSelect>
                 </div>
             </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Therapieverfahren</legend>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Therapieverfahren *</label>
+                    <label>Verfahren *</label>
                     <InputSelect @bind-Value="form.TherapyType" @bind-Value:after="OnTherapyTypeChanged" class="form-control">
                         <option value="PsychotherapeutischeSprechstunde">Psychotherapeutische Sprechstunde</option>
                         <option value="Probatorik">Probatorik</option>
@@ -85,16 +89,20 @@ else
                     <label>Sitzungsdauer (Min.)</label>
                     <InputNumber @bind-Value="form.SessionDurationMinutes" class="form-control" />
                 </div>
-                <div class="form-group" style="align-self:end;">
-                    <label>
+                <div class="form-group" style="flex:0.5;align-self:end;padding-bottom:0.4rem;">
+                    <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
                         <InputCheckbox @bind-Value="form.IsGroupTherapy" />
                         Gruppentherapie
                     </label>
                 </div>
             </div>
+        </fieldset>
 
-            @if (isEdit)
-            {
+        @if (isEdit)
+        {
+            <fieldset>
+                <legend>Status &amp; Genehmigung</legend>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Status</label>
@@ -106,7 +114,7 @@ else
                             <option value="Bewilligt">Bewilligt</option>
                             <option value="Abgelehnt">Abgelehnt</option>
                             <option value="InBehandlung">In Behandlung</option>
-                            <option value="VerlaengerungBeantragt">Verlaengerung</option>
+                            <option value="VerlaengerungBeantragt">Verlängerung beantragt</option>
                             <option value="Abgeschlossen">Abgeschlossen</option>
                             <option value="Abgebrochen">Abgebrochen</option>
                         </InputSelect>
@@ -117,41 +125,48 @@ else
                     </div>
                     <div class="form-group">
                         <label>Kassengenehmigung Ref.</label>
-                        <InputText @bind-Value="form.InsuranceApprovalRef" class="form-control" />
+                        <InputText @bind-Value="form.InsuranceApprovalRef" class="form-control" placeholder="Aktenzeichen" />
                     </div>
                 </div>
-            }
-        </fieldset>
+            </fieldset>
+        }
 
         <fieldset>
             <legend>Diagnosen (ICD-10)</legend>
+
             <div class="form-row">
-                <div class="form-group">
-                    <label>ICD-10 Code hinzufuegen</label>
-                    <div style="display:flex;gap:.5rem;">
+                <div class="form-group" style="flex:1;">
+                    <label>ICD-10 Code hinzufügen</label>
+                    <div style="display:flex;gap:0.5rem;">
                         <InputText @bind-Value="newDiagnosis" class="form-control" placeholder="z.B. F32.1" />
-                        <button type="button" class="btn btn-secondary btn-sm" @onclick="AddDiagnosis">+</button>
+                        <button type="button" class="btn btn-secondary" @onclick="AddDiagnosis">+</button>
                     </div>
                 </div>
             </div>
+
             @if (form.Diagnoses.Count > 0)
             {
-                <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;">
+                <div class="icd-tags" style="margin-top:0.5rem;">
                     @foreach (var d in form.Diagnoses)
                     {
-                        <span class="badge" style="background:#e5e7eb;padding:.25rem .5rem;border-radius:4px;display:flex;align-items:center;gap:.25rem;">
-                            @d
-                            <button type="button" style="background:none;border:none;cursor:pointer;padding:0;font-size:14px;" @onclick="() => RemoveDiagnosis(d)">x</button>
+                        var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(d);
+                        <span class="icd-tag">
+                            <strong>@d</strong> @desc
+                            <button type="button" class="tag-remove" @onclick="() => RemoveDiagnosis(d)">&times;</button>
                         </span>
                     }
                 </div>
+            }
+            else
+            {
+                <span class="no-codes" style="margin-top:0.5rem;display:block;">Keine Diagnosen hinzugefügt.</span>
             }
         </fieldset>
 
         <fieldset>
             <legend>Notizen</legend>
             <div class="form-group">
-                <InputTextArea @bind-Value="form.Notes" class="form-control" rows="3" />
+                <InputTextArea @bind-Value="form.Notes" class="form-control" rows="3" placeholder="Interne Notizen zum Therapiefall..." />
             </div>
         </fieldset>
 
@@ -227,7 +242,7 @@ else
     {
         if (!string.IsNullOrWhiteSpace(newDiagnosis) && !form.Diagnoses.Contains(newDiagnosis.Trim()))
         {
-            form.Diagnoses.Add(newDiagnosis.Trim());
+            form.Diagnoses.Add(newDiagnosis.Trim().ToUpper());
             newDiagnosis = string.Empty;
         }
     }
@@ -243,7 +258,7 @@ else
         {
             if (!Enum.TryParse<TherapyType>(form.TherapyType, out var therapyType))
             {
-                errorMessage = "Ungueltiger Therapietyp.";
+                errorMessage = "Ungültiger Therapietyp.";
                 saving = false;
                 return;
             }

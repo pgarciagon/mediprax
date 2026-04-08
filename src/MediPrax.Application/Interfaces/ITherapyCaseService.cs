@@ -16,5 +16,6 @@ public interface ITherapyCaseService
     Task<PtvFormDto> GeneratePtvFormAsync(CreatePtvFormDto dto, CancellationToken ct = default);
     Task<IReadOnlyList<PtvFormDto>> GetPtvFormsAsync(Guid caseId, CancellationToken ct = default);
     Task<byte[]?> GetPtvFormPdfAsync(Guid formId, CancellationToken ct = default);
+    Task UpdatePtvFormStatusAsync(Guid formId, MediPrax.Core.Enums.PtvFormStatus newStatus, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

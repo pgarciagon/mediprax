@@ -13,85 +13,111 @@
 else
 {
     <div class="page-header">
-        <h1>@therapyCase.PatientName — @therapyCase.TherapyTypeName</h1>
+        <h1>@therapyCase.PatientName</h1>
         <div class="header-actions">
+            <span class="status-badge status-@therapyCase.Status.ToString().ToLower()">
+                @GetStatusLabel(therapyCase.Status)
+            </span>
             <a href="/therapie/@Id/bearbeiten" class="btn btn-primary">Bearbeiten</a>
         </div>
     </div>
 
-    @* Status badge *@
-    <div style="margin-bottom:1rem;">
-        <span class="status-badge status-@therapyCase.Status.ToString().ToLower()" style="font-size:0.9rem;padding:0.3rem 0.8rem;">
-            @GetStatusLabel(therapyCase.Status)
-        </span>
-    </div>
+    <p style="color:#6b7280;margin-top:-0.5rem;margin-bottom:1.5rem;">@therapyCase.TherapyTypeName</p>
 
     @* Warning banner *@
     @if (contingent is not null && contingent.WarningLevel == "Yellow")
     {
-        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#92400e;">
-            Nur noch @contingent.RemainingSessions Sitzungen verbleibend.
+        <div class="warning-banner warning-yellow">
+            Nur noch @contingent.RemainingSessions Sitzungen verbleibend — bitte Verlängerung beantragen.
         </div>
     }
     else if (contingent is not null && contingent.WarningLevel == "Red")
     {
-        <div style="background:#fee2e2;border:1px solid #ef4444;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#991b1b;">
-            Kontingent erschoepft — keine Sitzungen mehr verfuegbar.
+        <div class="warning-banner warning-red">
+            Kontingent erschöpft — keine Sitzungen mehr verfügbar.
         </div>
     }
 
     <div class="detail-grid">
         @* Contingent card *@
-        <section class="detail-card">
-            <h3>Kontingent</h3>
+        <fieldset>
+            <legend>Kontingent</legend>
             @if (contingent is not null)
             {
-                <div style="font-size:1.5rem;font-weight:bold;margin-bottom:.5rem;">
-                    Sitzung @contingent.CompletedSessions von @contingent.ApprovedSessions
-                </div>
-                <div style="margin-bottom:.5rem;">@contingent.RemainingSessions verbleibend</div>
-                <div class="progress-bar-container" style="width:100%;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;">
-                    @{
-                        var pct = contingent.ApprovedSessions > 0 ? (int)(100.0 * contingent.CompletedSessions / contingent.ApprovedSessions) : 0;
-                        var color = contingent.WarningLevel switch { "Red" => "#ef4444", "Yellow" => "#f59e0b", _ => "#22c55e" };
-                    }
-                    <div style="width:@(Math.Min(pct,100))%;height:100%;background:@color;border-radius:5px;"></div>
-                </div>
-                @if (contingent.CanExtend)
-                {
-                    <div style="margin-top:.5rem;font-size:.85rem;color:#6b7280;">
-                        Verlaengerung moeglich: bis zu @contingent.ExtensionPossible weitere Sitzungen (max. @contingent.MaxTotal gesamt)
+                <div style="text-align:center;padding:0.5rem 0;">
+                    <div style="font-size:2rem;font-weight:700;color:#1e293b;">
+                        @contingent.CompletedSessions <span style="font-size:1rem;font-weight:400;color:#94a3b8;">/ @contingent.ApprovedSessions</span>
                     </div>
-                }
+                    <div style="font-size:0.85rem;color:#64748b;margin-bottom:0.75rem;">
+                        @contingent.RemainingSessions Sitzungen verbleibend
+                    </div>
+                    <div style="width:100%;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+                        @{
+                            var pct = contingent.ApprovedSessions > 0 ? (int)(100.0 * contingent.CompletedSessions / contingent.ApprovedSessions) : 0;
+                            var color = contingent.WarningLevel switch { "Red" => "#ef4444", "Yellow" => "#f59e0b", _ => "#22c55e" };
+                        }
+                        <div style="width:@(Math.Min(pct,100))%;height:100%;background:@color;border-radius:4px;transition:width 0.3s;"></div>
+                    </div>
+                    @if (contingent.CanExtend)
+                    {
+                        <div style="margin-top:0.75rem;font-size:0.8rem;color:#6b7280;">
+                            Verlängerung möglich: bis zu @contingent.ExtensionPossible weitere (max. @contingent.MaxTotal gesamt)
+                        </div>
+                    }
+                </div>
             }
-        </section>
+        </fieldset>
 
         @* Info card *@
-        <section class="detail-card">
-            <h3>Informationen</h3>
-            <dl>
-                <dt>Therapeut</dt>
-                <dd>@therapyCase.TherapistName</dd>
-                <dt>Sitzungsdauer</dt>
-                <dd>@therapyCase.SessionDurationMinutes Min.</dd>
-                <dt>Gruppentherapie</dt>
-                <dd>@(therapyCase.IsGroupTherapy ? "Ja" : "Nein")</dd>
+        <fieldset>
+            <legend>Informationen</legend>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Therapeut</span>
+                    <span class="info-value">@therapyCase.TherapistName</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Sitzungsdauer</span>
+                    <span class="info-value">@therapyCase.SessionDurationMinutes Min.</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Gruppentherapie</span>
+                    <span class="info-value">@(therapyCase.IsGroupTherapy ? "Ja" : "Nein")</span>
+                </div>
                 @if (therapyCase.GutachterStatus.HasValue)
                 {
-                    <dt>Gutachterstatus</dt>
-                    <dd>@therapyCase.GutachterStatus</dd>
+                    <div class="info-item">
+                        <span class="info-label">Gutachterstatus</span>
+                        <span class="info-value">@therapyCase.GutachterStatus</span>
+                    </div>
                 }
-                <dt>Diagnosen</dt>
-                <dd>@(therapyCase.Diagnoses.Count > 0 ? string.Join(", ", therapyCase.Diagnoses) : "Keine")</dd>
-            </dl>
-        </section>
+                <div class="info-item">
+                    <span class="info-label">Diagnosen</span>
+                    <span class="info-value">
+                        @if (therapyCase.Diagnoses.Count > 0)
+                        {
+                            @foreach (var d in therapyCase.Diagnoses)
+                            {
+                                <span class="icd-tag" style="margin-right:0.25rem;">@d</span>
+                            }
+                        }
+                        else
+                        {
+                            <span style="color:#94a3b8;">Keine</span>
+                        }
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Startdatum</span>
+                    <span class="info-value">@therapyCase.StartDate.ToString("dd.MM.yyyy")</span>
+                </div>
+            </div>
+        </fieldset>
     </div>
 
     @* Session list *@
-    <div class="encounters-section">
-        <div class="section-header">
-            <h2>Sitzungen</h2>
-        </div>
+    <fieldset>
+        <legend>Sitzungen (@(sessions?.Count ?? 0))</legend>
 
         @if (sessions is not null && sessions.Count > 0)
         {
@@ -111,11 +137,11 @@ else
                     @foreach (var s in sessions)
                     {
                         <tr>
-                            <td>@s.SessionNumber</td>
+                            <td><strong>@s.SessionNumber</strong></td>
                             <td>@s.SessionDate.ToString("dd.MM.yyyy")</td>
                             <td>@s.DurationMinutes Min.</td>
                             <td>@s.SessionType</td>
-                            <td>@(s.IsVideoSession ? "Ja" : "Nein")</td>
+                            <td>@(s.IsVideoSession ? "Ja" : "—")</td>
                             <td>@(s.BilledGop ?? "—")</td>
                             <td>@(s.Notes ?? "—")</td>
                         </tr>
@@ -125,59 +151,55 @@ else
         }
         else
         {
-            <div class="empty-encounters">Noch keine Sitzungen dokumentiert.</div>
+            <p class="no-codes">Noch keine Sitzungen dokumentiert.</p>
         }
 
-        @* Add session inline form *@
-        <div class="inline-form" style="margin-top:1rem;padding:1rem;border:1px solid #e5e7eb;border-radius:6px;">
-            <h4>Neue Sitzung erfassen</h4>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Datum</label>
+        <div style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+            <h4 style="margin:0 0 0.75rem 0;font-size:0.95rem;">Neue Sitzung erfassen</h4>
+            <div style="display:grid;grid-template-columns:1fr 0.5fr 1fr auto;gap:0.75rem;align-items:end;">
+                <div>
+                    <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Datum</label>
                     <InputDate @bind-Value="newSession.SessionDate" class="form-control" />
                 </div>
-                <div class="form-group">
-                    <label>Dauer (Min.)</label>
+                <div>
+                    <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Dauer (Min.)</label>
                     <InputNumber @bind-Value="newSession.DurationMinutes" class="form-control" />
                 </div>
-                <div class="form-group">
-                    <label>Typ</label>
+                <div>
+                    <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Typ</label>
                     <InputSelect @bind-Value="newSession.SessionType" class="form-control">
                         <option value="Sprechstunde">Sprechstunde</option>
                         <option value="Probatorik">Probatorik</option>
                         <option value="Akut">Akut</option>
-                        <option value="Regular">Regulaer</option>
+                        <option value="Regular">Regulär</option>
                         <option value="Gruppe">Gruppe</option>
                     </InputSelect>
                 </div>
-                <div class="form-group" style="align-self:end;">
-                    <label>
-                        <InputCheckbox @bind-Value="newSession.IsVideoSession" />
-                        Video
+                <div style="padding-bottom:0.2rem;">
+                    <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;white-space:nowrap;">
+                        <InputCheckbox @bind-Value="newSession.IsVideoSession" /> Video
                     </label>
                 </div>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Notizen</label>
-                    <InputText @bind-Value="newSession.Notes" class="form-control" />
+            <div style="display:grid;grid-template-columns:1fr auto;gap:0.75rem;align-items:end;margin-top:0.75rem;">
+                <div>
+                    <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Notizen</label>
+                    <InputText @bind-Value="newSession.Notes" class="form-control" placeholder="Optional" />
                 </div>
-                <div class="form-group" style="align-self:end;">
-                    <button class="btn btn-primary btn-sm" @onclick="AddSession">Sitzung hinzufuegen</button>
+                <div>
+                    <button class="btn btn-primary" @onclick="AddSession">Hinzufügen</button>
                 </div>
             </div>
             @if (!string.IsNullOrEmpty(sessionMessage))
             {
-                <div style="margin-top:.5rem;color:#059669;font-size:.85rem;">@sessionMessage</div>
+                <div style="margin-top:0.5rem;color:#059669;font-size:0.85rem;">@sessionMessage</div>
             }
         </div>
-    </div>
+    </fieldset>
 
     @* PTV Forms section *@
-    <div class="encounters-section">
-        <div class="section-header">
-            <h2>PTV-Formulare</h2>
-        </div>
+    <fieldset>
+        <legend>PTV-Formulare</legend>
 
         @if (ptvForms is not null && ptvForms.Count > 0)
         {
@@ -187,20 +209,32 @@ else
                         <th>Formular</th>
                         <th>Erstellt</th>
                         <th>Status</th>
-                        <th></th>
+                        <th>Aktionen</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var f in ptvForms)
                     {
                         <tr>
-                            <td>@f.FormTypeName</td>
+                            <td><strong>@f.FormTypeName</strong></td>
                             <td>@f.CreatedDate.ToString("dd.MM.yyyy")</td>
-                            <td>@f.Status</td>
                             <td>
+                                <span class="status-badge status-@f.Status.ToString().ToLower()">
+                                    @(f.Status == PtvFormStatus.Draft ? "Entwurf" : f.Status == PtvFormStatus.Finalized ? "Fertig" : "Gesendet")
+                                </span>
+                            </td>
+                            <td style="display:flex;gap:0.5rem;align-items:center;">
                                 @if (f.HasPdf)
                                 {
-                                    <a href="/api/ptv/@f.Id/pdf" target="_blank" class="btn-link">PDF herunterladen</a>
+                                    <a href="/api/ptv/@f.Id/pdf" target="_blank" class="btn btn-sm btn-secondary">PDF</a>
+                                }
+                                @if (f.Status == PtvFormStatus.Draft)
+                                {
+                                    <button class="btn btn-sm btn-primary" @onclick="() => UpdateFormStatus(f.Id, PtvFormStatus.Finalized)">Freigeben</button>
+                                }
+                                @if (f.Status == PtvFormStatus.Finalized)
+                                {
+                                    <button class="btn btn-sm btn-secondary" @onclick="() => UpdateFormStatus(f.Id, PtvFormStatus.Sent)">Gesendet</button>
                                 }
                             </td>
                         </tr>
@@ -210,53 +244,121 @@ else
         }
         else
         {
-            <div class="empty-encounters">Keine PTV-Formulare erstellt.</div>
+            <p class="no-codes">Keine PTV-Formulare erstellt.</p>
         }
 
-        <div style="margin-top:1rem;display:flex;gap:.5rem;">
+        <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV1)'>PTV 1 erstellen</button>
             <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV2)'>PTV 2 erstellen</button>
             <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV3)'>PTV 3 erstellen</button>
             <button class="btn btn-secondary btn-sm" @onclick='() => GenerateForm(PtvFormType.PTV10)'>PTV 10 erstellen</button>
         </div>
-    </div>
+    </fieldset>
 
     @* Status actions *@
-    <div class="encounters-section">
-        <div class="section-header">
-            <h2>Aktionen</h2>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <fieldset>
+        <legend>Aktionen</legend>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
             @if (therapyCase.Status == TherapyCaseStatus.AntragGestellt || therapyCase.Status == TherapyCaseStatus.InGutachterverfahren)
             {
-                <button class="btn btn-sm btn-primary" @onclick='() => ChangeStatus(TherapyCaseStatus.Bewilligt)'>Als bewilligt markieren</button>
+                <button class="btn btn-primary" @onclick='() => ChangeStatus(TherapyCaseStatus.Bewilligt)'>Als bewilligt markieren</button>
             }
             @if (therapyCase.Status == TherapyCaseStatus.Bewilligt)
             {
-                <button class="btn btn-sm btn-primary" @onclick='() => ChangeStatus(TherapyCaseStatus.InBehandlung)'>Behandlung starten</button>
+                <button class="btn btn-primary" @onclick='() => ChangeStatus(TherapyCaseStatus.InBehandlung)'>Behandlung starten</button>
             }
             @if (therapyCase.Status == TherapyCaseStatus.InBehandlung)
             {
-                <button class="btn btn-sm btn-secondary" @onclick='() => ChangeStatus(TherapyCaseStatus.VerlaengerungBeantragt)'>Verlaengerung beantragen</button>
-                <button class="btn btn-sm btn-secondary" @onclick='() => ChangeStatus(TherapyCaseStatus.Abgeschlossen)'>Abschliessen</button>
+                <button class="btn btn-secondary" @onclick='() => ChangeStatus(TherapyCaseStatus.VerlaengerungBeantragt)'>Verlängerung beantragen</button>
+                <button class="btn btn-secondary" @onclick='() => ChangeStatus(TherapyCaseStatus.Abgeschlossen)'>Abschließen</button>
             }
             @if (therapyCase.Status != TherapyCaseStatus.Abgeschlossen && therapyCase.Status != TherapyCaseStatus.Abgebrochen)
             {
-                <button class="btn btn-sm btn-danger" @onclick='() => ChangeStatus(TherapyCaseStatus.Abgebrochen)'>Abbrechen</button>
+                <button class="btn btn-danger" @onclick='() => ChangeStatus(TherapyCaseStatus.Abgebrochen)'>Abbrechen</button>
             }
         </div>
-    </div>
+    </fieldset>
 
     @if (!string.IsNullOrEmpty(therapyCase.Notes))
     {
-        <div class="encounters-section">
-            <div class="section-header">
-                <h2>Notizen</h2>
-            </div>
-            <p>@therapyCase.Notes</p>
-        </div>
+        <fieldset>
+            <legend>Notizen</legend>
+            <p style="margin:0;white-space:pre-wrap;">@therapyCase.Notes</p>
+        </fieldset>
     }
+
+    <div class="form-actions">
+        <a href="/therapie" class="btn btn-secondary">Zurück zur Übersicht</a>
+    </div>
 }
+
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    @@media (max-width: 768px) {
+        .detail-grid { grid-template-columns: 1fr; }
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem 1.5rem;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        padding: 0.35rem 0;
+    }
+    .info-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .info-value {
+        font-size: 0.9rem;
+        color: #1e293b;
+        font-weight: 500;
+    }
+    .warning-banner {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .warning-yellow {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        color: #92400e;
+    }
+    .warning-red {
+        background: #fee2e2;
+        border: 1px solid #ef4444;
+        color: #991b1b;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        background: #e2e8f0;
+        color: #475569;
+    }
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .btn-danger:hover { background: #dc2626; }
+</style>
 
 @code {
     [Parameter] public Guid Id { get; set; }
@@ -285,7 +387,6 @@ else
         sessions = await TherapyCaseService.GetSessionsAsync(Id);
         ptvForms = await TherapyCaseService.GetPtvFormsAsync(Id);
 
-        // Set defaults for new session based on therapy case
         newSession.DurationMinutes = therapyCase.SessionDurationMinutes;
     }
 
@@ -303,7 +404,7 @@ else
             Notes = newSession.Notes
         });
 
-        sessionMessage = "Sitzung erfolgreich hinzugefuegt.";
+        sessionMessage = "Sitzung erfolgreich hinzugefügt.";
         newSession = new() { DurationMinutes = therapyCase.SessionDurationMinutes };
         await LoadAll();
     }
@@ -315,6 +416,12 @@ else
             TherapyCaseId = Id,
             FormType = formType
         });
+        ptvForms = await TherapyCaseService.GetPtvFormsAsync(Id);
+    }
+
+    private async Task UpdateFormStatus(Guid formId, PtvFormStatus newStatus)
+    {
+        await TherapyCaseService.UpdatePtvFormStatusAsync(formId, newStatus);
         ptvForms = await TherapyCaseService.GetPtvFormsAsync(Id);
     }
 
@@ -352,7 +459,7 @@ else
         TherapyCaseStatus.Bewilligt => "Bewilligt",
         TherapyCaseStatus.Abgelehnt => "Abgelehnt",
         TherapyCaseStatus.InBehandlung => "In Behandlung",
-        TherapyCaseStatus.VerlaengerungBeantragt => "Verlaengerung",
+        TherapyCaseStatus.VerlaengerungBeantragt => "Verlängerung",
         TherapyCaseStatus.Abgeschlossen => "Abgeschlossen",
         TherapyCaseStatus.Abgebrochen => "Abgebrochen",
         _ => status.ToString()

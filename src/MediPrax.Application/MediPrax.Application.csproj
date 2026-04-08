@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MediPrax.Core\MediPrax.Core.csproj" />
+    <ProjectReference Include="..\MediPrax.Reporting\MediPrax.Reporting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

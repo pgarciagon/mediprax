@@ -191,9 +191,14 @@ else
         {
             <fieldset>
                 <legend>Strukturierte Befunde</legend>
-                <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-secondary">
-                    Psychopathologischer Befund (AMDP)
-                </a>
+                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                    <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-secondary">
+                        Psychopathologischer Befund (AMDP)
+                    </a>
+                    <a href="/dokumentation/neurologischer-befund/@Id" class="btn btn-secondary">
+                        Neurologischer Befund
+                    </a>
+                </div>
             </fieldset>
         }
 
@@ -206,12 +211,6 @@ else
             <button type="submit" class="btn btn-primary" disabled="@saving">
                 @(saving ? "Speichern..." : "Speichern")
             </button>
-            @if (isEdit)
-            {
-                <a href="@($"/dokumentation/neurologischer-befund/{Id}")" class="btn btn-secondary">
-                    Neurologischer Befund
-                </a>
-            }
             <a href="@backUrl" class="btn btn-secondary">Abbrechen</a>
         </div>
     </EditForm>
