@@ -6,22 +6,15 @@ MediPrax ist ein modulares Praxisverwaltungssystem (PVS), das als Ersatz für CG
 
 ## Status
 
-🟢 **Phase 1: Grundlagen + MVP — Alle 12 Meilensteine abgeschlossen**
+### v1.0.0 — MVP Complete (Released 2026-04-08)
 
-| Meilenstein | Status |
-|-------------|--------|
-| 1. Projekt-Setup (Clean Architecture, EF Core, PostgreSQL) | ✅ |
-| 2. Patientenverwaltung (CRUD, Suche, Versicherungsdaten) | ✅ |
-| 3. Terminplanung (Wochenansicht, Wartezimmer) | ✅ |
-| 4. Klinische Dokumentation (Encounters, ICD-10, Vorlagen) | ✅ |
-| 5. Arztbrief-Generierung (QuestPDF) | ✅ |
-| 6. Dashboard (KPIs, Aktivität, Schnellzugriffe) | ✅ |
-| 7. Authentifizierung & Branding | ✅ |
-| 8. Benutzerverwaltung & RBAC | ✅ |
-| 9. Audit-Logging & Datenschutz (DSGVO) | ✅ |
-| 10. Abrechnung EBM/GOÄ | ✅ |
-| 11. Suche, Berichte, Statistiken | ✅ |
-| 12. Tests, Docker, Produktionshärtung | ✅ |
+| Phase | Meilensteine | Status |
+|-------|-------------|--------|
+| **Phase 1: MVP** | M1–M16 (Setup, Patienten, Termine, Doku, Arztbrief, Dashboard, Auth, RBAC, Audit, Abrechnung, Suche, Tests, Dark Mode, Medikationsplan, TI-Simulation, FHIR) | ✅ Released |
+| **Phase 2: Psychiatrie & Neurologie** | M17–M35 (AMDP, Testung, PTV/Therapie, Neuro-Befund, Labor, Billing+, Formulare, GDT, Video, DMP, BtM) | In Planung |
+
+See [CHANGELOG.md](CHANGELOG.md) for release details.
+See [IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md](IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md) for the Phase 2 roadmap.
 
 ## Dokumentation
 
