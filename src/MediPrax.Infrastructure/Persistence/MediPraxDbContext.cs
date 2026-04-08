@@ -22,6 +22,7 @@ public class MediPraxDbContext : DbContext
     public DbSet<TherapyCase> TherapyCases => Set<TherapyCase>();
     public DbSet<TherapySession> TherapySessions => Set<TherapySession>();
     public DbSet<PtvForm> PtvForms => Set<PtvForm>();
+    public DbSet<NeurologicalExamination> NeurologicalExaminations => Set<NeurologicalExamination>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +40,7 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<TherapyCase>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<TherapySession>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PtvForm>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<NeurologicalExamination>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
