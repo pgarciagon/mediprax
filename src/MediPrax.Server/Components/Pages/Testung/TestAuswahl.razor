@@ -1,0 +1,86 @@
+@page "/testung/auswahl/{PatientId:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPsychometricTestService TestService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Testauswahl</PageTitle>
+
+<div class="page-header">
+    <h1>Psychometrische Testung</h1>
+    @if (patientName is not null)
+    {
+        <span class="patient-context">@patientName</span>
+    }
+</div>
+
+<p class="section-description">Wählen Sie einen Test zur Durchführung aus.</p>
+
+@if (creating)
+{
+    <p>Test wird erstellt...</p>
+}
+else
+{
+    <div class="test-grid">
+        @foreach (var def in definitions)
+        {
+            <div class="test-card" @onclick="() => StartTest(def.TestType)">
+                <div class="test-card-header">
+                    <span class="test-abbr">@def.Abbreviation</span>
+                    <span class="test-items">@def.Items.Count Items</span>
+                </div>
+                <h3>@def.Name</h3>
+                <p class="test-desc">@def.Description</p>
+                <div class="test-card-footer">
+                    <span class="test-max">Max. @def.MaxScore Punkte</span>
+                    @if (def.SuggestedGop is not null)
+                    {
+                        <span class="test-gop">GOP @def.SuggestedGop</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="form-actions" style="margin-top: 1.5rem">
+        <a href="/testung/ergebnisse/@PatientId" class="btn btn-secondary">Zurück zu Ergebnissen</a>
+        <a href="/patienten/@PatientId" class="btn btn-secondary">Zurück zum Patienten</a>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string? patientName;
+    private IReadOnlyList<MediPrax.Application.Catalogs.TestDefinition> definitions = MediPrax.Application.Catalogs.PsychometricTestCatalog.AllDefinitions;
+    private bool creating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await PatientService.GetByIdAsync(PatientId);
+        patientName = patient?.FullName;
+    }
+
+    private async Task<Guid> GetCurrentUserId()
+    {
+        var auth = await AuthState!;
+        return Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    }
+
+    private async Task StartTest(MediPrax.Core.Enums.PsychometricTestType testType)
+    {
+        creating = true;
+        var userId = await GetCurrentUserId();
+        var test = await TestService.CreateAsync(new MediPrax.Application.DTOs.CreatePsychometricTestDto
+        {
+            PatientId = PatientId,
+            AdministeredById = userId,
+            TestType = testType,
+            TestDate = DateOnly.FromDateTime(DateTime.Today)
+        });
+        Navigation.NavigateTo($"/testung/durchfuehrung/{test.Id}");
+    }
+}

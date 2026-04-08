@@ -18,6 +18,7 @@ public class MediPraxDbContext : DbContext
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<Recall> Recalls => Set<Recall>();
     public DbSet<PsychopathologicalFinding> PsychopathologicalFindings => Set<PsychopathologicalFinding>();
+    public DbSet<PsychometricTest> PsychometricTests => Set<PsychometricTest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,6 +32,7 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<Document>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<BillingItem>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PsychopathologicalFinding>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<PsychometricTest>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
