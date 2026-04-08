@@ -1,0 +1,289 @@
+@page "/dokumentation/psychopath-befund/{EncounterId:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPsychopathFindingService FindingService
+@inject IEncounterService EncounterService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Psychopathologischer Befund (AMDP)</PageTitle>
+
+<div class="page-header">
+    <h1>Psychopathologischer Befund (AMDP)</h1>
+    @if (patientName is not null)
+    {
+        <span class="patient-context">@patientName — @assessmentDate.ToString("dd.MM.yyyy")</span>
+    }
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="psychopath-actions" style="margin-bottom:1rem;">
+        <button type="button" class="btn btn-secondary" @onclick="SetNormalbefund">Normalbefund</button>
+    </div>
+
+    <div class="amdp-categories">
+        @foreach (var category in AmdpCatalog.Categories)
+        {
+            var symptoms = AmdpCatalog.GetByCategory(category.Code);
+            var isExpanded = expandedCategories.Contains(category.Code);
+            var hasPositive = findings.Any(f => f.CategoryCode == category.Code && f.Severity > 0);
+
+            <div class="amdp-category @(hasPositive ? "has-findings" : "")">
+                <div class="category-header" @onclick="() => ToggleCategory(category.Code)">
+                    <span class="expand-icon">@(isExpanded ? "▼" : "▶")</span>
+                    <strong>@category.Code</strong> — @category.Name
+                    @if (hasPositive)
+                    {
+                        <span class="badge-positive">Auffällig</span>
+                    }
+                </div>
+
+                @if (isExpanded)
+                {
+                    <div class="category-body">
+                        <table class="symptom-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:35%">Symptom</th>
+                                    <th style="width:7%" class="text-center">0</th>
+                                    <th style="width:7%" class="text-center">1</th>
+                                    <th style="width:7%" class="text-center">2</th>
+                                    <th style="width:7%" class="text-center">3</th>
+                                    <th>Kommentar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var symptom in symptoms)
+                                {
+                                    var finding = GetOrCreateFinding(symptom);
+                                    <tr>
+                                        <td title="@symptom.Description">@symptom.Name</td>
+                                        @for (int sev = 0; sev <= 3; sev++)
+                                        {
+                                            var severity = sev;
+                                            <td class="text-center">
+                                                <input type="radio"
+                                                       name="@symptom.SymptomCode"
+                                                       checked="@(finding.Severity == severity)"
+                                                       @onchange="() => SetSeverity(finding, severity)" />
+                                            </td>
+                                        }
+                                        <td>
+                                            <input type="text"
+                                                   class="form-control form-control-sm"
+                                                   value="@finding.Comment"
+                                                   @onchange="(e) => SetComment(finding, e.Value?.ToString())" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <fieldset style="margin-top:1.5rem;">
+        <legend>Befundtext (automatisch generiert, editierbar)</legend>
+        <textarea class="form-control notes-area" rows="8"
+                  @bind="narrativeText" @bind:event="oninput"></textarea>
+    </fieldset>
+
+    <fieldset style="margin-top:1rem;">
+        <legend>Anmerkungen</legend>
+        <textarea class="form-control" rows="3"
+                  @bind="notes" @bind:event="oninput"></textarea>
+    </fieldset>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
+    @if (successMessage is not null)
+    {
+        <div class="success-message" style="color:green;margin-top:0.5rem;">@successMessage</div>
+    }
+
+    <div class="form-actions" style="margin-top:1rem;">
+        <button type="button" class="btn btn-primary" disabled="@saving" @onclick="HandleSave">
+            @(saving ? "Speichern..." : "Speichern")
+        </button>
+        <a href="@backUrl" class="btn btn-secondary">Zurück</a>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid EncounterId { get; set; }
+
+    private List<SymptomFinding> findings = [];
+    private HashSet<string> expandedCategories = [];
+    private string? patientName;
+    private DateOnly assessmentDate = DateOnly.FromDateTime(DateTime.Today);
+    private string narrativeText = string.Empty;
+    private string? notes;
+    private string backUrl = "/patienten";
+    private Guid patientId;
+    private Guid assessedById;
+    private Guid? existingFindingId;
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var encounter = await EncounterService.GetByIdAsync(EncounterId);
+        if (encounter is null)
+        {
+            Navigation.NavigateTo("/patienten");
+            return;
+        }
+
+        patientId = encounter.PatientId;
+        patientName = encounter.PatientName;
+        assessedById = encounter.DoctorId;
+        backUrl = $"/dokumentation/{EncounterId}/bearbeiten";
+
+        // Try to load existing finding for this encounter
+        var existing = await FindingService.GetByEncounterAsync(EncounterId);
+        if (existing is not null)
+        {
+            existingFindingId = existing.Id;
+            findings = existing.Findings;
+            narrativeText = existing.NarrativeText ?? string.Empty;
+            notes = existing.Notes;
+            assessmentDate = existing.AssessmentDate;
+
+            // Expand categories that have positive findings
+            foreach (var f in findings.Where(f => f.Severity > 0))
+                expandedCategories.Add(f.CategoryCode);
+        }
+        else
+        {
+            // Initialize all findings at severity 0
+            InitializeFindings();
+            narrativeText = PsychopathFindingTextGenerator.Generate(findings);
+        }
+
+        loading = false;
+    }
+
+    private void InitializeFindings()
+    {
+        findings = AmdpCatalog.AllSymptoms.Select(s => new SymptomFinding
+        {
+            CategoryCode = s.CategoryCode,
+            SymptomCode = s.SymptomCode,
+            SymptomName = s.Name,
+            Severity = 0,
+            Comment = null
+        }).ToList();
+    }
+
+    private SymptomFinding GetOrCreateFinding(AmdpSymptom symptom)
+    {
+        var existing = findings.FirstOrDefault(f => f.SymptomCode == symptom.SymptomCode);
+        if (existing is not null) return existing;
+
+        var finding = new SymptomFinding
+        {
+            CategoryCode = symptom.CategoryCode,
+            SymptomCode = symptom.SymptomCode,
+            SymptomName = symptom.Name,
+            Severity = 0
+        };
+        findings.Add(finding);
+        return finding;
+    }
+
+    private void SetSeverity(SymptomFinding finding, int severity)
+    {
+        finding.Severity = severity;
+        RegenerateNarrative();
+        successMessage = null;
+    }
+
+    private void SetComment(SymptomFinding finding, string? comment)
+    {
+        finding.Comment = string.IsNullOrWhiteSpace(comment) ? null : comment;
+    }
+
+    private void SetNormalbefund()
+    {
+        foreach (var f in findings)
+        {
+            f.Severity = 0;
+            f.Comment = null;
+        }
+        RegenerateNarrative();
+        expandedCategories.Clear();
+        successMessage = null;
+    }
+
+    private void ToggleCategory(string code)
+    {
+        if (!expandedCategories.Remove(code))
+            expandedCategories.Add(code);
+    }
+
+    private void RegenerateNarrative()
+    {
+        narrativeText = PsychopathFindingTextGenerator.Generate(findings);
+    }
+
+    private async Task HandleSave()
+    {
+        saving = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            if (existingFindingId.HasValue)
+            {
+                await FindingService.UpdateAsync(new UpdatePsychopathFindingDto
+                {
+                    Id = existingFindingId.Value,
+                    EncounterId = EncounterId,
+                    PatientId = patientId,
+                    AssessedById = assessedById,
+                    AssessmentDate = assessmentDate,
+                    Findings = findings,
+                    NarrativeText = narrativeText,
+                    Notes = notes
+                });
+            }
+            else
+            {
+                var created = await FindingService.CreateAsync(new CreatePsychopathFindingDto
+                {
+                    EncounterId = EncounterId,
+                    PatientId = patientId,
+                    AssessedById = assessedById,
+                    AssessmentDate = assessmentDate,
+                    Findings = findings,
+                    NarrativeText = narrativeText,
+                    Notes = notes
+                });
+                existingFindingId = created.Id;
+            }
+
+            successMessage = "Befund gespeichert.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

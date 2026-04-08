@@ -187,6 +187,16 @@ else
             </fieldset>
         }
 
+        @if (isEdit)
+        {
+            <fieldset>
+                <legend>Strukturierte Befunde</legend>
+                <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-secondary">
+                    Psychopathologischer Befund (AMDP)
+                </a>
+            </fieldset>
+        }
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="error-message">@errorMessage</div>
