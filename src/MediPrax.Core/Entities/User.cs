@@ -15,4 +15,5 @@ public class User : BaseEntity
 
     public ICollection<Appointment> Appointments { get; set; } = [];
     public ICollection<Encounter> Encounters { get; set; } = [];
+    public ICollection<PsychometricTest> AdministeredTests { get; set; } = [];
 }

@@ -63,5 +63,25 @@ public class TestMediPraxDbContext(DbContextOptions<MediPraxDbContext> options) 
                     index.SetFilter(null);
             }
         }
+
+        // SQLite doesn't support jsonb — override to TEXT with JSON conversion
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.GetColumnType() == "jsonb")
+                {
+                    property.SetColumnType(null);
+                }
+            }
+        }
+
+        // Explicitly configure List<TestResponse> as JSON for SQLite
+        modelBuilder.Entity<PsychometricTest>()
+            .Property(e => e.Responses)
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<MediPrax.Core.ValueObjects.TestResponse>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new())
+            .HasColumnType("TEXT");
     }
 }

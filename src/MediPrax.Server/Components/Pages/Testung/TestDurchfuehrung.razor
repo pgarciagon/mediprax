@@ -1,0 +1,204 @@
+@page "/testung/durchfuehrung/{TestId:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPsychometricTestService TestService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Testdurchführung — @(definition?.Abbreviation ?? "Laden...")</PageTitle>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else if (test is null)
+{
+    <p>Test nicht gefunden.</p>
+}
+else if (submitted)
+{
+    <div class="result-summary">
+        <h1>Testergebnis: @definition!.Abbreviation</h1>
+
+        <div class="result-card">
+            <div class="result-score">
+                <span class="score-value">@test.TotalScore</span>
+                <span class="score-max">/ @test.MaxScore</span>
+            </div>
+            <div class="result-interpretation @GetInterpretationClass()">
+                @test.Interpretation
+            </div>
+            <p class="result-description">
+                @(definition.ScoreRanges.FirstOrDefault(r => test.TotalScore >= r.Min && test.TotalScore <= r.Max)?.Description ?? "")
+            </p>
+        </div>
+
+        <div class="result-responses">
+            <h3>Einzelantworten</h3>
+            <table class="response-table">
+                <thead>
+                    <tr>
+                        <th>Nr.</th>
+                        <th>Frage</th>
+                        <th>Antwort</th>
+                        <th class="text-right">Punkte</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in test.Responses)
+                    {
+                        <tr>
+                            <td>@r.ItemNumber</td>
+                            <td>@r.ItemText</td>
+                            <td>@(r.ResponseText ?? "—")</td>
+                            <td class="text-right">@r.ResponseValue</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-right"><strong>Gesamtpunktzahl:</strong></td>
+                        <td class="text-right"><strong>@test.TotalScore</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <a href="/testung/ergebnisse/@test.PatientId" class="btn btn-primary">Zurück zu Ergebnissen</a>
+            <a href="/patienten/@test.PatientId" class="btn btn-secondary">Zurück zum Patienten</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="test-header">
+        <h1>@definition!.Abbreviation — @definition.Name</h1>
+        <p class="test-instruction">@definition.Instruction</p>
+    </div>
+
+    <div class="questions-container">
+        @foreach (var item in definition.Items)
+        {
+            var itemIdx = item.Number;
+            <div class="question-block">
+                <div class="question-number">@item.Number</div>
+                <div class="question-content">
+                    <p class="question-text">@item.Text</p>
+                    <div class="options-group">
+                        @foreach (var opt in item.Options)
+                        {
+                            var isSelected = responses.ContainsKey(itemIdx) && responses[itemIdx] == opt.Value;
+                            <label class="option-label @(isSelected ? "selected" : "")">
+                                <input type="radio"
+                                       name="q_@itemIdx"
+                                       value="@opt.Value"
+                                       checked="@isSelected"
+                                       @onchange="() => SetResponse(itemIdx, opt.Value, item.Text, opt.Text)" />
+                                <span class="option-text">@opt.Text</span>
+                                <span class="option-value">(@opt.Value)</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="score-bar">
+        <span>Laufende Punktzahl: <strong>@responses.Values.Sum()</strong> / @definition.MaxScore</span>
+        <span>Beantwortet: @responses.Count / @definition.Items.Count</span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
+    <div class="form-actions">
+        <button class="btn btn-primary" @onclick="SubmitTest" disabled="@submitting">
+            @(submitting ? "Auswerten..." : "Test auswerten")
+        </button>
+        <a href="/testung/ergebnisse/@test.PatientId" class="btn btn-secondary">Abbrechen</a>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid TestId { get; set; }
+
+    private MediPrax.Application.DTOs.PsychometricTestDto? test;
+    private MediPrax.Application.Catalogs.TestDefinition? definition;
+    private Dictionary<int, int> responses = new();
+    private Dictionary<int, (string ItemText, string ResponseText)> responseTexts = new();
+    private bool loading = true;
+    private bool submitting;
+    private bool submitted;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        test = await TestService.GetByIdAsync(TestId);
+        if (test is not null)
+        {
+            definition = MediPrax.Application.Catalogs.PsychometricTestCatalog.GetDefinition(test.TestType);
+
+            if (test.Status == MediPrax.Core.Enums.TestStatus.Completed)
+            {
+                submitted = true;
+            }
+        }
+        loading = false;
+    }
+
+    private void SetResponse(int itemNumber, int value, string itemText, string responseText)
+    {
+        responses[itemNumber] = value;
+        responseTexts[itemNumber] = (itemText, responseText);
+    }
+
+    private async Task SubmitTest()
+    {
+        if (responses.Count < definition!.Items.Count)
+        {
+            errorMessage = $"Bitte beantworten Sie alle {definition.Items.Count} Fragen.";
+            return;
+        }
+
+        submitting = true;
+        errorMessage = null;
+
+        var testResponses = responses.Select(kvp => new MediPrax.Core.ValueObjects.TestResponse
+        {
+            ItemNumber = kvp.Key,
+            ItemText = responseTexts.ContainsKey(kvp.Key) ? responseTexts[kvp.Key].ItemText : "",
+            ResponseValue = kvp.Value,
+            ResponseText = responseTexts.ContainsKey(kvp.Key) ? responseTexts[kvp.Key].ResponseText : null
+        }).OrderBy(r => r.ItemNumber).ToList();
+
+        test = await TestService.SubmitResponsesAsync(new MediPrax.Application.DTOs.SubmitTestResponsesDto
+        {
+            TestId = TestId,
+            Responses = testResponses
+        });
+
+        submitted = true;
+        submitting = false;
+    }
+
+    private string GetInterpretationClass()
+    {
+        if (test is null || definition is null) return "";
+        var ranges = definition.ScoreRanges;
+        if (ranges.Count == 0) return "";
+
+        var matchIdx = ranges.ToList().FindIndex(r => test.TotalScore >= r.Min && test.TotalScore <= r.Max);
+        if (matchIdx < 0) return "";
+
+        var ratio = (double)matchIdx / Math.Max(ranges.Count - 1, 1);
+        return ratio switch
+        {
+            <= 0.33 => "severity-low",
+            <= 0.66 => "severity-mid",
+            _ => "severity-high"
+        };
+    }
+}

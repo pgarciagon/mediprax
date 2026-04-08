@@ -6,6 +6,7 @@
 @inject IAuditService AuditService
 @inject IMedicationService MedicationService
 @inject IRecallService RecallService
+@inject IPsychometricTestService PsychometricTestService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -224,6 +225,44 @@ else
 
     <div class="encounters-section">
         <div class="section-header">
+            <h2>Psychometrische Testung</h2>
+            <div style="display:flex;gap:.5rem">
+                <a href="/testung/ergebnisse/@Id" class="btn btn-sm btn-secondary">Alle Ergebnisse</a>
+                <a href="/testung/auswahl/@Id" class="btn btn-sm btn-primary">+ Neuer Test</a>
+            </div>
+        </div>
+
+        @if (recentTests is null || recentTests.Count == 0)
+        {
+            <div class="empty-encounters">Noch keine psychometrischen Tests durchgeführt.</div>
+        }
+        else
+        {
+            <div class="encounter-list">
+                @foreach (var t in recentTests)
+                {
+                    <a href="/testung/durchfuehrung/@t.Id" class="encounter-item">
+                        <div class="enc-date">
+                            <span class="enc-day">@t.TestDate.ToString("dd")</span>
+                            <span class="enc-month">@t.TestDate.ToString("MMM yy", new System.Globalization.CultureInfo("de-DE"))</span>
+                        </div>
+                        <div class="enc-details">
+                            <span class="enc-doctor">@t.TestTypeName</span>
+                            <span class="enc-codes">@t.TotalScore / @t.MaxScore — @t.Interpretation</span>
+                        </div>
+                        <div class="enc-meta">
+                            <span class="enc-status status-@t.Status.ToString().ToLower()">
+                                @(t.Status == MediPrax.Core.Enums.TestStatus.Completed ? "Abgeschlossen" : "In Bearbeitung")
+                            </span>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="encounters-section">
+        <div class="section-header">
             <h2>Wiedervorlagen</h2>
             <button class="btn btn-sm btn-primary" @onclick="() => showRecallForm = true">+ Wiedervorlage</button>
         </div>
@@ -287,6 +326,7 @@ else
     private IReadOnlyList<ArztbriefListItemDto>? arztbriefe;
     private IReadOnlyList<MedicationDto>? medications;
     private IReadOnlyList<RecallDto>? recalls;
+    private IReadOnlyList<PsychometricTestListItemDto>? recentTests;
     private bool showDeleteConfirm, showMedForm, showRecallForm;
     private MedForm newMed = new();
     private RecallForm newRecall = new();
@@ -305,6 +345,7 @@ else
         arztbriefe = await ArztbriefService.GetByPatientAsync(Id);
         medications = await MedicationService.GetByPatientAsync(Id);
         recalls = await RecallService.GetByPatientAsync(Id);
+        recentTests = await PsychometricTestService.GetByPatientAsync(Id);
         await AuditService.LogAsync(MediPrax.Core.Enums.AuditAction.Read, "Patient", Id, $"Patientenakte geöffnet: {patient.FullName}");
     }
 

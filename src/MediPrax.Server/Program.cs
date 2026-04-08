@@ -42,6 +42,7 @@ builder.Services.AddScoped<IRecallService, RecallService>();
 builder.Services.AddScoped<IKvdtExportService, KvdtExportService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IPsychometricTestService, PsychometricTestService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
 
 // Telematik — Mock services (replace with real implementations when TI access is available)

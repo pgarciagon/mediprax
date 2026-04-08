@@ -26,4 +26,5 @@ public class Patient : BaseEntity
     public ICollection<Document> Documents { get; set; } = [];
     public ICollection<Medication> Medications { get; set; } = [];
     public ICollection<Recall> Recalls { get; set; } = [];
+    public ICollection<PsychometricTest> PsychometricTests { get; set; } = [];
 }

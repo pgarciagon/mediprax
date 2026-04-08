@@ -1,0 +1,128 @@
+@page "/testung/ergebnisse/{PatientId:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPsychometricTestService TestService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Testergebnisse</PageTitle>
+
+<div class="page-header">
+    <h1>Testergebnisse</h1>
+    <div class="header-actions">
+        @if (patientName is not null)
+        {
+            <span class="patient-context">@patientName</span>
+        }
+        <a href="/testung/auswahl/@PatientId" class="btn btn-primary">+ Neuer Test</a>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <label>Testtyp:</label>
+    <select class="form-control" style="max-width:250px;display:inline-block" @onchange="OnFilterChanged">
+        <option value="">Alle Tests</option>
+        @foreach (var def in allDefinitions)
+        {
+            <option value="@def.TestType">@def.Abbreviation — @def.Name</option>
+        }
+    </select>
+</div>
+
+@if (tests is null)
+{
+    <p>Laden...</p>
+}
+else if (tests.Count == 0)
+{
+    <div class="empty-state">
+        <p>Noch keine Testergebnisse vorhanden.</p>
+        <a href="/testung/auswahl/@PatientId" class="btn btn-primary">Test durchführen</a>
+    </div>
+}
+else
+{
+    <div class="results-list">
+        @foreach (var t in tests)
+        {
+            var def = MediPrax.Application.Catalogs.PsychometricTestCatalog.GetDefinition(t.TestType);
+            var pct = def.MaxScore > 0 ? (double)t.TotalScore / def.MaxScore * 100 : 0;
+            var barClass = GetBarClass(t.TestType, t.TotalScore);
+
+            <a href="/testung/durchfuehrung/@t.Id" class="result-item">
+                <div class="result-date">
+                    <span class="date-day">@t.TestDate.ToString("dd")</span>
+                    <span class="date-month">@t.TestDate.ToString("MMM yy", new System.Globalization.CultureInfo("de-DE"))</span>
+                </div>
+                <div class="result-info">
+                    <span class="result-type">@t.TestTypeName</span>
+                    <span class="result-interp">@t.Interpretation</span>
+                </div>
+                <div class="result-score-col">
+                    <span class="result-score-text">@t.TotalScore / @t.MaxScore</span>
+                    <div class="score-bar-track">
+                        <div class="score-bar-fill @barClass" style="width: @(pct.ToString("F0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                </div>
+                <div class="result-status">
+                    <span class="status-badge status-@t.Status.ToString().ToLower()">
+                        @(t.Status == MediPrax.Core.Enums.TestStatus.Completed ? "Abgeschlossen" : "In Bearbeitung")
+                    </span>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+<div class="form-actions" style="margin-top: 1.5rem">
+    <a href="/patienten/@PatientId" class="btn btn-secondary">Zurück zum Patienten</a>
+</div>
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    private string? patientName;
+    private IReadOnlyList<MediPrax.Application.DTOs.PsychometricTestListItemDto>? tests;
+    private IReadOnlyList<MediPrax.Application.Catalogs.TestDefinition> allDefinitions = MediPrax.Application.Catalogs.PsychometricTestCatalog.AllDefinitions;
+    private MediPrax.Core.Enums.PsychometricTestType? selectedType;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await PatientService.GetByIdAsync(PatientId);
+        patientName = patient?.FullName;
+        await LoadTests();
+    }
+
+    private async Task LoadTests()
+    {
+        tests = await TestService.GetByPatientAsync(PatientId, selectedType);
+    }
+
+    private async Task OnFilterChanged(ChangeEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Value?.ToString()))
+            selectedType = null;
+        else if (Enum.TryParse<MediPrax.Core.Enums.PsychometricTestType>(e.Value?.ToString(), out var t))
+            selectedType = t;
+
+        await LoadTests();
+    }
+
+    private string GetBarClass(MediPrax.Core.Enums.PsychometricTestType testType, int score)
+    {
+        var def = MediPrax.Application.Catalogs.PsychometricTestCatalog.GetDefinition(testType);
+        var ranges = def.ScoreRanges;
+        if (ranges.Count == 0) return "bar-green";
+
+        var matchIdx = ranges.ToList().FindIndex(r => score >= r.Min && score <= r.Max);
+        if (matchIdx < 0) return "bar-green";
+
+        var ratio = (double)matchIdx / Math.Max(ranges.Count - 1, 1);
+        return ratio switch
+        {
+            <= 0.33 => "bar-green",
+            <= 0.66 => "bar-yellow",
+            _ => "bar-red"
+        };
+    }
+}
