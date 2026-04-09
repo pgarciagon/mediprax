@@ -203,13 +203,20 @@ else
         {
             <fieldset>
                 <legend>Strukturierte Befunde</legend>
-                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
-                    <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-secondary">
-                        Psychopathologischer Befund (AMDP)
-                    </a>
-                    <a href="/dokumentation/neurologischer-befund/@Id" class="btn btn-secondary">
-                        Neurologischer Befund
-                    </a>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-sm btn-secondary">Psychopath. Befund (AMDP)</a>
+                    <a href="/dokumentation/neurologischer-befund/@Id" class="btn btn-sm btn-secondary">Neurologischer Befund</a>
+                    <a href="/patienten/@PatientId/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Krankheitsspezifische Module</legend>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <a href="/patienten/@PatientId/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
+                    <a href="/patienten/@PatientId/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
+                    <a href="/patienten/@PatientId/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
+                    <a href="/patienten/@PatientId/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
                 </div>
             </fieldset>
         }

@@ -7,6 +7,11 @@
 @inject IMedicationService MedicationService
 @inject IRecallService RecallService
 @inject IPsychometricTestService PsychometricTestService
+@inject ISeizureDiaryService SeizureDiaryService
+@inject IHeadacheDiaryService HeadacheDiaryService
+@inject IMsDocumentationService MsDocService
+@inject IParkinsonDocumentationService ParkinsonService
+@inject ISuicidalityAssessmentService SuicidalityService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -263,14 +268,78 @@ else
 
     <div class="encounters-section">
         <div class="section-header">
-            <h2>Spezialmodule</h2>
+            <h2>Krankheitsverlauf & Spezialmodule</h2>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.5rem 0;">
-            <a href="/patienten/@Id/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
-            <a href="/patienten/@Id/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
-            <a href="/patienten/@Id/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
-            <a href="/patienten/@Id/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
-            <a href="/patienten/@Id/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
+        <div class="detail-grid" style="margin-bottom:0.5rem;">
+            @* Suizidalität *@
+            <a href="/patienten/@Id/suizidalitaet" class="detail-card module-card">
+                <h3>Suizidalität</h3>
+                @if (lastSuicidality is not null)
+                {
+                    <div class="module-value @(lastSuicidality.RiskLevel >= MediPrax.Core.Enums.SuicidalityRiskLevel.Moderate ? "danger" : "")">@lastSuicidality.RiskLevelDisplay</div>
+                    <div class="module-meta">@lastSuicidality.AssessmentDate.ToString("dd.MM.yyyy")</div>
+                }
+                else
+                {
+                    <div class="module-empty">Keine Einschätzung</div>
+                }
+            </a>
+
+            @* Anfallskalender *@
+            <a href="/patienten/@Id/anfallskalender" class="detail-card module-card">
+                <h3>Anfallskalender</h3>
+                @if (seizureEntries is not null && seizureEntries.Count > 0)
+                {
+                    <div class="module-value">@seizureEntries.Count(e => e.SeizureDate >= DateTime.UtcNow.AddDays(-30))</div>
+                    <div class="module-meta">Anfälle / 30 Tage (gesamt: @seizureEntries.Count)</div>
+                }
+                else
+                {
+                    <div class="module-empty">Kein Eintrag</div>
+                }
+            </a>
+
+            @* Kopfschmerz *@
+            <a href="/patienten/@Id/kopfschmerz-tagebuch" class="detail-card module-card">
+                <h3>Kopfschmerz-Tagebuch</h3>
+                @if (headacheEntries is not null && headacheEntries.Count > 0)
+                {
+                    <div class="module-value">Ø @headacheEntries.Average(e => e.Intensity).ToString("F1") / 10</div>
+                    <div class="module-meta">@headacheEntries.Count Einträge, letzter @headacheEntries.First().Date.ToString("dd.MM.yyyy")</div>
+                }
+                else
+                {
+                    <div class="module-empty">Kein Eintrag</div>
+                }
+            </a>
+
+            @* MS *@
+            <a href="/patienten/@Id/ms-dokumentation" class="detail-card module-card">
+                <h3>Multiple Sklerose</h3>
+                @if (msEntries is not null && msEntries.Count > 0)
+                {
+                    <div class="module-value">EDSS @msEntries.First().EdssScore.ToString("F1")</div>
+                    <div class="module-meta">@msEntries.First().DocumentationDate.ToString("dd.MM.yyyy") · @msEntries.Count(e => e.IsRelapse) Schübe</div>
+                }
+                else
+                {
+                    <div class="module-empty">Kein Eintrag</div>
+                }
+            </a>
+
+            @* Parkinson *@
+            <a href="/patienten/@Id/parkinson-dokumentation" class="detail-card module-card">
+                <h3>Parkinson</h3>
+                @if (parkinsonEntries is not null && parkinsonEntries.Count > 0)
+                {
+                    <div class="module-value">H&Y @parkinsonEntries.First().HoehnYahrStage.ToString("F1")</div>
+                    <div class="module-meta">Motor @parkinsonEntries.First().MotorScore/16 · @parkinsonEntries.First().DocumentationDate.ToString("dd.MM.yyyy")</div>
+                }
+                else
+                {
+                    <div class="module-empty">Kein Eintrag</div>
+                }
+            </a>
         </div>
     </div>
 
@@ -340,6 +409,11 @@ else
     private IReadOnlyList<MedicationDto>? medications;
     private IReadOnlyList<RecallDto>? recalls;
     private IReadOnlyList<PsychometricTestListItemDto>? recentTests;
+    private IReadOnlyList<SeizureDiaryDto>? seizureEntries;
+    private IReadOnlyList<HeadacheDiaryDto>? headacheEntries;
+    private IReadOnlyList<MsDocumentationDto>? msEntries;
+    private IReadOnlyList<ParkinsonDocumentationDto>? parkinsonEntries;
+    private SuicidalityAssessmentDto? lastSuicidality;
     private bool showDeleteConfirm, showMedForm, showRecallForm;
     private MedForm newMed = new();
     private RecallForm newRecall = new();
@@ -359,6 +433,11 @@ else
         medications = await MedicationService.GetByPatientAsync(Id);
         recalls = await RecallService.GetByPatientAsync(Id);
         recentTests = await PsychometricTestService.GetByPatientAsync(Id);
+        seizureEntries = await SeizureDiaryService.GetByPatientAsync(Id);
+        headacheEntries = await HeadacheDiaryService.GetByPatientAsync(Id);
+        msEntries = await MsDocService.GetByPatientAsync(Id);
+        parkinsonEntries = await ParkinsonService.GetByPatientAsync(Id);
+        lastSuicidality = await SuicidalityService.GetLatestByPatientAsync(Id);
         await AuditService.LogAsync(MediPrax.Core.Enums.AuditAction.Read, "Patient", Id, $"Patientenakte geöffnet: {patient.FullName}");
     }
 

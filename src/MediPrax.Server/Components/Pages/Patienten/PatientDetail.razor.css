@@ -261,3 +261,41 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Module summary cards */
+::deep .module-card {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 150ms, box-shadow 150ms;
+    min-height: 80px;
+}
+
+::deep .module-card:hover {
+    border-color: var(--color-primary, #2563eb);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+::deep .module-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--color-primary, #2563eb);
+    margin-top: 0.3rem;
+}
+
+::deep .module-value.danger {
+    color: var(--color-danger, #dc2626) !important;
+}
+
+::deep .module-meta {
+    font-size: 0.72rem;
+    color: var(--color-text-secondary, #64748b);
+    margin-top: 0.15rem;
+}
+
+::deep .module-empty {
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #94a3b8);
+    margin-top: 0.5rem;
+    font-style: italic;
+}
