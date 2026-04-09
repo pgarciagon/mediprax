@@ -29,8 +29,11 @@ else
         }
     </div>
 
+    <style>
+        .main-content:has(.arztbrief-layout) { max-width: none !important; padding: 1.5rem !important; }
+    </style>
     <div class="arztbrief-layout" style="display:flex;gap:1rem;">
-    <div class="arztbrief-editor" style="flex:@(showPreview ? "0 0 45%" : "1");transition:flex 0.3s;overflow-y:auto;">
+    <div class="arztbrief-editor" style="flex:@(showPreview ? "0 0 42%" : "1");min-width:0;transition:flex 0.3s;overflow-y:auto;">
     <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="arztbriefForm">
         <fieldset>
             <legend>Arzt & Konsultation</legend>
@@ -189,7 +192,7 @@ else
 
     @if (showPreview)
     {
-        <div class="arztbrief-preview" style="flex:0 0 55%;border-left:1px solid var(--color-border);position:sticky;top:0;height:calc(100vh - 2rem);display:flex;flex-direction:column;">
+        <div class="arztbrief-preview" style="flex:1;border-left:1px solid var(--color-border);position:sticky;top:0;height:calc(100vh - 2rem);display:flex;flex-direction:column;">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.8rem;background:var(--color-surface);border-bottom:1px solid var(--color-border);">
                 <span style="font-size:0.8rem;font-weight:600;color:var(--color-text-secondary)">PDF-VORSCHAU</span>
                 <div style="display:flex;gap:0.3rem;">
