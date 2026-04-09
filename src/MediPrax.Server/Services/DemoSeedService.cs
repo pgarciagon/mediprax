@@ -180,9 +180,9 @@ public static class DemoSeedService
         {
             foreach (var doc in docs)
             {
-                // Morning block: 08:00 - 12:30
-                var morningSlots = new[] { 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0 };
-                var morningCount = rng.Next(4, 7); // 4-6 morning appointments
+                // Morning block: 07:30 - 12:30
+                var morningSlots = new[] { 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0 };
+                var morningCount = rng.Next(5, 8); // 5-7 morning appointments
                 var usedSlots = new HashSet<double>();
                 for (var i = 0; i < morningCount; i++)
                 {
