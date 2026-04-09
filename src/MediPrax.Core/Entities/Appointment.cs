@@ -15,5 +15,8 @@ public class Appointment : BaseEntity
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Scheduled;
     public string? Notes { get; set; }
 
+    public Guid? AppointmentSeriesId { get; set; }
+    public AppointmentSeries? AppointmentSeries { get; set; }
+
     public Encounter? Encounter { get; set; }
 }

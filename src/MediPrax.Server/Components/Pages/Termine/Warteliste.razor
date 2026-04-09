@@ -1,0 +1,267 @@
+@page "/warteliste"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IAppointmentService AppointmentService
+@inject IUserService UserService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Warteliste</PageTitle>
+
+<div class="page-header">
+    <h1>Warteliste</h1>
+    <button class="btn btn-primary" @onclick="() => showAddForm = !showAddForm">+ Neuer Eintrag</button>
+</div>
+
+@if (stats is not null)
+{
+    <div class="stats-row">
+        <div class="stat-card">
+            <span class="stat-value">@stats.TotalWaiting</span>
+            <span class="stat-label">Wartend</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">@stats.AverageWaitDays.ToString("F0")</span>
+            <span class="stat-label">Ø Wartetage</span>
+        </div>
+        <div class="stat-card urgent">
+            <span class="stat-value">@stats.UrgentCount</span>
+            <span class="stat-label">Dringend</span>
+        </div>
+        @foreach (var q in stats.TherapistQueues)
+        {
+            <div class="stat-card">
+                <span class="stat-value">@q.QueueLength</span>
+                <span class="stat-label">@q.TherapistName</span>
+            </div>
+        }
+    </div>
+}
+
+@if (showAddForm)
+{
+    <div class="card form-card">
+        <h3>Patient zur Warteliste hinzufügen</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Patient suchen</label>
+                <input class="form-control" @bind="patientSearch" @bind:event="oninput" @bind:after="SearchPatients" placeholder="Name eingeben..." />
+                @if (searchResults.Count > 0)
+                {
+                    <div class="dropdown-list">
+                        @foreach (var p in searchResults)
+                        {
+                            <div class="dropdown-item" @onclick="() => SelectPatient(p)">@p.FullName (@p.DateOfBirth.ToString("dd.MM.yyyy"))</div>
+                        }
+                    </div>
+                }
+                @if (selectedPatient is not null)
+                {
+                    <small class="text-muted">Gewählt: @selectedPatient.FullName</small>
+                }
+            </div>
+            <div class="form-group">
+                <label>Bevorzugter Therapeut</label>
+                <select class="form-control" @bind="newEntry.PreferredTherapistId">
+                    <option value="">— Kein Präferenz —</option>
+                    @foreach (var doc in doctors)
+                    {
+                        <option value="@doc.Id">@doc.FullName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Priorität</label>
+                <select class="form-control" @bind="newEntry.Priority">
+                    <option value="@WaitlistPriority.Normal">Normal</option>
+                    <option value="@WaitlistPriority.Urgent">Dringend</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Bevorzugte Zeit</label>
+                <select class="form-control" @bind="newEntry.PreferredTimeSlot">
+                    <option value="">— Egal —</option>
+                    <option value="Vormittags">Vormittags</option>
+                    <option value="Nachmittags">Nachmittags</option>
+                </select>
+            </div>
+            <div class="form-group wide">
+                <label>Anmerkungen</label>
+                <input class="form-control" @bind="newEntry.Notes" />
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" @onclick="AddToWaitlist" disabled="@(selectedPatient is null)">Hinzufügen</button>
+            <button class="btn btn-secondary" @onclick="() => showAddForm = false">Abbrechen</button>
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+    </div>
+}
+
+<div class="toolbar">
+    <select class="form-control" @bind="filterStatus" @bind:after="LoadWaitlist">
+        <option value="">Alle Status</option>
+        <option value="@WaitlistStatus.Waiting">Wartend</option>
+        <option value="@WaitlistStatus.Offered">Angeboten</option>
+        <option value="@WaitlistStatus.Scheduled">Eingeplant</option>
+        <option value="@WaitlistStatus.Cancelled">Storniert</option>
+    </select>
+    <select class="form-control" @bind="filterTherapistId" @bind:after="LoadWaitlist">
+        <option value="">Alle Therapeuten</option>
+        @foreach (var doc in doctors)
+        {
+            <option value="@doc.Id">@doc.FullName</option>
+        }
+    </select>
+</div>
+
+@if (entries is null)
+{
+    <p>Laden...</p>
+}
+else if (entries.Count == 0)
+{
+    <p class="empty-state">Keine Einträge in der Warteliste.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Wartetage</th>
+                <th>Priorität</th>
+                <th>Therapeut</th>
+                <th>Zeitpräferenz</th>
+                <th>Status</th>
+                <th>Anmerkungen</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in entries)
+            {
+                <tr class="@(entry.Priority == WaitlistPriority.Urgent ? "row-urgent" : "")">
+                    <td>@entry.PatientName</td>
+                    <td>@entry.WaitDays Tage</td>
+                    <td><span class="badge badge-@(entry.Priority == WaitlistPriority.Urgent ? "danger" : "secondary")">@entry.PriorityDisplay</span></td>
+                    <td>@(entry.PreferredTherapistName ?? "—")</td>
+                    <td>@(entry.PreferredTimeSlot ?? "—")</td>
+                    <td><span class="badge badge-@GetStatusColor(entry.Status)">@entry.StatusDisplay</span></td>
+                    <td>@(entry.Notes ?? "—")</td>
+                    <td class="actions">
+                        @if (entry.Status == WaitlistStatus.Waiting)
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="() => OfferSlot(entry.Id)" title="Termin anbieten">Anbieten</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => CancelEntry(entry.Id)" title="Stornieren">✕</button>
+                        }
+                        @if (entry.Status == WaitlistStatus.Offered)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => ScheduleEntry(entry)" title="Einplanen">Einplanen</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="() => ResetToWaiting(entry.Id)" title="Zurücksetzen">Zurück</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<WaitlistEntryDto>? entries;
+    private WaitlistStatisticsDto? stats;
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private WaitlistStatus? filterStatus;
+    private string filterTherapistId = string.Empty;
+
+    private bool showAddForm;
+    private CreateWaitlistEntryDto newEntry = new();
+    private string patientSearch = string.Empty;
+    private IReadOnlyList<PatientListItemDto> searchResults = [];
+    private PatientListItemDto? selectedPatient;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        doctors = await UserService.GetDoctorsAsync();
+        await LoadWaitlist();
+    }
+
+    private async Task LoadWaitlist()
+    {
+        Guid? therapistId = Guid.TryParse(filterTherapistId, out var id) ? id : null;
+        entries = await AppointmentService.GetWaitlistAsync(filterStatus, therapistId);
+        stats = await AppointmentService.GetWaitlistStatisticsAsync();
+    }
+
+    private async Task SearchPatients()
+    {
+        if (patientSearch.Length < 2) { searchResults = []; return; }
+        var result = await PatientService.SearchAsync(new PatientSearchDto { SearchTerm = patientSearch, Page = 1, PageSize = 8 });
+        searchResults = result.Items.Take(8).ToList();
+    }
+
+    private void SelectPatient(PatientListItemDto patient)
+    {
+        selectedPatient = patient;
+        newEntry.PatientId = patient.Id;
+        patientSearch = patient.FullName;
+        searchResults = [];
+    }
+
+    private async Task AddToWaitlist()
+    {
+        if (selectedPatient is null) return;
+        errorMessage = null;
+        try
+        {
+            await AppointmentService.AddToWaitlistAsync(newEntry);
+            showAddForm = false;
+            newEntry = new();
+            selectedPatient = null;
+            patientSearch = string.Empty;
+            await LoadWaitlist();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task OfferSlot(Guid entryId)
+    {
+        await AppointmentService.UpdateWaitlistStatusAsync(entryId, WaitlistStatus.Offered);
+        await LoadWaitlist();
+    }
+
+    private void ScheduleEntry(WaitlistEntryDto entry)
+    {
+        Navigation.NavigateTo($"/termine/neu?patientId={entry.PatientId}");
+    }
+
+    private async Task CancelEntry(Guid entryId)
+    {
+        await AppointmentService.UpdateWaitlistStatusAsync(entryId, WaitlistStatus.Cancelled);
+        await LoadWaitlist();
+    }
+
+    private async Task ResetToWaiting(Guid entryId)
+    {
+        await AppointmentService.UpdateWaitlistStatusAsync(entryId, WaitlistStatus.Waiting);
+        await LoadWaitlist();
+    }
+
+    private static string GetStatusColor(WaitlistStatus status) => status switch
+    {
+        WaitlistStatus.Waiting => "warning",
+        WaitlistStatus.Offered => "info",
+        WaitlistStatus.Scheduled => "success",
+        WaitlistStatus.Cancelled => "secondary",
+        _ => "secondary"
+    };
+}

@@ -1,0 +1,221 @@
+@page "/terminserie/neu"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IAppointmentService AppointmentService
+@inject IUserService UserService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Neue Terminserie</PageTitle>
+
+<div class="page-header">
+    <h1>Terminserie erstellen</h1>
+</div>
+
+<div class="card form-card">
+    <div class="form-row">
+        <div class="form-group">
+            <label>Patient suchen</label>
+            <input class="form-control" @bind="patientSearch" @bind:event="oninput" @bind:after="SearchPatients" placeholder="Name eingeben..." />
+            @if (searchResults.Count > 0)
+            {
+                <div class="dropdown-list">
+                    @foreach (var p in searchResults)
+                    {
+                        <div class="dropdown-item" @onclick="() => SelectPatient(p)">@p.FullName (@p.DateOfBirth.ToString("dd.MM.yyyy"))</div>
+                    }
+                </div>
+            }
+            @if (selectedPatient is not null)
+            {
+                <small class="text-muted">Gewählt: @selectedPatient.FullName</small>
+            }
+        </div>
+        <div class="form-group">
+            <label>Arzt / Therapeut</label>
+            <select class="form-control" @bind="model.DoctorId">
+                <option value="">— Bitte wählen —</option>
+                @foreach (var doc in doctors)
+                {
+                    <option value="@doc.Id">@doc.FullName</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Wiederholung</label>
+            <select class="form-control" @bind="model.RecurrencePattern">
+                <option value="@RecurrencePattern.Weekly">Wöchentlich</option>
+                <option value="@RecurrencePattern.BiWeekly">Zweiwöchentlich</option>
+                <option value="@RecurrencePattern.Monthly">Monatlich</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Wochentag</label>
+            <select class="form-control" @bind="model.DayOfWeek">
+                <option value="@DayOfWeek.Monday">Montag</option>
+                <option value="@DayOfWeek.Tuesday">Dienstag</option>
+                <option value="@DayOfWeek.Wednesday">Mittwoch</option>
+                <option value="@DayOfWeek.Thursday">Donnerstag</option>
+                <option value="@DayOfWeek.Friday">Freitag</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Uhrzeit</label>
+            <input class="form-control" @bind="startTimeStr" placeholder="09:00" />
+        </div>
+        <div class="form-group">
+            <label>Dauer (Min.)</label>
+            <input type="number" class="form-control" @bind="model.DurationMinutes" min="10" step="5" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Startdatum</label>
+            <input class="form-control" @bind="seriesStartDateStr" placeholder="2026-04-09" />
+        </div>
+        <div class="form-group">
+            <label>Enddatum (optional)</label>
+            <input class="form-control" @bind="seriesEndDateStr" placeholder="2026-12-31" />
+        </div>
+        <div class="form-group">
+            <label>Max. Termine (optional)</label>
+            <input type="number" class="form-control" @bind="maxOccurrences" min="1" />
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group wide">
+            <label>Anmerkungen</label>
+            <textarea class="form-control" @bind="model.Notes" rows="2"></textarea>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button class="btn btn-primary" @onclick="CreateSeries" disabled="@(selectedPatient is null || model.DoctorId == Guid.Empty)">Serie erstellen</button>
+        <a href="/termine" class="btn btn-secondary">Abbrechen</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+</div>
+
+@if (existingSeries.Count > 0)
+{
+    <h2>Bestehende Terminserien</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Arzt</th>
+                <th>Rhythmus</th>
+                <th>Tag</th>
+                <th>Uhrzeit</th>
+                <th>Termine</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in existingSeries)
+            {
+                <tr>
+                    <td>@s.PatientName</td>
+                    <td>@s.DoctorName</td>
+                    <td>@s.RecurrenceDisplay</td>
+                    <td>@s.DayOfWeekDisplay</td>
+                    <td>@s.StartTime.ToString("HH:mm")</td>
+                    <td>@s.GeneratedAppointments</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteSeries(s.Id)">Löschen</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private CreateAppointmentSeriesDto model = new() { DurationMinutes = 50, RecurrencePattern = RecurrencePattern.Weekly };
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private IReadOnlyList<AppointmentSeriesDto> existingSeries = [];
+    private string patientSearch = string.Empty;
+    private IReadOnlyList<PatientListItemDto> searchResults = [];
+    private PatientListItemDto? selectedPatient;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private string startTimeStr = "09:00";
+    private string seriesStartDateStr = DateTime.Today.ToString("yyyy-MM-dd");
+    private string seriesEndDateStr = string.Empty;
+    private int? maxOccurrences;
+
+    protected override async Task OnInitializedAsync()
+    {
+        doctors = await UserService.GetDoctorsAsync();
+        existingSeries = await AppointmentService.GetSeriesAsync();
+    }
+
+    private async Task SearchPatients()
+    {
+        if (patientSearch.Length < 2) { searchResults = []; return; }
+        var result = await PatientService.SearchAsync(new PatientSearchDto { SearchTerm = patientSearch, Page = 1, PageSize = 8 });
+        searchResults = result.Items.Take(8).ToList();
+    }
+
+    private void SelectPatient(PatientListItemDto patient)
+    {
+        selectedPatient = patient;
+        model.PatientId = patient.Id;
+        patientSearch = patient.FullName;
+        searchResults = [];
+    }
+
+    private async Task CreateSeries()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (TimeOnly.TryParse(startTimeStr, out var time))
+            model.StartTime = time;
+        else
+        {
+            errorMessage = "Bitte gültige Uhrzeit eingeben (HH:mm).";
+            return;
+        }
+
+        if (!DateOnly.TryParse(seriesStartDateStr, out var startDate))
+        {
+            errorMessage = "Bitte gültiges Startdatum eingeben.";
+            return;
+        }
+        model.SeriesStartDate = startDate;
+        model.SeriesEndDate = DateOnly.TryParse(seriesEndDateStr, out var endDate) ? endDate : null;
+        model.MaxOccurrences = maxOccurrences;
+
+        try
+        {
+            var result = await AppointmentService.CreateSeriesAsync(model);
+            successMessage = $"Terminserie erstellt: {result.GeneratedAppointments} Termine generiert.";
+            existingSeries = await AppointmentService.GetSeriesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task DeleteSeries(Guid seriesId)
+    {
+        await AppointmentService.DeleteSeriesAsync(seriesId);
+        existingSeries = await AppointmentService.GetSeriesAsync();
+    }
+}
