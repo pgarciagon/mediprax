@@ -27,6 +27,10 @@ public class MediPraxDbContext : DbContext
     public DbSet<LabResult> LabResults => Set<LabResult>();
     public DbSet<AppointmentSeries> AppointmentSeries => Set<AppointmentSeries>();
     public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
+    public DbSet<SeizureDiary> SeizureDiaries => Set<SeizureDiary>();
+    public DbSet<HeadacheDiary> HeadacheDiaries => Set<HeadacheDiary>();
+    public DbSet<MsDocumentation> MsDocumentations => Set<MsDocumentation>();
+    public DbSet<ParkinsonDocumentation> ParkinsonDocumentations => Set<ParkinsonDocumentation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +52,10 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<LabResult>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<AppointmentSeries>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<WaitlistEntry>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SeizureDiary>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<HeadacheDiary>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<MsDocumentation>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ParkinsonDocumentation>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

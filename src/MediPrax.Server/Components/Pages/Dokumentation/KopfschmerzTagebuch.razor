@@ -1,0 +1,190 @@
+@page "/patienten/{PatientId:guid}/kopfschmerz-tagebuch"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IHeadacheDiaryService HeadacheDiaryService
+@rendermode InteractiveServer
+
+<PageTitle>Kopfschmerz-Tagebuch</PageTitle>
+
+<div class="page-header">
+    <h1>Kopfschmerz-Tagebuch</h1>
+    <button class="btn btn-primary" @onclick="() => showForm = !showForm">+ Neuer Eintrag</button>
+</div>
+
+@if (showForm)
+{
+    <div class="card form-card">
+        <h3>Kopfschmerz dokumentieren</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Datum *</label>
+                <input class="form-control" @bind="formDateStr" placeholder="2026-04-09" />
+            </div>
+            <div class="form-group">
+                <label>Typ *</label>
+                <select class="form-control" @bind="form.Type">
+                    <option value="Migräne">Migräne</option>
+                    <option value="Spannungskopfschmerz">Spannungskopfschmerz</option>
+                    <option value="Cluster">Cluster-Kopfschmerz</option>
+                    <option value="Andere">Andere</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Intensität (0-10) *</label>
+                <input type="number" class="form-control" @bind="form.Intensity" min="0" max="10" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Dauer (Stunden)</label>
+                <input type="number" class="form-control" @bind="form.DurationHours" step="0.5" />
+            </div>
+            <div class="form-group">
+                <label>Lokalisation</label>
+                <select class="form-control" @bind="form.Location">
+                    <option value="">—</option>
+                    <option value="Einseitig rechts">Einseitig rechts</option>
+                    <option value="Einseitig links">Einseitig links</option>
+                    <option value="Beidseits">Beidseits</option>
+                    <option value="Frontal">Frontal</option>
+                    <option value="Okzipital">Okzipital</option>
+                    <option value="Holozephal">Holozephal</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label><input type="checkbox" @bind="form.AuraPresent" /> Aura</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" @bind="form.Nausea" /> Übelkeit</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" @bind="form.Photophobia" /> Lichtempfindlichkeit</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" @bind="form.Phonophobia" /> Geräuschempfindlichkeit</label>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Medikament eingenommen</label>
+                <input class="form-control" @bind="form.MedicationTaken" />
+            </div>
+            <div class="form-group">
+                <label>Wirksam?</label>
+                <select class="form-control" @bind="medicationEffectiveStr">
+                    <option value="">—</option>
+                    <option value="true">Ja</option>
+                    <option value="false">Nein</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" @onclick="Save">Speichern</button>
+            <button class="btn btn-secondary" @onclick="() => showForm = false">Abbrechen</button>
+        </div>
+    </div>
+}
+
+@if (entries is null)
+{
+    <p>Laden...</p>
+}
+else if (entries.Count == 0)
+{
+    <p class="empty-state">Noch keine Kopfschmerzen dokumentiert.</p>
+}
+else
+{
+    <div class="stats-row">
+        <div class="stat-card">
+            <span class="stat-value">@entries.Count</span>
+            <span class="stat-label">Einträge gesamt</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">@entries.Count(e => e.Date >= DateOnly.FromDateTime(DateTime.Today.AddDays(-30)))</span>
+            <span class="stat-label">Letzte 30 Tage</span>
+        </div>
+        @if (entries.Count > 0)
+        {
+            <div class="stat-card">
+                <span class="stat-value">@entries.Average(e => e.Intensity).ToString("F1")</span>
+                <span class="stat-label">Ø Intensität</span>
+            </div>
+        }
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Typ</th>
+                <th>Intensität</th>
+                <th>Dauer</th>
+                <th>Aura</th>
+                <th>Begleitsymptome</th>
+                <th>Medikament</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in entries)
+            {
+                <tr>
+                    <td>@entry.Date.ToString("dd.MM.yyyy")</td>
+                    <td>@entry.Type</td>
+                    <td>@entry.IntensityDisplay</td>
+                    <td>@(entry.DurationHours.HasValue ? $"{entry.DurationHours:F1}h" : "—")</td>
+                    <td>@(entry.AuraPresent ? "Ja" : "—")</td>
+                    <td>
+                        @{ var symptoms = new List<string>();
+                            if (entry.Nausea) symptoms.Add("Übelkeit");
+                            if (entry.Photophobia) symptoms.Add("Licht");
+                            if (entry.Phonophobia) symptoms.Add("Geräusch"); }
+                        @(symptoms.Count > 0 ? string.Join(", ", symptoms) : "—")
+                    </td>
+                    <td>@(entry.MedicationTaken ?? "—") @(entry.MedicationEffective == true ? "✓" : entry.MedicationEffective == false ? "✗" : "")</td>
+                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    private IReadOnlyList<HeadacheDiaryDto>? entries;
+    private CreateHeadacheDiaryDto form = new() { Type = "Migräne" };
+    private string formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
+    private string medicationEffectiveStr = string.Empty;
+    private bool showForm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        form.PatientId = PatientId;
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries() => entries = await HeadacheDiaryService.GetByPatientAsync(PatientId);
+
+    private async Task Save()
+    {
+        form.PatientId = PatientId;
+        if (DateOnly.TryParse(formDateStr, out var date))
+            form.Date = date;
+        form.MedicationEffective = bool.TryParse(medicationEffectiveStr, out var v) ? v : null;
+        await HeadacheDiaryService.CreateAsync(form);
+        form = new() { PatientId = PatientId, Type = "Migräne" };
+        formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
+        medicationEffectiveStr = string.Empty;
+        showForm = false;
+        await LoadEntries();
+    }
+
+    private async Task Delete(Guid id)
+    {
+        await HeadacheDiaryService.DeleteAsync(id);
+        await LoadEntries();
+    }
+}

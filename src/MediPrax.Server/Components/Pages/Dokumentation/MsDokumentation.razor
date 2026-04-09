@@ -1,0 +1,169 @@
+@page "/patienten/{PatientId:guid}/ms-dokumentation"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IMsDocumentationService MsDocService
+@rendermode InteractiveServer
+
+<PageTitle>Multiple Sklerose Dokumentation</PageTitle>
+
+<div class="page-header">
+    <h1>MS-Dokumentation</h1>
+    <button class="btn btn-primary" @onclick="() => showForm = !showForm">+ Neue Dokumentation</button>
+</div>
+
+@if (showForm)
+{
+    <div class="card form-card">
+        <h3>MS-Verlauf dokumentieren</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Datum *</label>
+                <input class="form-control" @bind="formDateStr" placeholder="2026-04-09" />
+            </div>
+            <div class="form-group">
+                <label>EDSS-Score (0.0 – 10.0) *</label>
+                <input type="number" class="form-control" @bind="form.EdssScore" min="0" max="10" step="0.5" />
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" @bind="form.IsRelapse" /> Schub</label>
+            </div>
+        </div>
+        @if (form.IsRelapse)
+        {
+            <div class="form-row">
+                <div class="form-group wide">
+                    <label>Schubbeschreibung</label>
+                    <textarea class="form-control" @bind="form.RelapseDescription" rows="2"></textarea>
+                </div>
+            </div>
+        }
+        <div class="form-row">
+            <div class="form-group">
+                <label>MRT-Datum</label>
+                <input class="form-control" @bind="mriDateStr" placeholder="2026-04-09" />
+            </div>
+            <div class="form-group">
+                <label>Neue T2-Läsionen</label>
+                <input type="number" class="form-control" @bind="form.NewLesions" min="0" />
+            </div>
+            <div class="form-group">
+                <label>Gd-aufnehmende Läsionen</label>
+                <input type="number" class="form-control" @bind="form.GadEnhancing" min="0" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>MRT-Befund</label>
+                <textarea class="form-control" @bind="form.MriFindings" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Aktuelle DMT</label>
+                <input class="form-control" @bind="form.CurrentDmt" placeholder="z.B. Ocrelizumab, Natalizumab..." />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group wide">
+                <label>Anmerkungen</label>
+                <textarea class="form-control" @bind="form.Notes" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" @onclick="Save">Speichern</button>
+            <button class="btn btn-secondary" @onclick="() => showForm = false">Abbrechen</button>
+        </div>
+    </div>
+}
+
+@if (entries is null)
+{
+    <p>Laden...</p>
+}
+else if (entries.Count == 0)
+{
+    <p class="empty-state">Noch keine MS-Dokumentation vorhanden.</p>
+}
+else
+{
+    <div class="stats-row">
+        <div class="stat-card">
+            <span class="stat-value">@entries.First().EdssDisplay</span>
+            <span class="stat-label">Aktueller EDSS</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">@entries.Count(e => e.IsRelapse)</span>
+            <span class="stat-label">Schübe dokumentiert</span>
+        </div>
+        @if (!string.IsNullOrEmpty(entries.First().CurrentDmt))
+        {
+            <div class="stat-card">
+                <span class="stat-value">@entries.First().CurrentDmt</span>
+                <span class="stat-label">Aktuelle DMT</span>
+            </div>
+        }
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>EDSS</th>
+                <th>Schub</th>
+                <th>MRT</th>
+                <th>Neue Läsionen</th>
+                <th>DMT</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in entries)
+            {
+                <tr class="@(entry.IsRelapse ? "row-urgent" : "")">
+                    <td>@entry.DocumentationDate.ToString("dd.MM.yyyy")</td>
+                    <td>@entry.EdssScore.ToString("F1")</td>
+                    <td>@(entry.IsRelapse ? "Ja" : "—")</td>
+                    <td>@(entry.MriDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                    <td>@(entry.NewLesions?.ToString() ?? "—") / @(entry.GadEnhancing?.ToString() ?? "—") Gd+</td>
+                    <td>@(entry.CurrentDmt ?? "—")</td>
+                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    private IReadOnlyList<MsDocumentationDto>? entries;
+    private CreateMsDocumentationDto form = new();
+    private string formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
+    private string mriDateStr = string.Empty;
+    private bool showForm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        form.PatientId = PatientId;
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries() => entries = await MsDocService.GetByPatientAsync(PatientId);
+
+    private async Task Save()
+    {
+        form.PatientId = PatientId;
+        if (DateOnly.TryParse(formDateStr, out var date))
+            form.DocumentationDate = date;
+        form.MriDate = DateOnly.TryParse(mriDateStr, out var mriDate) ? mriDate : null;
+        await MsDocService.CreateAsync(form);
+        form = new() { PatientId = PatientId };
+        formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
+        mriDateStr = string.Empty;
+        showForm = false;
+        await LoadEntries();
+    }
+
+    private async Task Delete(Guid id)
+    {
+        await MsDocService.DeleteAsync(id);
+        await LoadEntries();
+    }
+}

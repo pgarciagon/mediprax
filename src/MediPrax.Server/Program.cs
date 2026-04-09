@@ -57,6 +57,10 @@ builder.Services.AddScoped<IPsychometricTestService, PsychometricTestService>();
 builder.Services.AddScoped<ITherapyCaseService, TherapyCaseService>();
 builder.Services.AddScoped<INeurologicalExamService, NeurologicalExamService>();
 builder.Services.AddScoped<IIcd10CodeService, Icd10CodeService>();
+builder.Services.AddScoped<ISeizureDiaryService, SeizureDiaryService>();
+builder.Services.AddScoped<IHeadacheDiaryService, HeadacheDiaryService>();
+builder.Services.AddScoped<IMsDocumentationService, MsDocumentationService>();
+builder.Services.AddScoped<IParkinsonDocumentationService, ParkinsonDocumentationService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
 
 // Telematik — Mock services (replace with real implementations when TI access is available)
