@@ -21,17 +21,75 @@ else
     <div class="page-header">
         <div>
             <a href="/patienten/@PatientId" class="patient-context">&larr; @patient.FullName</a>
-            <h1>@(isEdit ? "Arztbrief bearbeiten" : "Neuer Arztbrief")</h1>
+            <h1>@(arztbriefStatus == ArztbriefStatus.Versendet ? "Arztbrief (versendet)" : isEdit ? "Arztbrief bearbeiten" : "Neuer Arztbrief")</h1>
         </div>
         @if (isEdit && arztbriefStatus != ArztbriefStatus.Entwurf)
         {
-            <span class="badge badge-@(arztbriefStatus == ArztbriefStatus.Freigegeben ? "success" : "info")">@arztbriefStatus</span>
+            <span class="badge badge-@(arztbriefStatus == ArztbriefStatus.Freigegeben ? "success" : "info")" style="font-size:0.8rem;padding:0.3rem 0.8rem;">@arztbriefStatus</span>
         }
     </div>
 
     <style>
-        .main-content:has(.arztbrief-layout) { max-width: none !important; padding: 1.5rem !important; }
+        .main-content:has(.arztbrief-layout), .main-content:has(.arztbrief-readonly) { max-width: none !important; padding: 1.5rem !important; }
     </style>
+
+    @if (isEdit && arztbriefStatus == ArztbriefStatus.Versendet)
+    {
+        @* === READ-ONLY VIEW for Versendet === *@
+        <div class="arztbrief-readonly" style="display:flex;gap:1rem;">
+            <div style="flex:@(showPreview ? "0 0 42%" : "1");overflow-y:auto;">
+                <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;padding:1.5rem;margin-bottom:1rem;">
+                    <div style="display:flex;gap:2rem;margin-bottom:1rem;font-size:0.82rem;color:var(--color-text-secondary);">
+                        <div><strong>Empfänger:</strong> @form.RecipientName</div>
+                        @if (!string.IsNullOrEmpty(form.RecipientAddress))
+                        {
+                            <div><strong>Adresse:</strong> @form.RecipientAddress</div>
+                        }
+                        <div><strong>Betreff:</strong> @form.Subject</div>
+                    </div>
+                    @if (form.Diagnoses.Count > 0)
+                    {
+                        <div style="margin-bottom:0.8rem;">
+                            <strong style="font-size:0.75rem;color:var(--color-text-secondary);">DIAGNOSEN</strong>
+                            <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;">
+                                @foreach (var icd in form.Diagnoses)
+                                {
+                                    var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(icd);
+                                    <span style="background:#e0f2fe;border:1px solid #7dd3fc;border-radius:5px;padding:0.2rem 0.5rem;font-size:0.78rem;">
+                                        <strong>@icd</strong> @desc
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                    <div style="white-space:pre-wrap;font-size:0.85rem;line-height:1.6;color:var(--color-text);">@form.Body</div>
+                </div>
+                <div style="display:flex;gap:0.5rem;">
+                    <button class="btn btn-primary btn-sm" @onclick="TogglePreview" disabled="@generatingPreview">
+                        @(showPreview ? "Vorschau schließen" : "PDF Vorschau")
+                    </button>
+                    @if (hasPdf)
+                    {
+                        <a href="/dokumente/@EditId/pdf" target="_blank" class="btn btn-secondary btn-sm">PDF herunterladen</a>
+                    }
+                    <a href="/patienten/@PatientId" class="btn btn-secondary btn-sm">Zurück</a>
+                </div>
+            </div>
+            @if (showPreview)
+            {
+                <div style="flex:1;border-left:1px solid var(--color-border);position:sticky;top:0;height:calc(100vh - 2rem);display:flex;flex-direction:column;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.8rem;background:var(--color-surface);border-bottom:1px solid var(--color-border);">
+                        <span style="font-size:0.8rem;font-weight:600;color:var(--color-text-secondary)">PDF-VORSCHAU</span>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => showPreview = false">Schließen</button>
+                    </div>
+                    <iframe id="pdf-preview-frame" src="@previewUrl" style="flex:1;width:100%;border:none;background:#f1f5f9;"></iframe>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+    @* === EDITABLE FORM === *@
     <div class="arztbrief-layout" style="display:flex;gap:1rem;">
     <div class="arztbrief-editor" style="flex:@(showPreview ? "0 0 42%" : "1");min-width:0;transition:flex 0.3s;overflow-y:auto;">
     <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="arztbriefForm">
@@ -206,6 +264,7 @@ else
         </div>
     }
     </div>
+    }
 }
 
 @code {
@@ -602,6 +661,15 @@ Mit freundlichen kollegialen Grüßen
             showPreview = false;
             return;
         }
+
+        if (arztbriefStatus == ArztbriefStatus.Versendet && hasPdf)
+        {
+            // Read-only: just show existing PDF
+            previewUrl = $"/api/arztbrief/{EditId}/preview?t={DateTime.UtcNow.Ticks}";
+            showPreview = true;
+            return;
+        }
+
         await RefreshPreview();
     }
 
@@ -616,7 +684,6 @@ Mit freundlichen kollegialen Grüßen
             await ArztbriefService.UpdateAsync(EditId!.Value, BuildDto());
             await ArztbriefService.GeneratePdfAsync(EditId!.Value);
             hasPdf = true;
-            // Cache-bust with timestamp
             previewUrl = $"/api/arztbrief/{EditId}/preview?t={DateTime.UtcNow.Ticks}";
             showPreview = true;
         }
