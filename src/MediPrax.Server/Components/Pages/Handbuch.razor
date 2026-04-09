@@ -1,0 +1,62 @@
+@page "/handbuch"
+@page "/handbuch/{*Path}"
+@attribute [Authorize]
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Benutzerhandbuch</PageTitle>
+
+<div class="docs-container">
+    <iframe id="docs-frame"
+            src="@GetDocsUrl()"
+            class="docs-iframe"
+            @ref="iframeRef">
+    </iframe>
+</div>
+
+<style>
+    .docs-container {
+        margin: -1.5rem;
+        height: calc(100vh - 0px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .docs-iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+        background: var(--color-surface);
+    }
+</style>
+
+@code {
+    [Parameter] public string? Path { get; set; }
+
+    private ElementReference iframeRef;
+
+    private string GetDocsUrl()
+    {
+        if (string.IsNullOrEmpty(Path))
+            return "/docs/";
+        return $"/docs/{Path}/";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Send current theme to iframe
+            await JS.InvokeVoidAsync("eval", """
+                var frame = document.getElementById('docs-frame');
+                if (frame) {
+                    frame.onload = function() {
+                        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+                        frame.contentWindow.postMessage({ type: 'theme-change', dark: dark }, '*');
+                    };
+                }
+            """);
+        }
+    }
+}

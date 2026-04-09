@@ -141,10 +141,10 @@
             <span class="section-label">Hilfe</span>
             <ul class="nav-menu">
                 <li>
-                    <a href="/docs/" target="_blank" class="nav-item">
+                    <NavLink href="/handbuch" class="nav-item">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
                         Benutzerhandbuch
-                    </a>
+                    </NavLink>
                 </li>
             </ul>
         </div>
@@ -189,6 +189,9 @@
     private async Task ToggleTheme()
     {
         isDark = !isDark;
-        await JS.InvokeVoidAsync("eval", $"document.documentElement.setAttribute('data-theme', '{(isDark ? "dark" : "light")}')");
+        var theme = isDark ? "dark" : "light";
+        await JS.InvokeVoidAsync("eval",
+            $"document.documentElement.setAttribute('data-theme', '{theme}');" +
+            $"var f=document.getElementById('docs-frame');if(f&&f.contentWindow)f.contentWindow.postMessage({{type:'theme-change',dark:{(isDark ? "true" : "false")}}}, '*');");
     }
 }

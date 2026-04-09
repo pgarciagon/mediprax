@@ -1,0 +1,159 @@
+/* MediPrax theme override — match app look and feel */
+
+/* Hide MkDocs header/tabs when embedded in iframe */
+.md-header,
+.md-tabs {
+    display: none !important;
+}
+
+/* Colors aligned with MediPrax app palette */
+:root,
+[data-md-color-scheme="default"] {
+    --md-primary-fg-color: #2563eb;
+    --md-primary-fg-color--light: #3b82f6;
+    --md-primary-fg-color--dark: #1d4ed8;
+    --md-accent-fg-color: #2563eb;
+    --md-default-fg-color: #1e293b;
+    --md-default-fg-color--light: #64748b;
+    --md-default-fg-color--lighter: #94a3b8;
+    --md-default-bg-color: #ffffff;
+    --md-default-bg-color--light: #f1f5f9;
+    --md-default-bg-color--lighter: #f8fafc;
+    --md-typeset-a-color: #2563eb;
+    --md-code-bg-color: #f1f5f9;
+    --md-code-fg-color: #1e293b;
+    --md-shadow-z1: 0 1px 2px rgba(0,0,0,0.05);
+    --md-shadow-z2: 0 4px 6px -1px rgba(0,0,0,0.07);
+}
+
+[data-md-color-scheme="slate"] {
+    --md-primary-fg-color: #3b82f6;
+    --md-primary-fg-color--light: #60a5fa;
+    --md-primary-fg-color--dark: #2563eb;
+    --md-accent-fg-color: #3b82f6;
+    --md-default-fg-color: #e2e8f0;
+    --md-default-fg-color--light: #94a3b8;
+    --md-default-fg-color--lighter: #64748b;
+    --md-default-bg-color: #0f172a;
+    --md-default-bg-color--light: #1e293b;
+    --md-default-bg-color--lighter: #334155;
+    --md-typeset-a-color: #60a5fa;
+    --md-code-bg-color: #1e293b;
+    --md-code-fg-color: #e2e8f0;
+}
+
+/* Typography — match app's Inter font stack */
+:root {
+    --md-text-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --md-code-font: "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Sidebar nav styling */
+.md-sidebar {
+    border-right: 1px solid var(--md-default-bg-color--lighter);
+}
+
+.md-nav__link {
+    font-size: 0.85rem;
+}
+
+.md-nav__link--active {
+    font-weight: 600;
+    color: var(--md-primary-fg-color) !important;
+}
+
+/* Content area */
+.md-content {
+    max-width: 900px;
+}
+
+.md-typeset h1 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--md-default-fg-color);
+}
+
+.md-typeset h2 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    border-bottom: 1px solid var(--md-default-bg-color--lighter);
+    padding-bottom: 0.4rem;
+}
+
+/* Admonitions — use app colors */
+.md-typeset .admonition,
+.md-typeset details {
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border-width: 1px;
+    border-left-width: 4px;
+}
+
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+    border-color: #2563eb;
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+    border-color: #f59e0b;
+}
+
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+    border-color: #dc2626;
+}
+
+/* Tables — match app data-table style */
+.md-typeset table:not([class]) {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid var(--md-default-bg-color--lighter);
+}
+
+.md-typeset table:not([class]) th {
+    background: var(--md-default-bg-color--light);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.7rem 1rem;
+}
+
+.md-typeset table:not([class]) td {
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Footer — minimal */
+.md-footer {
+    background: var(--md-default-bg-color--light);
+}
+
+/* Search in sidebar */
+.md-search__input {
+    border-radius: 8px;
+}
+
+/* Smooth scrollbar */
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+    width: 4px;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+    background: var(--md-default-fg-color--lighter);
+    border-radius: 4px;
+}
+
+/* When inside iframe, remove extra padding at top since header is hidden */
+.md-main__inner {
+    margin-top: 0;
+}
+
+/* Responsive: make content full width when embedded */
+@media screen and (min-width: 76.25em) {
+    .md-main__inner {
+        max-width: 100%;
+    }
+}
