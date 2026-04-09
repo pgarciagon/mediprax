@@ -1,4 +1,5 @@
 @page "/patienten/{PatientId:guid}/arztbrief/neu"
+@page "/arztbrief/{EditId:guid}"
 @attribute [Authorize(Policy = "Arzt")]
 @inject IArztbriefService ArztbriefService
 @inject IPatientService PatientService
@@ -130,19 +131,45 @@ else
         {
             <div class="error-message">@errorMessage</div>
         }
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div style="color:var(--color-primary);font-size:0.85rem;margin-bottom:0.5rem;">@successMessage</div>
+        }
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary" disabled="@saving">
-                @(saving ? "PDF wird erzeugt..." : "Arztbrief erstellen (PDF)")
-            </button>
-            <a href="/patienten/@PatientId" class="btn btn-secondary">Abbrechen</a>
+            @if (isEdit && arztbriefStatus == ArztbriefStatus.Versendet)
+            {
+                <span style="color:var(--color-text-secondary);font-size:0.85rem">Versendet — Keine Bearbeitung möglich</span>
+            }
+            else
+            {
+                <button type="button" class="btn btn-secondary" @onclick="SaveDraft" disabled="@saving">
+                    @(saving ? "Speichern..." : "Entwurf speichern")
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="SaveAndGeneratePdf" disabled="@saving">
+                    @(saving ? "PDF wird erzeugt..." : isEdit ? "PDF aktualisieren" : "PDF erzeugen")
+                </button>
+                @if (isEdit && arztbriefStatus == ArztbriefStatus.Entwurf)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="Freigeben" disabled="@saving">
+                        Freigeben
+                    </button>
+                }
+            }
+            @if (isEdit && hasPdf)
+            {
+                <a href="/dokumente/@EditId/pdf" target="_blank" class="btn btn-secondary">PDF anzeigen</a>
+            }
+            <a href="/patienten/@PatientId" class="btn btn-secondary">Zurück</a>
         </div>
     </EditForm>
 }
 
 @code {
     [Parameter] public Guid PatientId { get; set; }
+    [Parameter] public Guid? EditId { get; set; }
 
+    private bool isEdit => EditId.HasValue;
     private PatientDto? patient;
     private ArztbriefFormModel form = new();
     private IReadOnlyList<DoctorListItemDto> doctors = [];
@@ -152,17 +179,39 @@ else
     private EncounterDto? selectedEncounter;
     private string icdSearchTerm = string.Empty;
     private bool saving;
+    private bool hasPdf;
+    private ArztbriefStatus arztbriefStatus;
     private string? errorMessage;
+    private string? successMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        if (isEdit)
+        {
+            var detail = await ArztbriefService.GetByIdAsync(EditId!.Value);
+            if (detail is null) { Navigation.NavigateTo("/patienten"); return; }
+
+            PatientId = detail.PatientId;
+            form.DoctorId = detail.DoctorId.ToString();
+            form.EncounterId = detail.EncounterId?.ToString() ?? "";
+            form.RecipientName = detail.RecipientName;
+            form.RecipientAddress = detail.RecipientAddress;
+            form.Subject = detail.Subject;
+            form.Body = detail.Body;
+            form.Diagnoses = detail.Diagnoses;
+            hasPdf = detail.HasPdf;
+            arztbriefStatus = detail.Status;
+        }
+
         patient = await PatientService.GetByIdAsync(PatientId);
         if (patient is null) { Navigation.NavigateTo("/patienten"); return; }
 
         doctors = await UserService.GetDoctorsAsync();
         encounters = await EncounterService.GetByPatientAsync(PatientId);
         medications = await MedicationService.GetByPatientAsync(PatientId);
-        form.Subject = $"Arztbrief — {patient.FullName}";
+
+        if (!isEdit)
+            form.Subject = $"Arztbrief — {patient.FullName}";
     }
 
     private async Task OnEncounterChanged(ChangeEventArgs e)
@@ -382,49 +431,99 @@ Mit freundlichen kollegialen Grüßen
         };
     }
 
-    private async Task HandleSubmit()
+    private CreateArztbriefDto BuildDto()
     {
-        saving = true;
+        Guid.TryParse(form.DoctorId, out var doctorId);
+        Guid? encounterId = Guid.TryParse(form.EncounterId, out var eid) ? eid : null;
+        return new CreateArztbriefDto
+        {
+            PatientId = PatientId,
+            DoctorId = doctorId,
+            EncounterId = encounterId,
+            RecipientName = form.RecipientName,
+            RecipientAddress = form.RecipientAddress,
+            Subject = form.Subject,
+            Body = form.Body,
+            Diagnoses = form.Diagnoses
+        };
+    }
+
+    private bool Validate()
+    {
         errorMessage = null;
-
-        if (!Guid.TryParse(form.DoctorId, out var doctorId))
-        {
-            errorMessage = "Bitte wählen Sie einen Arzt.";
-            saving = false;
-            return;
-        }
-
+        successMessage = null;
+        if (!Guid.TryParse(form.DoctorId, out _))
+        { errorMessage = "Bitte wählen Sie einen Arzt."; return false; }
         if (string.IsNullOrWhiteSpace(form.RecipientName))
-        {
-            errorMessage = "Bitte geben Sie einen Empfänger an.";
-            saving = false;
-            return;
-        }
+        { errorMessage = "Bitte geben Sie einen Empfänger an."; return false; }
+        return true;
+    }
 
+    private async Task SaveDraft()
+    {
+        if (!Validate()) return;
+        saving = true;
         try
         {
-            Guid? encounterId = Guid.TryParse(form.EncounterId, out var eid) ? eid : null;
-
-            var docId = await ArztbriefService.CreateAndGeneratePdfAsync(new CreateArztbriefDto
+            if (isEdit)
             {
-                PatientId = PatientId,
-                DoctorId = doctorId,
-                EncounterId = encounterId,
-                RecipientName = form.RecipientName,
-                RecipientAddress = form.RecipientAddress,
-                Subject = form.Subject,
-                Body = form.Body,
-                Diagnoses = form.Diagnoses
-            });
-
-            Navigation.NavigateTo($"/dokumente/{docId}/pdf");
+                await ArztbriefService.UpdateAsync(EditId!.Value, BuildDto());
+                successMessage = "Entwurf gespeichert.";
+            }
+            else
+            {
+                var id = await ArztbriefService.SaveDraftAsync(BuildDto());
+                Navigation.NavigateTo($"/arztbrief/{id}");
+            }
         }
-        catch (Exception ex)
-        {
-            errorMessage = ex.Message;
-            saving = false;
-        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        saving = false;
     }
+
+    private async Task SaveAndGeneratePdf()
+    {
+        if (!Validate()) return;
+        saving = true;
+        try
+        {
+            Guid briefId;
+            if (isEdit)
+            {
+                await ArztbriefService.UpdateAsync(EditId!.Value, BuildDto());
+                briefId = EditId!.Value;
+            }
+            else
+            {
+                briefId = await ArztbriefService.SaveDraftAsync(BuildDto());
+            }
+            await ArztbriefService.GeneratePdfAsync(briefId);
+            hasPdf = true;
+            if (!isEdit)
+                Navigation.NavigateTo($"/arztbrief/{briefId}");
+            else
+                successMessage = "PDF erzeugt.";
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        saving = false;
+    }
+
+    private async Task Freigeben()
+    {
+        saving = true;
+        try
+        {
+            if (!hasPdf)
+                await ArztbriefService.GeneratePdfAsync(EditId!.Value);
+            await ArztbriefService.UpdateStatusAsync(EditId!.Value, ArztbriefStatus.Freigegeben);
+            arztbriefStatus = ArztbriefStatus.Freigegeben;
+            hasPdf = true;
+            successMessage = "Arztbrief freigegeben.";
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        saving = false;
+    }
+
+    private async Task HandleSubmit() => await SaveDraft();
 
     private class ArztbriefFormModel
     {
