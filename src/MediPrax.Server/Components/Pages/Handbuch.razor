@@ -8,14 +8,11 @@
 
 <iframe id="docs-frame"
         src="@GetDocsUrl()"
-        class="docs-frame"
-        @ref="iframeRef">
+        style="position:fixed;top:0;left:240px;width:calc(100vw - 240px);height:100vh;border:none;z-index:10;background:#fff;">
 </iframe>
 
 @code {
     [Parameter] public string? Path { get; set; }
-
-    private ElementReference iframeRef;
 
     private string GetDocsUrl()
     {
