@@ -1,0 +1,116 @@
+site_name: MediPrax Benutzerhandbuch
+site_description: Benutzerhandbuch für MediPrax — Praxisverwaltungssystem für Neurologie und Psychiatrie
+use_directory_urls: true
+
+theme:
+  name: material
+  language: de
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Dunkelmodus aktivieren
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Hellmodus aktivieren
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - toc.follow
+    - content.tabs.link
+
+plugins:
+  - search:
+      lang: de
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Startseite: index.md
+  - Erste Schritte:
+    - Anmeldung & Oberfläche: erste-schritte/anmeldung.md
+    - Dashboard: erste-schritte/dashboard.md
+    - Globale Suche: erste-schritte/suche.md
+  - Patientenverwaltung:
+    - Patientenübersicht: patienten/uebersicht.md
+    - Patient anlegen & bearbeiten: patienten/anlegen.md
+    - Patientenakte: patienten/akte.md
+  - Terminplanung:
+    - Wochenansicht: termine/wochenansicht.md
+    - Termin anlegen: termine/anlegen.md
+    - Terminserien: termine/serien.md
+    - Terminvorlagen: termine/vorlagen.md
+    - Wartezimmer: termine/wartezimmer.md
+    - Warteliste: termine/warteliste.md
+  - Klinische Dokumentation:
+    - Kontakte / Encounters: dokumentation/kontakte.md
+    - Psychopathologischer Befund (AMDP): dokumentation/psychopath-befund.md
+    - Neurologischer Befund: dokumentation/neuro-befund.md
+    - Psychometrische Tests: dokumentation/psychometrie.md
+    - Suizidalitätseinschätzung: dokumentation/suizidalitaet.md
+    - Textbausteine: dokumentation/textbausteine.md
+  - Krankheitsspezifische Module:
+    - Anfallskalender (Epilepsie): krankheiten/epilepsie.md
+    - Kopfschmerz-Tagebuch: krankheiten/kopfschmerz.md
+    - MS-Dokumentation: krankheiten/ms.md
+    - Parkinson-Dokumentation: krankheiten/parkinson.md
+  - Therapie & PTV:
+    - Therapiefälle: therapie/faelle.md
+    - PTV-Formulare: therapie/ptv.md
+    - DMP Depression: therapie/dmp.md
+  - Medikation:
+    - Medikamentenverwaltung: medikation/verwaltung.md
+    - Labormonitoring: medikation/monitoring.md
+    - BtM-Verwaltung: medikation/btm.md
+    - Rezepte & E-Rezept: medikation/rezepte.md
+  - Abrechnung:
+    - EBM-Abrechnung: abrechnung/ebm.md
+    - Plausibilitätsprüfung: abrechnung/plausibilitaet.md
+    - GOP-Vorschläge: abrechnung/gop-vorschlaege.md
+    - Quartalsvalidierung: abrechnung/quartalsvalidierung.md
+    - KVDT-Export: abrechnung/kvdt.md
+    - Privatrechnungen (GOÄ): abrechnung/privatrechnungen.md
+  - Formulare & Dokumente:
+    - Arztbriefe: formulare/arztbriefe.md
+    - KBV-Formulare: formulare/kbv.md
+    - PsychKG & Betreuung: formulare/psychkg.md
+    - eAU: formulare/eau.md
+  - Geräteintegration:
+    - GDT-Schnittstelle: geraete/gdt.md
+    - Videosprechstunde: geraete/video.md
+  - Telematikinfrastruktur:
+    - Übersicht: telematik/uebersicht.md
+    - eGK einlesen: telematik/egk.md
+    - E-Rezept: telematik/erezept.md
+    - KIM: telematik/kim.md
+  - Verwaltung:
+    - Benutzerverwaltung: verwaltung/benutzer.md
+    - Datenimport: verwaltung/import.md
+    - Audit-Log: verwaltung/audit.md
+
+extra:
+  generator: false
