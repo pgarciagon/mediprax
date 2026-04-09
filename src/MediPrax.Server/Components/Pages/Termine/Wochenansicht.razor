@@ -6,7 +6,7 @@
 @rendermode InteractiveServer
 
 <PageTitle>Terminplanung</PageTitle>
-<style>.main-content:has(.week-grid) { max-width: none !important; }</style>
+<style>.main-content:has(.week-grid), .main-content:has(.timeline-grid) { max-width: none !important; }</style>
 
 <div class="page-header">
     <h1>Terminplanung</h1>
@@ -25,14 +25,20 @@
         <span class="week-label">@weekStart.ToString("dd.MM.") – @weekStart.AddDays(6).ToString("dd.MM.yyyy")</span>
     </div>
 
-    <div class="doctor-filter">
-        <select class="form-control" @bind="selectedDoctorId" @bind:after="LoadSchedule">
-            <option value="">Alle Ärzte</option>
-            @foreach (var doc in doctors)
-            {
-                <option value="@doc.Id">@doc.FullName</option>
-            }
-        </select>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+        <div class="view-toggle">
+            <button class="btn btn-sm @(viewMode == "liste" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "liste"'>Liste</button>
+            <button class="btn btn-sm @(viewMode == "kalender" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "kalender"'>Kalender</button>
+        </div>
+        <div class="doctor-filter">
+            <select class="form-control" @bind="selectedDoctorId" @bind:after="LoadSchedule">
+                <option value="">Alle Ärzte</option>
+                @foreach (var doc in doctors)
+                {
+                    <option value="@doc.Id">@doc.FullName</option>
+                }
+            </select>
+        </div>
     </div>
 </div>
 
@@ -40,13 +46,14 @@
 {
     <p>Laden...</p>
 }
-else
+else if (viewMode == "liste")
 {
+    @* === LISTE VIEW (existing) === *@
     <div class="week-grid">
-        @foreach (var day in schedule.Days.Take(6)) // Mo-Sa
+        @foreach (var day in schedule.Days.Take(6))
         {
             var isToday = day.Date == DateOnly.FromDateTime(DateTime.Today);
-            <div class="day-column @(isToday ? "today" : "") @(day.Date.DayOfWeek == DayOfWeek.Sunday ? "sunday" : "")">
+            <div class="day-column @(isToday ? "today" : "")">
                 <div class="day-header">
                     <span class="day-name">@GetDayName(day.Date.DayOfWeek)</span>
                     <span class="day-date @(isToday ? "today-badge" : "")">@day.Date.ToString("dd.MM.")</span>
@@ -75,12 +82,88 @@ else
         }
     </div>
 }
+else
+{
+    @* === KALENDER/TIMELINE VIEW === *@
+    <div class="timeline-container">
+        <div class="timeline-grid">
+            @* Time axis column *@
+            <div class="time-axis">
+                <div class="time-axis-header"></div>
+                @for (var h = startHour; h < endHour; h++)
+                {
+                    <div class="time-label" style="height:@(slotHeight * 2)px;">
+                        <span>@($"{h:00}:00")</span>
+                    </div>
+                }
+            </div>
+
+            @* Day columns *@
+            @foreach (var day in schedule.Days.Take(6))
+            {
+                var isToday = day.Date == DateOnly.FromDateTime(DateTime.Today);
+                var dayAppts = day.Appointments.ToList();
+
+                <div class="timeline-day @(isToday ? "today" : "")">
+                    <div class="timeline-day-header">
+                        <span class="day-name">@GetDayName(day.Date.DayOfWeek)</span>
+                        <span class="day-date @(isToday ? "today-badge" : "")">@day.Date.ToString("dd.MM.")</span>
+                    </div>
+                    <div class="timeline-slots" style="height:@((endHour - startHour) * slotHeight * 2)px;position:relative;">
+                        @* Half-hour grid lines *@
+                        @for (var h = startHour; h < endHour; h++)
+                        {
+                            var topHour = (h - startHour) * slotHeight * 2;
+                            <div class="grid-line" style="top:@(topHour)px;"></div>
+                            <div class="grid-line half" style="top:@(topHour + slotHeight)px;"></div>
+                        }
+
+                        @* Appointment blocks *@
+                        @foreach (var appt in dayAppts)
+                        {
+                            var localTime = appt.StartTime.ToLocalTime();
+                            var minutesFromStart = (localTime.Hour - startHour) * 60 + localTime.Minute;
+                            if (minutesFromStart < 0) continue;
+                            var top = (int)(minutesFromStart * slotHeight / 30.0);
+                            var height = Math.Max((int)(appt.DurationMinutes * slotHeight / 30.0), slotHeight / 2);
+                            var color = GetDoctorColor(appt.DoctorName);
+
+                            <div class="timeline-appt status-@appt.Status.ToString().ToLower()"
+                                 style="top:@(top)px;height:@(height)px;border-left-color:@color;background:@(color)12;"
+                                 @onclick="() => ViewAppointment(appt.Id)"
+                                 title="@appt.PatientName — @appt.Notes">
+                                <span class="appt-time">@localTime.ToString("HH:mm") – @appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
+                                <span class="appt-patient">@appt.PatientName</span>
+                                @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId))
+                                {
+                                    <span class="appt-doctor">@appt.DoctorName</span>
+                                }
+                                @if (!string.IsNullOrEmpty(appt.Notes) && height > 50)
+                                {
+                                    <span class="appt-notes">@appt.Notes</span>
+                                }
+                            </div>
+                        }
+
+                        @* Click empty area to create *@
+                        <div class="timeline-click-area" @onclick="(e) => CreateAtSlot(day.Date, e)"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
 
 @code {
     private WeekScheduleDto? schedule;
     private IReadOnlyList<DoctorListItemDto> doctors = [];
     private DateOnly weekStart;
     private string selectedDoctorId = string.Empty;
+    private string viewMode = "kalender";
+
+    private const int startHour = 8;
+    private const int endHour = 18;
+    private const int slotHeight = 28; // pixels per 30 min
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,6 +184,11 @@ else
 
     private void ViewAppointment(Guid id) => Navigation.NavigateTo($"/termine/{id}");
 
+    private void CreateAtSlot(DateOnly date, Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        Navigation.NavigateTo($"/termine/neu");
+    }
+
     private static DateOnly GetMonday(DateOnly date)
     {
         var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
@@ -117,4 +205,12 @@ else
         DayOfWeek.Saturday => "Sa",
         _ => "So"
     };
+
+    private static string GetDoctorColor(string? doctorName)
+    {
+        if (string.IsNullOrEmpty(doctorName)) return "#2563eb";
+        var hash = doctorName.GetHashCode();
+        var colors = new[] { "#2563eb", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2" };
+        return colors[Math.Abs(hash) % colors.Length];
+    }
 }
