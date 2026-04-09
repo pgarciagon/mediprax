@@ -126,20 +126,36 @@ else
                             var color = GetDoctorColor(appt.DoctorName);
                             var widthPct = 100.0 / item.TotalColumns;
                             var leftPct = widthPct * item.Column;
+                            var cols = item.TotalColumns;
 
                             <div class="timeline-appt status-@appt.Status.ToString().ToLower()"
-                                 style="top:@(item.Top)px;height:@(item.Height)px;left:@(leftPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;width:calc(@(widthPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))% - 4px);border-left-color:@color;background:@(color)12;"
+                                 style="top:@(item.Top)px;height:@(item.Height)px;left:@(F(leftPct))%;width:calc(@(F(widthPct))% - 3px);border-left-color:@color;background:@(color)12;"
                                  @onclick="() => ViewAppointment(appt.Id)"
-                                 title="@appt.PatientName — @appt.Notes">
-                                <span class="appt-time">@item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
-                                <span class="appt-patient">@appt.PatientName</span>
-                                @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId) && item.Height > 35)
+                                 title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
+                                @if (cols <= 3)
                                 {
-                                    <span class="appt-doctor">@appt.DoctorName</span>
+                                    @* Full detail *@
+                                    <span class="appt-time">@item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
+                                    <span class="appt-patient">@appt.PatientName</span>
+                                    @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId) && item.Height > 35)
+                                    {
+                                        <span class="appt-doctor">@appt.DoctorName</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(appt.Notes) && item.Height > 55)
+                                    {
+                                        <span class="appt-notes">@appt.Notes</span>
+                                    }
                                 }
-                                @if (!string.IsNullOrEmpty(appt.Notes) && item.Height > 55)
+                                else if (cols <= 5)
                                 {
-                                    <span class="appt-notes">@appt.Notes</span>
+                                    @* Compact: time + short name *@
+                                    <span class="appt-time">@item.StartLocal.ToString("HH:mm")</span>
+                                    <span class="appt-patient">@GetShortName(appt.PatientName)</span>
+                                }
+                                else
+                                {
+                                    @* Minimal: initials only *@
+                                    <span class="appt-patient" style="font-size:0.65rem;">@GetInitials(appt.PatientName)</span>
                                 }
                             </div>
                         }
@@ -281,6 +297,27 @@ else
         }
 
         return items.Select((x, i) => new LayoutItem(x.Appt, x.Top, x.Height, x.StartLocal, itemColumns[i], itemTotalCols[i])).ToList();
+    }
+
+    private static string F(double v) => v.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string GetShortName(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "?";
+        // "Weber, Klaus" → "Weber, K." / "Klaus Weber" → "K. Weber"
+        var parts = name.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0]}, {parts[1][0]}.";
+        return name.Length > 8 ? name[..8] + "." : name;
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}";
+        return name[..1];
     }
 
     private static string GetDoctorColor(string? doctorName)
