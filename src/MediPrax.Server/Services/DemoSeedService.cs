@@ -37,6 +37,12 @@ public static class DemoSeedService
         // --- Users (Doctors + MFA) ---
         var mfaKoch = EnsureUser(db, "Sabine", "Koch", "koch@neuropsych-bremen.de", UserRole.MFA);
 
+        // --- Bulk patients (stress test: 300 patients) ---
+        if (db.Patients.Count() < 100)
+        {
+            SeedBulkPatients(db);
+        }
+
         // --- Patients ---
         var weber = CreatePatient(db, "Klaus", "Weber", new DateOnly(1958, 3, 12), "M", InsuranceType.GKV,
             "AOK Bremen", "V1234567890", "A123456789", "Ostertorsteinweg 42", "Bremen", "28203", "0421-3456789");
@@ -394,6 +400,48 @@ public static class DemoSeedService
             new Recall { PatientId = schulz.Id, DueDate = DateOnly.FromDateTime(DateTime.Today.AddDays(7)), Reason = "MMST-Kontrolle", Status = RecallStatus.Open }
         );
 
+        db.SaveChanges();
+    }
+
+    private static void SeedBulkPatients(MediPraxDbContext db)
+    {
+        var firstNamesMale = new[] { "Hans", "Peter", "Karl", "Wolfgang", "Dieter", "Jürgen", "Manfred", "Thomas", "Werner", "Helmut", "Gerhard", "Heinz", "Horst", "Rolf", "Bernd", "Uwe", "Klaus", "Günter", "Michael", "Andreas", "Stefan", "Frank", "Rainer", "Norbert", "Martin", "Detlef", "Axel", "Volker", "Christoph", "Matthias" };
+        var firstNamesFemale = new[] { "Ursula", "Ingrid", "Helga", "Renate", "Monika", "Karin", "Brigitte", "Gertrud", "Erika", "Christa", "Gisela", "Hannelore", "Sabine", "Petra", "Andrea", "Birgit", "Claudia", "Heike", "Susanne", "Martina", "Gabriele", "Angelika", "Anja", "Nicole", "Sandra", "Kathrin", "Silke", "Bettina", "Dagmar", "Elke" };
+        var lastNames = new[] { "Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Schulz", "Hoffmann", "Koch", "Richter", "Bauer", "Klein", "Wolf", "Schröder", "Neumann", "Schwarz", "Zimmermann", "Braun", "Krüger", "Hofmann", "Hartmann", "Lange", "Schmitt", "Werner", "Schmitz", "Krause", "Meier", "Lehmann", "Schmid", "Schulze", "Maier", "Köhler", "Herrmann", "König", "Walter", "Mayer", "Huber", "Kaiser" };
+        var streets = new[] { "Hauptstr.", "Bahnhofstr.", "Gartenstr.", "Schulstr.", "Dorfstr.", "Bergstr.", "Kirchstr.", "Waldstr.", "Ringstr.", "Birkenweg", "Am Markt", "Lindenstr.", "Rosenweg", "Schillerstr.", "Goethestr.", "Mozartstr.", "Beethovenstr.", "Lessingstr.", "Am Park", "Friedhofstr." };
+        var insurers = new[] { "AOK Bremen", "TK", "Barmer", "DAK", "IKK", "BKK", "KKH", "hkk" };
+        var rng = new Random(123);
+
+        for (var i = 0; i < 300; i++)
+        {
+            var isMale = rng.Next(2) == 0;
+            var firstName = isMale ? firstNamesMale[rng.Next(firstNamesMale.Length)] : firstNamesFemale[rng.Next(firstNamesFemale.Length)];
+            var lastName = lastNames[rng.Next(lastNames.Length)];
+
+            // Skip if already exists (from named seed data)
+            if (db.Patients.Any(p => p.FirstName == firstName && p.LastName == lastName)) continue;
+
+            var year = rng.Next(1940, 2005);
+            var month = rng.Next(1, 13);
+            var day = rng.Next(1, 28);
+            var isPkv = rng.Next(10) == 0; // 10% PKV
+
+            db.Patients.Add(new Patient
+            {
+                FirstName = firstName,
+                LastName = lastName,
+                DateOfBirth = new DateOnly(year, month, day),
+                Gender = isMale ? "M" : "W",
+                InsuranceType = isPkv ? InsuranceType.PKV : InsuranceType.GKV,
+                InsuranceProvider = isPkv ? "Debeka" : insurers[rng.Next(insurers.Length)],
+                InsuranceNumber = $"V{rng.Next(1000000000, 2000000000)}",
+                Kvnr = isPkv ? null : $"{(char)('A' + rng.Next(26))}{rng.Next(100000000, 999999999)}",
+                Street = $"{streets[rng.Next(streets.Length)]} {rng.Next(1, 200)}",
+                City = "Bremen",
+                PostalCode = $"28{rng.Next(195, 220):000}",
+                Phone = $"0421-{rng.Next(1000000, 9999999)}"
+            });
+        }
         db.SaveChanges();
     }
 
