@@ -2114,6 +2114,116 @@ Per BtMVV, check 30-day maximum quantities:
 
 ---
 
+## Milestone 36: Automated Mahnwesen (Payment Reminders)
+
+> **Priority:** P3 | **Estimated Effort:** Small-Medium
+> **Why:** Overdue private invoices require systematic follow-up. Manual tracking wastes MFA time and loses revenue.
+
+### 36.1 Features
+
+- **Automated overdue detection:** Daily background check for invoices past DueDate
+- **3-stage reminder workflow:**
+  - 1. Zahlungserinnerung (friendly reminder) after 14 days overdue
+  - 2. Erste Mahnung (first formal reminder) after 30 days overdue
+  - 3. Zweite Mahnung (with Mahngebuehr notice) after 45 days overdue
+- **Reminder PDF generation:** Each stage generates a formal letter (QuestPDF)
+- **Dashboard widget:** "Offene Rechnungen: X EUR, davon Y ueberfaellig"
+- **Bulk actions:** Send all pending reminders at once
+- **Tracking:** ReminderCount, LastReminderDate on PrivateInvoice (already exists)
+
+### 36.2 Files to Create/Modify
+
+| Action | File |
+|--------|------|
+| Create | `MediPrax.Server/Services/MahnwesenBackgroundService.cs` (daily check) |
+| Create | `MediPrax.Reporting/Rechnung/MahnungDocument.cs` (PDF for each stage) |
+| Modify | `MediPrax.Application/Services/PrivateInvoiceService.cs` (reminder logic) |
+| Modify | `MediPrax.Server/Components/Pages/Abrechnung/Privatrechnungen.razor` (bulk actions) |
+| Modify | `MediPrax.Server/Components/Pages/Home.razor` (dashboard widget) |
+
+---
+
+## Milestone 37: DATEV-Export Interface
+
+> **Priority:** P3 | **Estimated Effort:** Small
+> **Why:** Most practices use a Steuerberater who works with DATEV. Automated export saves manual bookkeeping and reduces errors.
+
+### 37.1 Features
+
+- **DATEV-Format Export:** Generate DATEV-compatible CSV (Buchungsstapel format)
+- **Monthly/quarterly export:** Select period, generate file
+- **Mapping:** GOP-Einnahmen, Privatrechnungen, Zahlungseingaenge mapped to DATEV Kontenrahmen SKR03/SKR04
+- **Categories:** Separate accounts for GKV-Einnahmen, PKV-Einnahmen, Mahngebuehren
+- **Download:** CSV file ready for Steuerberater import
+
+### 37.2 Files to Create/Modify
+
+| Action | File |
+|--------|------|
+| Create | `MediPrax.Application/Services/DatevExportService.cs` |
+| Create | `MediPrax.Application/DTOs/DatevExportDto.cs` |
+| Create | `MediPrax.Server/Components/Pages/Verwaltung/DatevExport.razor` |
+| Modify | `MediPrax.Server/Program.cs` (export endpoint) |
+
+---
+
+## Milestone 38: Umsatzstatistik (Revenue Analytics)
+
+> **Priority:** P3 | **Estimated Effort:** Medium
+> **Why:** Practice owners need financial overview: revenue by period, by doctor, by insurance type. Essential for business decisions and KV-Abrechnung verification.
+
+### 38.1 Features
+
+- **Dashboard page** with charts and KPIs:
+  - Umsatz pro Quartal (bar chart)
+  - Umsatz pro Arzt (pie chart)
+  - GKV vs. PKV Verteilung
+  - Top-10 GOPs by frequency and revenue
+  - Offene Privatrechnungen total
+  - Vergleich zum Vorquartal
+- **Filters:** Period (Quartal/Monat/Jahr), Doctor, Insurance type
+- **Export:** CSV download of all data
+- **Praxis-Kennzahlen:** Fallzahl, Scheinzahl, Fallwert, Punktzahlvolumen
+
+### 38.2 Files to Create/Modify
+
+| Action | File |
+|--------|------|
+| Create | `MediPrax.Application/Services/RevenueStatisticsService.cs` |
+| Create | `MediPrax.Application/DTOs/RevenueStatisticsDto.cs` |
+| Create | `MediPrax.Server/Components/Pages/Berichte/Umsatzstatistik.razor` |
+| Modify | `MediPrax.Server/Components/Pages/Home.razor` (summary KPIs) |
+
+---
+
+## Milestone 39: Arztbrief Therapiebericht Vorlage
+
+> **Priority:** P2 | **Estimated Effort:** Small
+> **Why:** Therapy progress reports are the most common Arztbrief type in psychiatric practices. Auto-populating from the active TherapyCase saves significant documentation time.
+
+### 39.1 Features
+
+- **New Vorlage "Therapiebericht"** in ArztbriefFormular
+- Detects active TherapyCase for the patient, auto-includes:
+  - Therapieverfahren (VT, TP, etc.)
+  - Status (Bewilligt, In Behandlung, etc.)
+  - Sitzungszahl: "Bisher X von Y bewilligten Sitzungen durchgefuehrt"
+  - Startdatum der Therapie
+  - Diagnosen des Therapiefalls
+  - Kassengenehmigung (Aktenzeichen)
+- Falls back to standard Verlaufsbericht if no active TherapyCase
+- Combined with existing Encounter data (medication, Befund)
+
+### 39.2 Files to Modify
+
+| Action | File |
+|--------|------|
+| Modify | `MediPrax.Server/Components/Pages/Dokumente/ArztbriefFormular.razor` (new Vorlage button + template logic) |
+| Modify | `MediPrax.Application/Interfaces/ITherapyCaseService.cs` (GetActiveByPatientAsync) |
+| Modify | `MediPrax.Application/Services/TherapyCaseService.cs` |
+
+---
+
 ## Cross-Cutting Concerns
 
 ### Navigation Updates

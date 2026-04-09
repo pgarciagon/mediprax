@@ -5,6 +5,7 @@
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService
 @inject IMedicationService MedicationService
+@inject ITherapyCaseService TherapyCaseService
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -184,6 +185,7 @@ else
                     <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("befund")'>Befundbericht</button>
                     <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("verlauf")'>Verlaufsbericht</button>
                     <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("entlassung")'>Entlassungsbericht</button>
+                    <button type="button" class="btn btn-sm btn-primary" @onclick='() => ApplyTemplate("therapiebericht")'>Therapiebericht</button>
                 </div>
                 @if (selectedEncounter is not null)
                 {
@@ -277,6 +279,7 @@ else
     private IReadOnlyList<DoctorListItemDto> doctors = [];
     private IReadOnlyList<EncounterListItemDto> encounters = [];
     private IReadOnlyList<MedicationDto> medications = [];
+    private IReadOnlyList<TherapyCaseListItemDto> therapyCases = [];
     private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
     private EncounterDto? selectedEncounter;
     private string icdSearchTerm = string.Empty;
@@ -314,6 +317,7 @@ else
         doctors = await UserService.GetDoctorsAsync();
         encounters = await EncounterService.GetByPatientAsync(PatientId);
         medications = await MedicationService.GetByPatientAsync(PatientId);
+        therapyCases = await TherapyCaseService.GetByPatientAsync(PatientId);
 
         if (!isEdit)
             form.Subject = $"Arztbrief — {patient.FullName}";
@@ -532,8 +536,73 @@ Empfehlungen:
 
 Mit freundlichen kollegialen Grüßen
 """,
+            "therapiebericht" => BuildTherapiebericht(diagnosen, medikation, befund, anrede, pronomen, datum, gebDatum),
             _ => form.Body
         };
+    }
+
+    private string BuildTherapiebericht(string diagnosen, string medikation, string befund, string anrede, string pronomen, string datum, string gebDatum)
+    {
+        var activeCase = therapyCases.FirstOrDefault(tc =>
+            tc.Status != TherapyCaseStatus.Abgeschlossen && tc.Status != TherapyCaseStatus.Abgebrochen && tc.Status != TherapyCaseStatus.Abgelehnt);
+
+        if (activeCase is null)
+        {
+            // Fallback to Verlaufsbericht if no active therapy case
+            return $"""
+Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+wir berichten über {(patient!.Gender == "W" ? "unsere Patientin" : "unseren Patienten")} {patient.FullName}, geb. {gebDatum}.
+
+(Kein aktiver Therapiefall gefunden — bitte manuell ergänzen.)
+
+Diagnosen:
+{diagnosen}
+
+Aktueller Verlauf:
+{befund}
+
+Aktuelle Medikation:
+{medikation}
+
+Weiteres Procedere:
+[Bitte ergänzen]
+
+Mit freundlichen kollegialen Grüßen
+""";
+        }
+
+        var therapieInfo = $"""
+  Verfahren: {activeCase.TherapyTypeName}
+  Status: {activeCase.Status}
+  Therapiebeginn: {activeCase.StartDate:dd.MM.yyyy}
+  Sitzungen: {activeCase.CompletedSessions} von {activeCase.ApprovedSessions} bewilligten Sitzungen durchgeführt
+""";
+
+        return $"""
+Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+wir berichten über den Therapieverlauf {(patient!.Gender == "W" ? "unserer Patientin" : "unseres Patienten")} {patient.FullName}, geb. {gebDatum}, {pronomen} sich seit {activeCase.StartDate:dd.MM.yyyy} in {(activeCase.TherapyTypeName.Contains("VT") || activeCase.TherapyTypeName.Contains("Verhaltens") ? "verhaltenstherapeutischer" : activeCase.TherapyTypeName.Contains("TP") || activeCase.TherapyTypeName.Contains("Tiefenpsych") ? "tiefenpsychologisch fundierter" : "psychotherapeutischer")} Behandlung in unserer Praxis befindet.
+
+Diagnosen:
+{diagnosen}
+
+Therapierahmen:
+{therapieInfo}
+Aktueller Verlauf:
+{befund}
+
+Aktuelle Medikation:
+{medikation}
+
+Beurteilung und Prognose:
+[Bitte ergänzen]
+
+Weiteres Procedere:
+[Bitte ergänzen]
+
+Mit freundlichen kollegialen Grüßen
+""";
     }
 
     private CreateArztbriefDto BuildDto()
