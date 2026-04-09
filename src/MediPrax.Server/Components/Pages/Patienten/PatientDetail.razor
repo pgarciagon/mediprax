@@ -157,18 +157,18 @@ else
             <div class="encounter-list">
                 @foreach (var brief in arztbriefe)
                 {
-                    <a href="/dokumente/@brief.Id/pdf" target="_blank" class="encounter-item">
+                    <div class="encounter-item" style="display:flex;align-items:center;">
                         <div class="enc-date">
                             <svg style="width:20px;height:20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         </div>
-                        <div class="enc-details">
+                        <div class="enc-details" style="flex:1">
                             <span class="enc-doctor">@brief.Title</span>
                             <span class="enc-codes">@brief.CreatedAt.ToString("dd.MM.yyyy HH:mm")</span>
                         </div>
-                        <div class="enc-meta">
-                            <span class="enc-status status-completed">PDF</span>
+                        <div class="enc-meta" style="display:flex;gap:0.4rem;align-items:center;">
+                            <a href="/dokumente/@brief.Id/pdf" target="_blank" class="btn btn-sm btn-secondary" title="PDF herunterladen">PDF</a>
                         </div>
-                    </a>
+                    </div>
                 }
             </div>
         }
