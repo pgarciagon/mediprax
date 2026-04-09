@@ -4,7 +4,17 @@ Die Wochenansicht ist die zentrale Terminuebersicht in MediPrax. Sie erreichen s
 
 ## Aufbau
 
-Die Wochenansicht zeigt ein **Raster von Montag bis Samstag** mit Zeitslots. Jeder Termin wird als farbiger Block in der entsprechenden Spalte und Zeile dargestellt.
+Die Wochenansicht bietet drei Darstellungsmodi:
+
+- **Tag**: Tagesansicht mit Zeitleiste fuer einen einzelnen Tag
+- **Kalender**: Wochenraster von Montag bis Samstag mit Zeitslots
+- **Liste**: Kompakte Listenansicht aller Termine der Woche
+
+### Standardansicht fuer Aerzte
+
+Wenn Sie als **Arzt** angemeldet sind, oeffnet sich die Wochenansicht standardmaessig in der **Tagesansicht** mit dem **eigenen Arztfilter** vorausgewaehlt. So sehen Sie sofort Ihre heutigen Termine.
+
+MFA, Empfang und Admin sehen standardmaessig die Kalenderansicht mit allen Aerzten.
 
 ### Farbkodierung der Status
 
@@ -20,22 +30,29 @@ Die Wochenansicht zeigt ein **Raster von Montag bis Samstag** mit Zeitslots. Jed
 
 Wenn mehrere Aerzte in der Praxis arbeiten, koennen Sie die Ansicht nach **einzelnen Aerzten** filtern. Waehlen Sie den gewuenschten Arzt im Dropdown oberhalb des Kalenders aus.
 
+### Terminart
+
+Jeder Termin zeigt die zugeordnete **Terminart** an (z. B. Erstgespraech, Folgetermin, Psychotherapie-Sitzung). Die Terminart wird beim Erstellen oder Bearbeiten eines Termins festgelegt und ist dauerhaft gespeichert.
+
 ## Navigation
 
 | Aktion | Beschreibung |
 |---|---|
-| **Zurueck (<)** | Vorherige Woche anzeigen |
-| **Vor (>)** | Naechste Woche anzeigen |
-| **Heute** | Zur aktuellen Woche springen |
+| **Zurueck (<)** | Vorheriger Tag/Woche anzeigen |
+| **Vor (>)** | Naechster Tag/Woche anzeigen |
+| **Heute** | Zum aktuellen Tag/Woche springen |
 
 ## Termin bearbeiten
 
 Klicken Sie auf einen **bestehenden Termin** im Raster, um die Termindetails zu oeffnen. Dort koennen Sie:
 
 - Datum und Uhrzeit aendern
+- Terminart festlegen
 - Notizen hinzufuegen
-- Den Termin loeschen
-- Den [Wartezimmerstatus](wartezimmer.md) aendern
+- Eine **Konsultation starten** (gruener Button)
+
+!!! tip "Konsultation starten"
+    Im Terminformular gibt es den gruenen Button **Konsultation starten**. Dieser oeffnet direkt eine neue Konsultation mit vorausgefuelltem Arzt, Dauer und Terminzuordnung. Der Terminstatus wechselt automatisch auf **In Behandlung**.
 
 ## Schnellaktionen
 
@@ -47,6 +64,3 @@ Von der Wochenansicht aus erreichen Sie direkt:
 
 !!! tip "Tipp"
     Klicken Sie auf eine leere Stelle im Kalender, um direkt einen neuen Termin fuer diesen Zeitpunkt zu erstellen. Datum und Uhrzeit werden automatisch vorausgefuellt.
-
-!!! note "Hinweis"
-    Die Wochenansicht zeigt standardmaessig die aktuelle Woche an. Samstage werden mit angezeigt fuer Praxen mit Samstagssprechstunde.

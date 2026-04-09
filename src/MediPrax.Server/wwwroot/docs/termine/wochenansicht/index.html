@@ -581,6 +581,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#standardansicht-fuer-aerzte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standardansicht fuer Aerzte
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#farbkodierung-der-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -596,6 +607,17 @@
     <span class="md-ellipsis">
       
         Arztfilter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terminart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminart
       
     </span>
   </a>
@@ -2419,6 +2441,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#standardansicht-fuer-aerzte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standardansicht fuer Aerzte
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#farbkodierung-der-status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2434,6 +2467,17 @@
     <span class="md-ellipsis">
       
         Arztfilter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terminart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminart
       
     </span>
   </a>
@@ -2498,7 +2542,15 @@
 <h1 id="wochenansicht">Wochenansicht<a class="headerlink" href="#wochenansicht" title="Permanent link">&para;</a></h1>
 <p>Die Wochenansicht ist die zentrale Terminuebersicht in MediPrax. Sie erreichen sie ueber <strong>Termine</strong> in der Seitenleiste oder direkt unter <code>/termine</code>.</p>
 <h2 id="aufbau">Aufbau<a class="headerlink" href="#aufbau" title="Permanent link">&para;</a></h2>
-<p>Die Wochenansicht zeigt ein <strong>Raster von Montag bis Samstag</strong> mit Zeitslots. Jeder Termin wird als farbiger Block in der entsprechenden Spalte und Zeile dargestellt.</p>
+<p>Die Wochenansicht bietet drei Darstellungsmodi:</p>
+<ul>
+<li><strong>Tag</strong>: Tagesansicht mit Zeitleiste fuer einen einzelnen Tag</li>
+<li><strong>Kalender</strong>: Wochenraster von Montag bis Samstag mit Zeitslots</li>
+<li><strong>Liste</strong>: Kompakte Listenansicht aller Termine der Woche</li>
+</ul>
+<h3 id="standardansicht-fuer-aerzte">Standardansicht fuer Aerzte<a class="headerlink" href="#standardansicht-fuer-aerzte" title="Permanent link">&para;</a></h3>
+<p>Wenn Sie als <strong>Arzt</strong> angemeldet sind, oeffnet sich die Wochenansicht standardmaessig in der <strong>Tagesansicht</strong> mit dem <strong>eigenen Arztfilter</strong> vorausgewaehlt. So sehen Sie sofort Ihre heutigen Termine.</p>
+<p>MFA, Empfang und Admin sehen standardmaessig die Kalenderansicht mit allen Aerzten.</p>
 <h3 id="farbkodierung-der-status">Farbkodierung der Status<a class="headerlink" href="#farbkodierung-der-status" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2538,6 +2590,8 @@
 </table>
 <h3 id="arztfilter">Arztfilter<a class="headerlink" href="#arztfilter" title="Permanent link">&para;</a></h3>
 <p>Wenn mehrere Aerzte in der Praxis arbeiten, koennen Sie die Ansicht nach <strong>einzelnen Aerzten</strong> filtern. Waehlen Sie den gewuenschten Arzt im Dropdown oberhalb des Kalenders aus.</p>
+<h3 id="terminart">Terminart<a class="headerlink" href="#terminart" title="Permanent link">&para;</a></h3>
+<p>Jeder Termin zeigt die zugeordnete <strong>Terminart</strong> an (z. B. Erstgespraech, Folgetermin, Psychotherapie-Sitzung). Die Terminart wird beim Erstellen oder Bearbeiten eines Termins festgelegt und ist dauerhaft gespeichert.</p>
 <h2 id="navigation">Navigation<a class="headerlink" href="#navigation" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2549,15 +2603,15 @@
 <tbody>
 <tr>
 <td><strong>Zurueck (&lt;)</strong></td>
-<td>Vorherige Woche anzeigen</td>
+<td>Vorheriger Tag/Woche anzeigen</td>
 </tr>
 <tr>
 <td><strong>Vor (&gt;)</strong></td>
-<td>Naechste Woche anzeigen</td>
+<td>Naechster Tag/Woche anzeigen</td>
 </tr>
 <tr>
 <td><strong>Heute</strong></td>
-<td>Zur aktuellen Woche springen</td>
+<td>Zum aktuellen Tag/Woche springen</td>
 </tr>
 </tbody>
 </table>
@@ -2565,10 +2619,14 @@
 <p>Klicken Sie auf einen <strong>bestehenden Termin</strong> im Raster, um die Termindetails zu oeffnen. Dort koennen Sie:</p>
 <ul>
 <li>Datum und Uhrzeit aendern</li>
+<li>Terminart festlegen</li>
 <li>Notizen hinzufuegen</li>
-<li>Den Termin loeschen</li>
-<li>Den <a href="../wartezimmer/">Wartezimmerstatus</a> aendern</li>
+<li>Eine <strong>Konsultation starten</strong> (gruener Button)</li>
 </ul>
+<div class="admonition tip">
+<p class="admonition-title">Konsultation starten</p>
+<p>Im Terminformular gibt es den gruenen Button <strong>Konsultation starten</strong>. Dieser oeffnet direkt eine neue Konsultation mit vorausgefuelltem Arzt, Dauer und Terminzuordnung. Der Terminstatus wechselt automatisch auf <strong>In Behandlung</strong>.</p>
+</div>
 <h2 id="schnellaktionen">Schnellaktionen<a class="headerlink" href="#schnellaktionen" title="Permanent link">&para;</a></h2>
 <p>Von der Wochenansicht aus erreichen Sie direkt:</p>
 <ul>
@@ -2579,10 +2637,6 @@
 <div class="admonition tip">
 <p class="admonition-title">Tipp</p>
 <p>Klicken Sie auf eine leere Stelle im Kalender, um direkt einen neuen Termin fuer diesen Zeitpunkt zu erstellen. Datum und Uhrzeit werden automatisch vorausgefuellt.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Hinweis</p>
-<p>Die Wochenansicht zeigt standardmaessig die aktuelle Woche an. Samstage werden mit angezeigt fuer Praxen mit Samstagssprechstunde.</p>
 </div>
 
 

@@ -13,10 +13,11 @@ public class DashboardService(DbContext context) : IDashboardService
         var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
         var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
         var localToday = localNow.Date;
-        var today = TimeZoneInfo.ConvertTimeToUtc(localToday, tz);
-        var todayEnd = TimeZoneInfo.ConvertTimeToUtc(localToday.AddDays(1), tz);
-        var weekStart = localToday.AddDays(-(int)localToday.DayOfWeek + (int)DayOfWeek.Monday);
-        var weekEnd = weekStart.AddDays(7);
+        var today = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localToday, DateTimeKind.Unspecified), tz), DateTimeKind.Utc);
+        var todayEnd = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localToday.AddDays(1), DateTimeKind.Unspecified), tz), DateTimeKind.Utc);
+        var localWeekStart = localToday.AddDays(-(int)localToday.DayOfWeek + (int)DayOfWeek.Monday);
+        var weekStart = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localWeekStart, DateTimeKind.Unspecified), tz), DateTimeKind.Utc);
+        var weekEnd = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localWeekStart.AddDays(7), DateTimeKind.Unspecified), tz), DateTimeKind.Utc);
         var isArzt = role == UserRole.Arzt;
 
         var totalPatients = await context.Set<Patient>().CountAsync(ct);

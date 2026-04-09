@@ -1,61 +1,102 @@
-# Kontakte (Behandlungsdokumentation)
+# Konsultationen (Behandlungsdokumentation)
 
-Ein **Kontakt** dokumentiert eine einzelne Behandlungsbegegnung mit einem Patienten. Hier erfassen Sie Diagnosen, Behandlungsdauer, klinische Notizen und Abrechnungsziffern.
+Eine **Konsultation** dokumentiert eine einzelne Behandlungsbegegnung mit einem Patienten. Hier erfassen Sie Diagnosen, strukturierte Befunde, klinische Notizen und Abrechnungsziffern.
 
-## Neuen Kontakt erstellen
+## Konsultation starten
+
+Es gibt mehrere Wege, eine neue Konsultation zu erstellen:
+
+### Vom Dashboard (empfohlen)
+
+1. Im Dashboard unter **Termine heute** finden Sie Patienten im Status **Wartezimmer**.
+2. Klicken Sie auf die gruene **K**-Schaltflaeche neben dem Patienten.
+3. Die Konsultation oeffnet sich mit vorausgefuelltem Arzt, Dauer und Terminzuordnung.
+4. Der Termin wechselt automatisch auf **In Behandlung**.
+
+### Vom Termin
+
+1. Oeffnen Sie einen Termin (z. B. aus dem Kalender).
+2. Klicken Sie auf den gruenen Button **Konsultation starten**.
+3. Arzt, Dauer und Terminzuordnung werden automatisch uebernommen.
+
+### Von der Patientenakte
 
 1. Oeffnen Sie die [Patientenakte](../patienten/akte.md) des Patienten.
-2. Klicken Sie auf **Neuer Kontakt**.
-3. Fuellen Sie die folgenden Felder aus:
+2. Klicken Sie auf **+ Neue Konsultation**.
+
+## Formular-Aufbau
+
+Das Konsultationsformular ist in folgende Bereiche gegliedert:
+
+### 1. Konsultation
 
 | Feld | Beschreibung | Pflicht |
 |---|---|---|
-| **Datum** | Datum des Kontakts (Standard: heute) | Ja |
-| **Dauer** | Behandlungsdauer in Minuten | Ja |
-| **ICD-10-Diagnosen** | Ein oder mehrere Diagnosecodes | Ja |
-| **Notizen** | Freitextnotizen zur Behandlung | Nein |
+| **Arzt** | Behandelnder Arzt (vorausgefuellt bei Start vom Termin) | Ja |
+| **Datum** | Datum der Konsultation (Standard: heute) | Ja |
+| **Dauer (Min.)** | Behandlungsdauer in Minuten | Nein |
 
-4. Klicken Sie auf **Speichern**.
-
-## ICD-10-Diagnosen
+### 2. ICD-10-GM Diagnosen
 
 Diagnosen werden ueber eine Suchfunktion erfasst:
 
 1. Tippen Sie im Diagnosefeld den **ICD-10-Code** (z. B. "F32.1") oder einen **Suchbegriff** (z. B. "Depression").
-2. Waehlen Sie die passende Diagnose aus der Vorschlagsliste.
-3. Sie koennen **mehrere Diagnosen** pro Kontakt erfassen.
+2. Klicken Sie auf den **Pfeil** oder fokussieren Sie das Feld, um die vollstaendige Liste anzuzeigen.
+3. Waehlen Sie die passende Diagnose aus der Vorschlagsliste.
+4. Sie koennen **mehrere Diagnosen** pro Konsultation erfassen.
 
-!!! info "Hinweis"
-    Die ICD-10-Diagnosen sind Grundlage fuer die [GOP-Vorschlaege](../abrechnung/gop-vorschlaege.md) und die Zuordnung zu psychiatrischen (F-Codes) oder neurologischen (G-Codes) Abrechnungsziffern.
+### 3. Strukturierte Befunde
 
-## Abrechnungsziffern (GOP)
+Hier starten Sie spezialisierte Befundformulare:
 
-Zu jedem Kontakt koennen Abrechnungsziffern hinzugefuegt werden:
+- **Psychopath. Befund (AMDP)** -- Strukturierte psychopathologische Befunderhebung
+- **Neurologischer Befund** -- Strukturierte neurologische Untersuchung
+- **Suizidalitaet** -- Suizidalitaetsbewertung und Sicherheitsplanung
 
-1. Klicken Sie auf **GOP hinzufuegen** im Abrechnungsbereich des Kontakts.
-2. Geben Sie den **GOP-Code** ein (z. B. "21220") oder nutzen Sie die [GOP-Vorschlaege](../abrechnung/gop-vorschlaege.md).
-3. Pruefen Sie die automatisch ermittelte Punktzahl.
-4. Speichern Sie den Kontakt.
+Die Buttons zeigen an, ob bereits ein Befund existiert:
 
-!!! tip "GOP-Vorschlaege"
-    MediPrax schlaegt automatisch passende GOPs vor, basierend auf:
+- **Grauer Button**: Noch kein Befund erfasst -- klicken Sie, um einen neuen zu erstellen
+- **Blauer Button mit Haekchen**: Befund vorhanden
 
-    - Erster Kontakt im Quartal (Grundpauschale)
-    - Behandlungsdauer (zeitbezogene GOPs ab 10 Min.)
-    - Diagnosen (Fach-spezifische GOPs)
-    
-    Siehe [GOP-Vorschlaege](../abrechnung/gop-vorschlaege.md) fuer Details.
+!!! info "Automatische Speicherung"
+    Bei einer neuen Konsultation wird diese automatisch gespeichert, wenn Sie auf einen strukturierten Befund klicken. Sie muessen nicht erst manuell speichern.
 
-## Dauer-Tracking
+### 4. Krankheitsspezifische Module
 
-Die Behandlungsdauer ist wichtig fuer die Abrechnung zeitabhaengiger GOPs:
+Spezialisierte Dokumentationsmodule:
 
-- **Ab 10 Minuten**: Gespraechsziffern (16220, 21220) abrechenbar
-- **Ab 50 Minuten**: Psychotherapie-Ziffern
+- **Anfallskalender** -- Fuer Epilepsie-Patienten
+- **Kopfschmerz-Tagebuch** -- Fuer Migraene-/Kopfschmerzpatienten
+- **MS-Dokumentation** -- Fuer Multiple-Sklerose-Patienten
+- **Parkinson** -- Fuer Parkinson-Patienten
 
-!!! warning "Wichtig"
-    Dokumentieren Sie die Dauer gewissenhaft. Sie ist Grundlage fuer die [Plausibilitaetspruefung](../abrechnung/plausibilitaet.md) und muss bei Zeitbezug nachvollziehbar sein.
+### 5. Befund / Notizen
 
-## Kontakte einsehen
+Dieser Bereich zeigt eine integrierte Ansicht:
 
-Alle Kontakte eines Patienten finden Sie in der [Patientenakte](../patienten/akte.md) im Tab **Kontakte**, chronologisch sortiert mit Datum, Diagnosen und abgerechneten GOPs.
+- **Strukturierte Narrative**: Wenn ein AMDP- oder Neuro-Befund existiert, wird der automatisch generierte Befundtext als blauer Block angezeigt. Klicken Sie auf **Bearbeiten**, um den Befund zu ueberarbeiten.
+- **Vorlagen**: Schnellvorlagen fuer haeufige Befundtypen (Psychiatrisch, Neurologisch, Kurzkonsultation)
+- **Freitext**: Zusaetzliche Notizen im Textfeld
+
+### 6. Status
+
+| Status | Bedeutung |
+|---|---|
+| **Offen** | Konsultation angelegt, Dokumentation in Arbeit |
+| **In Bearbeitung** | Aktive Behandlung |
+| **Abgeschlossen** | Dokumentation fertig -- Termin wechselt automatisch auf **Fertig** |
+
+### 7. Abrechnung (GOP)
+
+Abrechnungsziffern werden nach dem ersten Speichern freigeschaltet:
+
+1. Tippen Sie den **GOP-Code** (z. B. "21220") oder einen Suchbegriff.
+2. Klicken Sie auf den **Pfeil**, um den vollstaendigen GOP-Katalog anzuzeigen.
+3. Waehlen Sie die passende Ziffer -- Punktzahl und Betrag werden automatisch berechnet.
+
+!!! tip "Tipp"
+    Die Behandlungsdauer ist wichtig fuer zeitabhaengige GOPs. Dokumentieren Sie sie gewissenhaft.
+
+## Konsultationen einsehen
+
+Alle Konsultationen eines Patienten finden Sie in der [Patientenakte](../patienten/akte.md) im Bereich **Konsultationen**, chronologisch sortiert.
