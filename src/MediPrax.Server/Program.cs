@@ -49,6 +49,8 @@ builder.Services.AddScoped<IRecallService, RecallService>();
 builder.Services.AddScoped<IPsychopathFindingService, PsychopathFindingService>();
 builder.Services.AddScoped<ILabResultService, LabResultService>();
 builder.Services.AddScoped<IKvdtExportService, KvdtExportService>();
+builder.Services.AddScoped<IBillingPlausibilityService, BillingPlausibilityService>();
+builder.Services.AddScoped<IGopSuggestionService, GopSuggestionService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPsychometricTestService, PsychometricTestService>();
@@ -257,6 +259,77 @@ app.MapGet("/api/ptv/{formId:guid}/pdf", async (Guid formId, ITherapyCaseService
     var pdf = await therapyCaseService.GetPtvFormPdfAsync(formId);
     if (pdf is null) return Results.NotFound();
     return Results.File(pdf, "application/pdf", $"PTV-{formId:N}.pdf");
+}).RequireAuthorization("Klinisch");
+
+app.MapGet("/api/formulare/krankenhauseinweisung", async (Guid patientId, string krankenhaus, string fachabteilung, string diagnose, string? icd, string? befunde, bool notfall, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.KrankenhauseinweisungDocument(new MediPrax.Reporting.Formulare.KrankenhauseinweisungData
+    {
+        PatientName = patient.FullName, Geburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        Krankenhaus = krankenhaus, Fachabteilung = fachabteilung,
+        Einweisungsdiagnose = diagnose, DiagnoseIcd = icd, Befunde = befunde, IsNotfall = notfall,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"Krankenhauseinweisung_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
+app.MapGet("/api/formulare/heilmittelverordnung", async (Guid patientId, string heilmittel, string diagnose, string? icd, string? ziel, int sitzungen, string? frequenz, bool erst, bool hausbesuch, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.HeilmittelverordnungDocument(new MediPrax.Reporting.Formulare.HeilmittelverordnungData
+    {
+        PatientName = patient.FullName, Geburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        HeilmittelTyp = heilmittel, Diagnose = diagnose, DiagnoseIcd = icd,
+        Therapieziel = ziel, AnzahlSitzungen = sitzungen, Frequenz = frequenz,
+        IsErstverordnung = erst, IsHausbesuch = hausbesuch,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"Heilmittelverordnung_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
+app.MapGet("/api/formulare/haeusliche-krankenpflege", async (Guid patientId, string diagnose, string? icd, string leistungen, string von, string bis, string? frequenz, bool psychiatrisch, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.HaeuslicheKrankenpflegeDocument(new MediPrax.Reporting.Formulare.HaeuslicheKrankenpflegeData
+    {
+        PatientName = patient.FullName, Geburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        Adresse = patient.Street != null ? $"{patient.Street}, {patient.PostalCode} {patient.City}" : null,
+        Diagnose = diagnose, DiagnoseIcd = icd, Leistungen = leistungen,
+        VonDatum = von, BisDatum = bis, Frequenz = frequenz, IsPsychiatrisch = psychiatrisch,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"HaeuslicheKrankenpflege_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
+app.MapGet("/api/formulare/soziotherapie", async (Guid patientId, string diagnose, string? icd, string stoerungen, string ziele, int stunden, string? therapeut, bool erst, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.SoziotherapieDocument(new MediPrax.Reporting.Formulare.SoziotherapieData
+    {
+        PatientName = patient.FullName, Geburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        Diagnose = diagnose, DiagnoseIcd = icd,
+        Faehigkeitsstoerungen = stoerungen, Therapieziele = ziele,
+        VerordneteStunden = stunden, Soziotherapeut = therapeut, IsErstverordnung = erst,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"Soziotherapie_{patient.LastName}.pdf");
 }).RequireAuthorization("Klinisch");
 
 // KVDT export endpoint

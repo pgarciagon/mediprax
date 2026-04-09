@@ -6,5 +6,9 @@ public enum DocumentType
     Befund,
     Labor,
     Rezept,
-    Sonstige
+    Sonstige,
+    Krankenhauseinweisung,
+    Heilmittelverordnung,
+    HaeuslicheKrankenpflege,
+    Soziotherapie
 }

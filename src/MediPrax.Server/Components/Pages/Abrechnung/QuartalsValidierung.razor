@@ -1,0 +1,144 @@
+@page "/abrechnung/validierung"
+@attribute [Authorize(Policy = "Klinisch")]
+@using MediPrax.Application.Interfaces
+@inject IBillingPlausibilityService PlausibilityService
+@inject IBillingService BillingService
+@rendermode InteractiveServer
+
+<PageTitle>Quartalsvalidierung</PageTitle>
+
+<div class="page-header">
+    <h1>Quartalsvalidierung</h1>
+    <div class="header-actions">
+        <div class="quarter-selector">
+            <button class="btn btn-sm" @onclick="PrevQuarter">&lt;</button>
+            <span class="quarter-label">@selectedQuarter</span>
+            <button class="btn btn-sm" @onclick="NextQuarter">&gt;</button>
+        </div>
+        <button class="btn btn-primary" @onclick="RunValidation" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span>Validierung läuft...</span>
+            }
+            else
+            {
+                <span>Validierung starten</span>
+            }
+        </button>
+    </div>
+</div>
+
+@if (result is not null)
+{
+    <div class="summary-cards">
+        <div class="summary-card">
+            <span class="summary-value">@result.TotalPatients</span>
+            <span class="summary-label">Patienten geprüft</span>
+        </div>
+        <div class="summary-card @(result.ErrorCount > 0 ? "highlight-error" : "highlight-ok")">
+            <span class="summary-value">@result.ErrorCount</span>
+            <span class="summary-label">Fehler</span>
+        </div>
+        <div class="summary-card @(result.WarningCount > 0 ? "highlight-warning" : "highlight-ok")">
+            <span class="summary-value">@result.WarningCount</span>
+            <span class="summary-label">Hinweise</span>
+        </div>
+    </div>
+
+    @if (!result.Warnings.Any())
+    {
+        <div class="alert alert-success" style="margin-top:1rem;">
+            Keine Plausibilitätsfehler gefunden. Quartal @result.Quarter ist bereit zur Abrechnung.
+        </div>
+    }
+    else
+    {
+        <table class="billing-table" style="margin-top:1rem;">
+            <thead>
+                <tr>
+                    <th>Schwere</th>
+                    <th>Patient</th>
+                    <th>GOP</th>
+                    <th>Prüfart</th>
+                    <th>Meldung</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var w in result.Warnings.OrderByDescending(w => w.Severity))
+                {
+                    <tr>
+                        <td>
+                            @if (w.Severity == PlausibilitySeverity.Error)
+                            {
+                                <span class="badge badge-error">Fehler</span>
+                            }
+                            else if (w.Severity == PlausibilitySeverity.Warning)
+                            {
+                                <span class="badge badge-warning">Hinweis</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-info">Info</span>
+                            }
+                        </td>
+                        <td>@(w.PatientName ?? "—")</td>
+                        <td class="gop-code">@w.GopCode</td>
+                        <td>@w.CheckType</td>
+                        <td>@w.Message</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (!isLoading)
+{
+    <p class="empty-state">Wählen Sie ein Quartal und starten Sie die Validierung.</p>
+}
+
+@code {
+    private QuarterValidationResult? result;
+    private string selectedQuarter = string.Empty;
+    private int quarterOffset;
+    private bool isLoading;
+
+    protected override void OnInitialized()
+    {
+        selectedQuarter = BillingService.GetCurrentQuarter();
+    }
+
+    private async Task RunValidation()
+    {
+        isLoading = true;
+        result = null;
+        StateHasChanged();
+
+        result = await PlausibilityService.ValidateQuarterAsync(selectedQuarter);
+        isLoading = false;
+    }
+
+    private void PrevQuarter()
+    {
+        quarterOffset--;
+        selectedQuarter = GetQuarter(quarterOffset);
+        result = null;
+    }
+
+    private void NextQuarter()
+    {
+        quarterOffset++;
+        selectedQuarter = GetQuarter(quarterOffset);
+        result = null;
+    }
+
+    private string GetQuarter(int offset)
+    {
+        var now = DateTime.UtcNow;
+        var month = now.Month + (offset * 3);
+        var year = now.Year;
+        while (month > 12) { month -= 12; year++; }
+        while (month < 1) { month += 12; year--; }
+        var q = (month - 1) / 3 + 1;
+        return $"{year}-Q{q}";
+    }
+}

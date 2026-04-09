@@ -31,6 +31,22 @@ else
             <h3>AU-Bescheinigung</h3>
             <p>Muster 1</p>
         </div>
+        <div class="form-card" @onclick='() => activeForm = "krankenhaus"'>
+            <h3>Krankenhauseinweisung</h3>
+            <p>Muster 2</p>
+        </div>
+        <div class="form-card" @onclick='() => activeForm = "heilmittel"'>
+            <h3>Heilmittelverordnung</h3>
+            <p>Muster 13</p>
+        </div>
+        <div class="form-card" @onclick='() => activeForm = "hkp"'>
+            <h3>Häusliche Krankenpflege</h3>
+            <p>Muster 12</p>
+        </div>
+        <div class="form-card" @onclick='() => activeForm = "soziotherapie"'>
+            <h3>Soziotherapie</h3>
+            <p>Muster 26</p>
+        </div>
     </div>
 
     @if (activeForm == "rezept")
@@ -134,6 +150,188 @@ else
             </fieldset>
         </div>
     }
+
+    @if (activeForm == "krankenhaus")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Krankenhauseinweisung (Muster 2)</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Krankenhaus *</label>
+                        <InputText @bind-Value="krankenhaus.Krankenhaus" class="form-control" placeholder="z.B. Klinikum Bremen-Mitte" />
+                    </div>
+                    <div class="form-group">
+                        <label>Fachabteilung *</label>
+                        <InputText @bind-Value="krankenhaus.Fachabteilung" class="form-control" placeholder="z.B. Psychiatrie" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Einweisungsdiagnose *</label>
+                        <InputText @bind-Value="krankenhaus.Diagnose" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>ICD-10</label>
+                        <InputText @bind-Value="krankenhaus.IcdCode" class="form-control" placeholder="z.B. F20.0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Befunde / Begründung</label>
+                    <InputTextArea @bind-Value="krankenhaus.Befunde" class="form-control" rows="2" />
+                </div>
+                <div class="form-group" style="flex:0.3">
+                    <label>
+                        <InputCheckbox @bind-Value="krankenhaus.IsNotfall" /> Notfalleinweisung
+                    </label>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateKrankenhaus">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
+
+    @if (activeForm == "heilmittel")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Heilmittelverordnung (Muster 13)</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Heilmittel *</label>
+                        <select @bind="heilmittel.HeilmittelTyp" class="form-control">
+                            <option value="">— Bitte wählen —</option>
+                            <option value="Ergotherapie">Ergotherapie</option>
+                            <option value="Physiotherapie">Physiotherapie</option>
+                            <option value="Logopädie">Logopädie</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:0.5">
+                        <label>Anzahl Sitzungen *</label>
+                        <InputNumber @bind-Value="heilmittel.AnzahlSitzungen" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.5">
+                        <label>Frequenz</label>
+                        <InputText @bind-Value="heilmittel.Frequenz" class="form-control" placeholder="z.B. 2x wöchentlich" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Diagnose *</label>
+                        <InputText @bind-Value="heilmittel.Diagnose" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>ICD-10</label>
+                        <InputText @bind-Value="heilmittel.IcdCode" class="form-control" placeholder="z.B. G35" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Therapieziel</label>
+                    <InputTextArea @bind-Value="heilmittel.Therapieziel" class="form-control" rows="2" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:0.4">
+                        <label>
+                            <InputCheckbox @bind-Value="heilmittel.IsErstverordnung" /> Erstverordnung
+                        </label>
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>
+                            <InputCheckbox @bind-Value="heilmittel.IsHausbesuch" /> Hausbesuch
+                        </label>
+                    </div>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateHeilmittel">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
+
+    @if (activeForm == "hkp")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Häusliche Krankenpflege (Muster 12)</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Diagnose *</label>
+                        <InputText @bind-Value="hkp.Diagnose" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>ICD-10</label>
+                        <InputText @bind-Value="hkp.IcdCode" class="form-control" placeholder="z.B. F20.0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Verordnete Leistungen *</label>
+                    <InputTextArea @bind-Value="hkp.Leistungen" class="form-control" rows="2" placeholder="z.B. Medikamentengabe, Verbandswechsel" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Von *</label>
+                        <InputDate @bind-Value="hkp.Von" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Bis *</label>
+                        <InputDate @bind-Value="hkp.Bis" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Frequenz</label>
+                        <InputText @bind-Value="hkp.Frequenz" class="form-control" placeholder="z.B. täglich" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <InputCheckbox @bind-Value="hkp.IsPsychiatrisch" /> Psychiatrische häusliche Krankenpflege (§ 37 Abs. 2 SGB V)
+                    </label>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateHkp">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
+
+    @if (activeForm == "soziotherapie")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Soziotherapie (Muster 26)</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Diagnose *</label>
+                        <InputText @bind-Value="sozio.Diagnose" class="form-control" placeholder="z.B. Paranoid-halluzinatorische Schizophrenie" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>ICD-10</label>
+                        <InputText @bind-Value="sozio.IcdCode" class="form-control" placeholder="z.B. F20.0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Fähigkeitsstörungen *</label>
+                    <InputTextArea @bind-Value="sozio.Faehigkeitsstoerungen" class="form-control" rows="2" placeholder="Beschreiben Sie die bestehenden Fähigkeitsstörungen" />
+                </div>
+                <div class="form-group">
+                    <label>Therapieziele *</label>
+                    <InputTextArea @bind-Value="sozio.Therapieziele" class="form-control" rows="2" placeholder="Beschreiben Sie die Therapieziele" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:0.4">
+                        <label>Verordnete Stunden * (max. 120)</label>
+                        <InputNumber @bind-Value="sozio.Stunden" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Soziotherapeut / Leistungserbringer</label>
+                        <InputText @bind-Value="sozio.Soziotherapeut" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Art</label>
+                    <select @bind="sozio.Erst" class="form-control">
+                        <option value="true">Erstverordnung</option>
+                        <option value="false">Folgeverordnung</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateSoziotherapie">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
 }
 
 @code {
@@ -145,6 +343,10 @@ else
     private RezeptForm rezept = new();
     private UeberweisungForm ueberweisung = new();
     private AuForm au = new();
+    private KrankenhausForm krankenhaus = new();
+    private HeilmittelForm heilmittel = new();
+    private HkpForm hkp = new();
+    private SoziotherapieForm sozio = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -167,6 +369,26 @@ else
     private void GenerateAu()
     {
         Navigation.NavigateTo($"/api/formulare/au?patientId={PatientId}&von={au.Von:yyyy-MM-dd}&bis={au.Bis:yyyy-MM-dd}&erst={au.Erst}&diagnose={Uri.EscapeDataString(au.Diagnose)}&icd={Uri.EscapeDataString(au.IcdCode ?? "")}", forceLoad: true);
+    }
+
+    private void GenerateKrankenhaus()
+    {
+        Navigation.NavigateTo($"/api/formulare/krankenhauseinweisung?patientId={PatientId}&krankenhaus={Uri.EscapeDataString(krankenhaus.Krankenhaus)}&fachabteilung={Uri.EscapeDataString(krankenhaus.Fachabteilung)}&diagnose={Uri.EscapeDataString(krankenhaus.Diagnose)}&icd={Uri.EscapeDataString(krankenhaus.IcdCode ?? "")}&befunde={Uri.EscapeDataString(krankenhaus.Befunde ?? "")}&notfall={krankenhaus.IsNotfall}", forceLoad: true);
+    }
+
+    private void GenerateHeilmittel()
+    {
+        Navigation.NavigateTo($"/api/formulare/heilmittelverordnung?patientId={PatientId}&heilmittel={Uri.EscapeDataString(heilmittel.HeilmittelTyp)}&diagnose={Uri.EscapeDataString(heilmittel.Diagnose)}&icd={Uri.EscapeDataString(heilmittel.IcdCode ?? "")}&ziel={Uri.EscapeDataString(heilmittel.Therapieziel ?? "")}&sitzungen={heilmittel.AnzahlSitzungen}&frequenz={Uri.EscapeDataString(heilmittel.Frequenz ?? "")}&erst={heilmittel.IsErstverordnung}&hausbesuch={heilmittel.IsHausbesuch}", forceLoad: true);
+    }
+
+    private void GenerateHkp()
+    {
+        Navigation.NavigateTo($"/api/formulare/haeusliche-krankenpflege?patientId={PatientId}&diagnose={Uri.EscapeDataString(hkp.Diagnose)}&icd={Uri.EscapeDataString(hkp.IcdCode ?? "")}&leistungen={Uri.EscapeDataString(hkp.Leistungen)}&von={hkp.Von:yyyy-MM-dd}&bis={hkp.Bis:yyyy-MM-dd}&frequenz={Uri.EscapeDataString(hkp.Frequenz ?? "")}&psychiatrisch={hkp.IsPsychiatrisch}", forceLoad: true);
+    }
+
+    private void GenerateSoziotherapie()
+    {
+        Navigation.NavigateTo($"/api/formulare/soziotherapie?patientId={PatientId}&diagnose={Uri.EscapeDataString(sozio.Diagnose)}&icd={Uri.EscapeDataString(sozio.IcdCode ?? "")}&stoerungen={Uri.EscapeDataString(sozio.Faehigkeitsstoerungen)}&ziele={Uri.EscapeDataString(sozio.Therapieziele)}&stunden={sozio.Stunden}&therapeut={Uri.EscapeDataString(sozio.Soziotherapeut ?? "")}&erst={sozio.Erst}", forceLoad: true);
     }
 
     private class RezeptForm
@@ -193,5 +415,49 @@ else
         public bool Erst { get; set; } = true;
         public string Diagnose { get; set; } = "";
         public string? IcdCode { get; set; }
+    }
+
+    private class KrankenhausForm
+    {
+        public string Krankenhaus { get; set; } = "";
+        public string Fachabteilung { get; set; } = "";
+        public string Diagnose { get; set; } = "";
+        public string? IcdCode { get; set; }
+        public string? Befunde { get; set; }
+        public bool IsNotfall { get; set; }
+    }
+
+    private class HeilmittelForm
+    {
+        public string HeilmittelTyp { get; set; } = "";
+        public string Diagnose { get; set; } = "";
+        public string? IcdCode { get; set; }
+        public string? Therapieziel { get; set; }
+        public int AnzahlSitzungen { get; set; } = 10;
+        public string? Frequenz { get; set; }
+        public bool IsErstverordnung { get; set; } = true;
+        public bool IsHausbesuch { get; set; }
+    }
+
+    private class HkpForm
+    {
+        public string Diagnose { get; set; } = "";
+        public string? IcdCode { get; set; }
+        public string Leistungen { get; set; } = "";
+        public DateOnly Von { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public DateOnly Bis { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(14));
+        public string? Frequenz { get; set; }
+        public bool IsPsychiatrisch { get; set; }
+    }
+
+    private class SoziotherapieForm
+    {
+        public string Diagnose { get; set; } = "";
+        public string? IcdCode { get; set; }
+        public string Faehigkeitsstoerungen { get; set; } = "";
+        public string Therapieziele { get; set; } = "";
+        public int Stunden { get; set; } = 30;
+        public string? Soziotherapeut { get; set; }
+        public bool Erst { get; set; } = true;
     }
 }
