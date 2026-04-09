@@ -189,7 +189,7 @@
 .timeline-container {
     overflow-x: auto;
     overflow-y: auto;
-    max-height: calc(100vh - 140px);
+    height: calc(100vh - 130px);
     border: 1px solid var(--color-border, #e2e8f0);
     border-radius: var(--radius-md, 8px);
     background: var(--color-surface, #fff);
@@ -283,17 +283,16 @@
 /* Appointment blocks */
 .timeline-appt {
     position: absolute;
-    left: 3px;
-    right: 3px;
     border-radius: 4px;
     border-left: 3px solid #2563eb;
-    padding: 2px 5px;
+    padding: 2px 4px;
+    margin-left: 2px;
     cursor: pointer;
     overflow: hidden;
     z-index: 1;
-    transition: box-shadow 150ms, transform 150ms;
-    font-size: 0.72rem;
-    line-height: 1.25;
+    transition: box-shadow 150ms;
+    font-size: 0.7rem;
+    line-height: 1.2;
 }
 
 .timeline-appt:hover {

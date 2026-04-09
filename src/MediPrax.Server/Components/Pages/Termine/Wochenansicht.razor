@@ -118,27 +118,26 @@ else
                             <div class="grid-line half" style="top:@(topHour + slotHeight)px;"></div>
                         }
 
-                        @* Appointment blocks *@
-                        @foreach (var appt in dayAppts)
+                        @* Appointment blocks (with overlap handling) *@
+                        @{ var layout = CalculateLayout(dayAppts); }
+                        @foreach (var item in layout)
                         {
-                            var localTime = appt.StartTime.ToLocalTime();
-                            var minutesFromStart = (localTime.Hour - startHour) * 60 + localTime.Minute;
-                            if (minutesFromStart < 0) continue;
-                            var top = (int)(minutesFromStart * slotHeight / 30.0);
-                            var height = Math.Max((int)(appt.DurationMinutes * slotHeight / 30.0), slotHeight / 2);
+                            var appt = item.Appt;
                             var color = GetDoctorColor(appt.DoctorName);
+                            var widthPct = 100.0 / item.TotalColumns;
+                            var leftPct = widthPct * item.Column;
 
                             <div class="timeline-appt status-@appt.Status.ToString().ToLower()"
-                                 style="top:@(top)px;height:@(height)px;border-left-color:@color;background:@(color)12;"
+                                 style="top:@(item.Top)px;height:@(item.Height)px;left:@(leftPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;width:calc(@(widthPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))% - 4px);border-left-color:@color;background:@(color)12;"
                                  @onclick="() => ViewAppointment(appt.Id)"
                                  title="@appt.PatientName — @appt.Notes">
-                                <span class="appt-time">@localTime.ToString("HH:mm") – @appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
+                                <span class="appt-time">@item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
                                 <span class="appt-patient">@appt.PatientName</span>
-                                @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId))
+                                @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId) && item.Height > 35)
                                 {
                                     <span class="appt-doctor">@appt.DoctorName</span>
                                 }
-                                @if (!string.IsNullOrEmpty(appt.Notes) && height > 50)
+                                @if (!string.IsNullOrEmpty(appt.Notes) && item.Height > 55)
                                 {
                                     <span class="appt-notes">@appt.Notes</span>
                                 }
@@ -163,7 +162,7 @@ else
 
     private const int startHour = 8;
     private const int endHour = 18;
-    private const int slotHeight = 28; // pixels per 30 min
+    private const int slotHeight = 36; // pixels per 30 min
 
     protected override async Task OnInitializedAsync()
     {
@@ -205,6 +204,84 @@ else
         DayOfWeek.Saturday => "Sa",
         _ => "So"
     };
+
+    // --- Overlap layout algorithm ---
+    private record LayoutItem(AppointmentDto Appt, int Top, int Height, DateTime StartLocal, int Column, int TotalColumns);
+
+    private List<LayoutItem> CalculateLayout(List<AppointmentDto> appts)
+    {
+        if (appts.Count == 0) return [];
+
+        // Build positioned items with time info
+        var items = appts
+            .Select(a =>
+            {
+                var localTime = a.StartTime.ToLocalTime();
+                var minutesFromStart = (localTime.Hour - startHour) * 60 + localTime.Minute;
+                var top = (int)(minutesFromStart * slotHeight / 30.0);
+                var height = Math.Max((int)(a.DurationMinutes * slotHeight / 30.0), slotHeight / 2);
+                var endMinutes = minutesFromStart + a.DurationMinutes;
+                return new { Appt = a, Top = top, Height = height, StartLocal = localTime, StartMin = minutesFromStart, EndMin = endMinutes };
+            })
+            .Where(x => x.StartMin >= 0)
+            .OrderBy(x => x.StartMin)
+            .ThenBy(x => x.EndMin)
+            .ToList();
+
+        // Assign columns using greedy algorithm
+        var columns = new List<int>(); // tracks end-minute of last appt in each column
+        var assigned = new List<(int col, int totalCols)>();
+
+        // Group into overlap clusters
+        var clusters = new List<List<int>>(); // indices into items
+        var clusterEnd = 0;
+        var currentCluster = new List<int>();
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (currentCluster.Count > 0 && items[i].StartMin >= clusterEnd)
+            {
+                clusters.Add(currentCluster);
+                currentCluster = [];
+            }
+            currentCluster.Add(i);
+            clusterEnd = Math.Max(clusterEnd, items[i].EndMin);
+        }
+        if (currentCluster.Count > 0) clusters.Add(currentCluster);
+
+        // For each cluster, assign columns
+        var itemColumns = new int[items.Count];
+        var itemTotalCols = new int[items.Count];
+
+        foreach (var cluster in clusters)
+        {
+            var cols = new List<int>(); // end-minute per column
+            foreach (var idx in cluster)
+            {
+                var placed = false;
+                for (var c = 0; c < cols.Count; c++)
+                {
+                    if (items[idx].StartMin >= cols[c])
+                    {
+                        itemColumns[idx] = c;
+                        cols[c] = items[idx].EndMin;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed)
+                {
+                    itemColumns[idx] = cols.Count;
+                    cols.Add(items[idx].EndMin);
+                }
+            }
+            var totalCols = cols.Count;
+            foreach (var idx in cluster)
+                itemTotalCols[idx] = totalCols;
+        }
+
+        return items.Select((x, i) => new LayoutItem(x.Appt, x.Top, x.Height, x.StartLocal, itemColumns[i], itemTotalCols[i])).ToList();
+    }
 
     private static string GetDoctorColor(string? doctorName)
     {
