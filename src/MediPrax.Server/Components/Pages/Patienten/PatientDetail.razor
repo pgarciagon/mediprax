@@ -263,6 +263,19 @@ else
 
     <div class="encounters-section">
         <div class="section-header">
+            <h2>Spezialmodule</h2>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.5rem 0;">
+            <a href="/patienten/@Id/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
+            <a href="/patienten/@Id/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
+            <a href="/patienten/@Id/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
+            <a href="/patienten/@Id/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
+            <a href="/patienten/@Id/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
+        </div>
+    </div>
+
+    <div class="encounters-section">
+        <div class="section-header">
             <h2>Wiedervorlagen</h2>
             <button class="btn btn-sm btn-primary" @onclick="() => showRecallForm = true">+ Wiedervorlage</button>
         </div>
