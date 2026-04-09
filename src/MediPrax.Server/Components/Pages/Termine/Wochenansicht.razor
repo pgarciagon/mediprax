@@ -30,6 +30,9 @@
             <button class="btn btn-sm @(viewMode == "liste" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "liste"'>Liste</button>
             <button class="btn btn-sm @(viewMode == "kalender" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "kalender"'>Kalender</button>
         </div>
+        <label style="font-size:0.78rem;display:flex;align-items:center;gap:0.3rem;color:var(--color-text-secondary);cursor:pointer;">
+            <input type="checkbox" @bind="showWeekend" style="width:auto;margin:0;" /> Sa/So
+        </label>
         <div class="doctor-filter">
             <select class="form-control" @bind="selectedDoctorId" @bind:after="LoadSchedule">
                 <option value="">Alle Ärzte</option>
@@ -50,7 +53,7 @@ else if (viewMode == "liste")
 {
     @* === LISTE VIEW (existing) === *@
     <div class="week-grid">
-        @foreach (var day in schedule.Days.Take(6))
+        @foreach (var day in schedule.Days.Take(showWeekend ? 7 : 5))
         {
             var isToday = day.Date == DateOnly.FromDateTime(DateTime.Today);
             <div class="day-column @(isToday ? "today" : "")">
@@ -99,7 +102,7 @@ else
             </div>
 
             @* Day columns *@
-            @foreach (var day in schedule.Days.Take(6))
+            @foreach (var day in schedule.Days.Take(showWeekend ? 7 : 5))
             {
                 var isToday = day.Date == DateOnly.FromDateTime(DateTime.Today);
                 var dayAppts = day.Appointments.ToList();
@@ -180,6 +183,7 @@ else
     private DateOnly weekStart;
     private string selectedDoctorId = string.Empty;
     private string viewMode = "kalender";
+    private bool showWeekend;
 
     private const int startHour = 8;
     private const int endHour = 18;
