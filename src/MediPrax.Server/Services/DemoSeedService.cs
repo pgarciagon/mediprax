@@ -14,6 +14,16 @@ public static class DemoSeedService
 {
     public static void Seed(MediPraxDbContext db)
     {
+        // Always ensure all doctors exist (even if patients already seeded)
+        var drMeier = EnsureUser(db, "Dr. Thomas", "Meier", "meier@neuropsych-bremen.de", UserRole.Arzt);
+        var drSchmidt = EnsureUser(db, "Dr. Anna", "Schmidt", "schmidt@neuropsych-bremen.de", UserRole.Arzt);
+        var drBauer = EnsureUser(db, "Dr. Michael", "Bauer", "bauer@neuropsych-bremen.de", UserRole.Arzt);
+        var drWagner = EnsureUser(db, "Dr. Claudia", "Wagner", "wagner@neuropsych-bremen.de", UserRole.Arzt);
+        var drKrause = EnsureUser(db, "Dr. Stefan", "Krause", "krause@neuropsych-bremen.de", UserRole.Arzt);
+        var drLehmann = EnsureUser(db, "Dr. Petra", "Lehmann", "lehmann@neuropsych-bremen.de", UserRole.Arzt);
+        var drFrank = EnsureUser(db, "Dr. Jan", "Frank", "frank@neuropsych-bremen.de", UserRole.Arzt);
+        var drVogt = EnsureUser(db, "Dr. Sabine", "Vogt", "vogt@neuropsych-bremen.de", UserRole.Arzt);
+
         // Check if demo data was already seeded
         var hasWeber = db.Patients.Any(p => p.LastName == "Weber" && p.FirstName == "Klaus");
         if (hasWeber && db.Appointments.Any()) return; // Already fully seeded
@@ -25,8 +35,6 @@ public static class DemoSeedService
         }
 
         // --- Users (Doctors + MFA) ---
-        var drMeier = EnsureUser(db, "Dr. Thomas", "Meier", "meier@neuropsych-bremen.de", UserRole.Arzt);
-        var drSchmidt = EnsureUser(db, "Dr. Anna", "Schmidt", "schmidt@neuropsych-bremen.de", UserRole.Arzt);
         var mfaKoch = EnsureUser(db, "Sabine", "Koch", "koch@neuropsych-bremen.de", UserRole.MFA);
 
         // --- Patients ---
@@ -53,6 +61,19 @@ public static class DemoSeedService
 
         var lang = CreatePatient(db, "Petra", "Lang", new DateOnly(1980, 7, 22), "W", InsuranceType.PKV,
             "Allianz", "PKV-2024-002", null, "Böttcherstraße 5", "Bremen", "28195", "0151-99887766");
+
+        var richter = CreatePatient(db, "Helmut", "Richter", new DateOnly(1963, 9, 14), "M", InsuranceType.GKV,
+            "BKK", "V8888888888", "G888888888", "Martinistr. 22", "Bremen", "28195", "0421-7771122");
+        var wolf = CreatePatient(db, "Ingrid", "Wolf", new DateOnly(1975, 2, 28), "W", InsuranceType.GKV,
+            "IKK", "V6666666666", "H666666666", "Osterdeich 100", "Bremen", "28205", "0421-3334455");
+        var schaefer = CreatePatient(db, "Dieter", "Schäfer", new DateOnly(1950, 5, 20), "M", InsuranceType.GKV,
+            "AOK Bremen", "V2222222222", "I222222222", "Wachmannstr. 10", "Bremen", "28209", "0421-5556677");
+        var otto = CreatePatient(db, "Monika", "Otto", new DateOnly(1988, 12, 5), "W", InsuranceType.PKV,
+            "Signal Iduna", "PKV-2024-003", null, "Lloydstr. 4", "Bremen", "28217", "0176-44556677");
+        var seidel = CreatePatient(db, "Frank", "Seidel", new DateOnly(1970, 8, 11), "M", InsuranceType.GKV,
+            "TK", "V1111111111", "J111111111", "Bismarckstr. 50", "Bremen", "28203", "0421-8889900");
+        var kramer = CreatePatient(db, "Eva", "Krämer", new DateOnly(1982, 3, 19), "W", InsuranceType.GKV,
+            "Barmer", "V9999999999", "K999999999", "Findorffstr. 30", "Bremen", "28215", "0151-22334455");
 
         db.SaveChanges();
 
@@ -129,16 +150,67 @@ public static class DemoSeedService
 
         db.SaveChanges();
 
-        SeedAppointments(db, weber, mueller, hoffmann, fischer, braun, klein, schulz, lang, drMeier, drSchmidt);
+        SeedAppointments(db, weber, mueller, hoffmann, fischer, braun, klein, schulz, lang,
+            richter, wolf, schaefer, otto, seidel, kramer,
+            drMeier, drSchmidt, drBauer, drWagner, drKrause, drLehmann, drFrank, drVogt);
 
     }
 
     private static void SeedAppointments(MediPraxDbContext db, Patient weber, Patient mueller,
         Patient hoffmann, Patient fischer, Patient braun, Patient klein, Patient schulz, Patient lang,
-        User drMeier, User drSchmidt)
+        Patient richter, Patient wolf, Patient schaefer, Patient otto, Patient seidel, Patient kramer,
+        User drMeier, User drSchmidt, User drBauer, User drWagner, User drKrause, User drLehmann, User drFrank, User drVogt)
     {
         var today = DateTime.UtcNow.Date;
         var monday = today.AddDays(-(int)today.DayOfWeek + 1);
+        var pts = new[] { weber, mueller, hoffmann, fischer, braun, klein, schulz, lang, richter, wolf, schaefer, otto, seidel, kramer };
+        var docs = new[] { drMeier, drSchmidt, drBauer, drWagner, drKrause, drLehmann, drFrank, drVogt };
+        var notes = new[] {
+            "Kontrolltermin", "VT Sitzung", "Medikamentenkontrolle", "EEG-Kontrolle",
+            "Befundbesprechung", "Erstgespräch", "Krisenintervention", "Folgetermin",
+            "Diagnostik", "Arztbrief", "Überweisung", "Psychotherapie",
+            "EMG/NLG", "Doppler", "MRT-Besprechung", "Verlaufskontrolle",
+            "Suizidalitätseinschätzung", "Angehörigengespräch", "MMST", "PHQ-9"
+        };
+        var durations = new[] { 25, 50, 25, 30, 25, 50, 25, 25, 50, 25 };
+        var rng = new Random(42); // deterministic
+
+        // Generate dense schedule: each doctor gets 6-8 appointments per day, Mo-Fr
+        for (var dayOffset = 0; dayOffset < 5; dayOffset++)
+        {
+            foreach (var doc in docs)
+            {
+                // Morning block: 08:00 - 12:30
+                var morningSlots = new[] { 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0 };
+                var morningCount = rng.Next(4, 7); // 4-6 morning appointments
+                var usedSlots = new HashSet<double>();
+                for (var i = 0; i < morningCount; i++)
+                {
+                    var slot = morningSlots[rng.Next(morningSlots.Length)];
+                    if (usedSlots.Contains(slot)) continue;
+                    usedSlots.Add(slot);
+                    var pt = pts[rng.Next(pts.Length)];
+                    var dur = durations[rng.Next(durations.Length)];
+                    var note = notes[rng.Next(notes.Length)];
+                    AddAppointment(db, pt, doc, monday.AddDays(dayOffset).AddHours(slot), dur, note);
+                }
+
+                // Afternoon block: 14:00 - 17:00
+                var afternoonSlots = new[] { 14.0, 14.5, 15.0, 15.5, 16.0, 16.5 };
+                var afternoonCount = rng.Next(2, 5); // 2-4 afternoon appointments
+                usedSlots.Clear();
+                for (var i = 0; i < afternoonCount; i++)
+                {
+                    var slot = afternoonSlots[rng.Next(afternoonSlots.Length)];
+                    if (usedSlots.Contains(slot)) continue;
+                    usedSlots.Add(slot);
+                    var pt = pts[rng.Next(pts.Length)];
+                    var dur = durations[rng.Next(durations.Length)];
+                    var note = notes[rng.Next(notes.Length)];
+                    AddAppointment(db, pt, doc, monday.AddDays(dayOffset).AddHours(slot), dur, note);
+                }
+            }
+        }
 
         // MONTAG — Dr. Meier
         AddAppointment(db, weber, drMeier, monday.AddHours(8), 25, "Kontrolltermin Depression");
@@ -405,9 +477,21 @@ public static class DemoSeedService
         var kl = db.Patients.First(p => p.LastName == "Klein" && p.FirstName == "Sabrina");
         var sc = db.Patients.First(p => p.LastName == "Schulz" && p.FirstName == "Jürgen");
         var la = db.Patients.First(p => p.LastName == "Lang" && p.FirstName == "Petra");
+        var ri = db.Patients.FirstOrDefault(p => p.LastName == "Richter") ?? la;
+        var wo = db.Patients.FirstOrDefault(p => p.LastName == "Wolf") ?? w;
+        var sf = db.Patients.FirstOrDefault(p => p.LastName == "Schäfer") ?? mu;
+        var ot = db.Patients.FirstOrDefault(p => p.LastName == "Otto") ?? ho;
+        var se = db.Patients.FirstOrDefault(p => p.LastName == "Seidel") ?? br;
+        var kr = db.Patients.FirstOrDefault(p => p.LastName == "Krämer") ?? kl;
         var m = db.Users.First(u => u.Email == "meier@neuropsych-bremen.de");
         var s = db.Users.First(u => u.Email == "schmidt@neuropsych-bremen.de");
-        SeedAppointments(db, w, mu, ho, fi, br, kl, sc, la, m, s);
+        var b = db.Users.FirstOrDefault(u => u.Email == "bauer@neuropsych-bremen.de") ?? m;
+        var wg = db.Users.FirstOrDefault(u => u.Email == "wagner@neuropsych-bremen.de") ?? s;
+        var ks = db.Users.FirstOrDefault(u => u.Email == "krause@neuropsych-bremen.de") ?? m;
+        var lh = db.Users.FirstOrDefault(u => u.Email == "lehmann@neuropsych-bremen.de") ?? s;
+        var fr = db.Users.FirstOrDefault(u => u.Email == "frank@neuropsych-bremen.de") ?? m;
+        var vg = db.Users.FirstOrDefault(u => u.Email == "vogt@neuropsych-bremen.de") ?? s;
+        SeedAppointments(db, w, mu, ho, fi, br, kl, sc, la, ri, wo, sf, ot, se, kr, m, s, b, wg, ks, lh, fr, vg);
     }
 
     private static void AddAppointment(MediPraxDbContext db, Patient patient, User doctor,
