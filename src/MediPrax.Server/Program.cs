@@ -463,6 +463,9 @@ if (app.Environment.IsDevelopment())
     }
 
     db.SaveChanges();
+
+    // Seed demo data
+    MediPrax.Server.Services.DemoSeedService.Seed(db);
 }
 
 app.MapStaticAssets();
