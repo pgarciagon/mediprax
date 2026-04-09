@@ -203,23 +203,37 @@ else
                                  @onclick="() => ViewAppointment(appt.Id)"
                                  title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
                                 @{ var allDocs = string.IsNullOrEmpty(selectedDoctorId); }
-                                @if (cols <= 3)
+                                @if (cols <= 2)
                                 {
-                                    @* Full detail *@
+                                    @* Full detail with notes *@
                                     <span class="appt-time">@item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
                                     <span class="appt-patient">@appt.PatientName</span>
-                                    @if (!string.IsNullOrEmpty(appt.DoctorName) && allDocs && item.Height > 35)
+                                    @if (!string.IsNullOrEmpty(appt.DoctorName) && allDocs)
                                     {
                                         <span class="appt-doctor">@appt.DoctorName</span>
                                     }
-                                    @if (!string.IsNullOrEmpty(appt.Notes) && item.Height > 55)
+                                    @if (!string.IsNullOrEmpty(appt.Notes))
                                     {
                                         <span class="appt-notes">@appt.Notes</span>
                                     }
                                 }
-                                else if (cols <= 5)
+                                else if (cols <= 4)
                                 {
-                                    @* Compact: time + short name, doctor initials if all docs *@
+                                    @* Medium: time + name + doctor, notes if tall enough *@
+                                    <span class="appt-time">@item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
+                                    <span class="appt-patient">@appt.PatientName</span>
+                                    @if (!string.IsNullOrEmpty(appt.DoctorName) && allDocs && item.Height > 30)
+                                    {
+                                        <span class="appt-doctor">@appt.DoctorName</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(appt.Notes) && item.Height > 45)
+                                    {
+                                        <span class="appt-notes">@appt.Notes</span>
+                                    }
+                                }
+                                else if (cols <= 6)
+                                {
+                                    @* Compact: time + short name + doctor initials *@
                                     <span class="appt-time">@item.StartLocal.ToString("HH:mm")</span>
                                     <span class="appt-patient">@GetShortName(appt.PatientName)</span>
                                     @if (allDocs && !string.IsNullOrEmpty(appt.DoctorName))
