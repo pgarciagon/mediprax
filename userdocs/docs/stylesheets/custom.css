@@ -140,15 +140,15 @@
 .md-typeset table:not([class]) th {
     background: var(--md-default-bg-color--light);
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    padding: 0.7rem 1rem;
+    padding: 0.4rem 0.7rem;
 }
 
 .md-typeset table:not([class]) td {
-    padding: 0.6rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.68rem;
 }
 
 /* Footer — minimal */
