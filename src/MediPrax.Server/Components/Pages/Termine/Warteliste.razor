@@ -6,33 +6,36 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>Warteliste</PageTitle>
+<PageTitle>Warteliste — Therapieplätze</PageTitle>
 
 <div class="page-header">
-    <h1>Warteliste</h1>
-    <button class="btn btn-primary" @onclick="() => showAddForm = !showAddForm">+ Neuer Eintrag</button>
+    <div>
+        <h1>Warteliste</h1>
+        <span style="font-size:0.8rem;color:var(--color-text-secondary);">Patienten die auf einen Therapieplatz warten</span>
+    </div>
+    <button class="btn btn-primary btn-sm" @onclick="() => showAddForm = !showAddForm">+ Neuer Eintrag</button>
 </div>
 
 @if (stats is not null)
 {
-    <div class="stats-row">
-        <div class="stat-card">
-            <span class="stat-value">@stats.TotalWaiting</span>
-            <span class="stat-label">Wartend</span>
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-value">@stats.TotalWaiting</div>
+            <div class="kpi-label">Wartend</div>
         </div>
-        <div class="stat-card">
-            <span class="stat-value">@stats.AverageWaitDays.ToString("F0")</span>
-            <span class="stat-label">Ø Wartetage</span>
+        <div class="kpi-card">
+            <div class="kpi-value">@stats.AverageWaitDays.ToString("F0")</div>
+            <div class="kpi-label">Ø Wartetage</div>
         </div>
-        <div class="stat-card urgent">
-            <span class="stat-value">@stats.UrgentCount</span>
-            <span class="stat-label">Dringend</span>
+        <div class="kpi-card urgent">
+            <div class="kpi-value">@stats.UrgentCount</div>
+            <div class="kpi-label">Dringend</div>
         </div>
         @foreach (var q in stats.TherapistQueues)
         {
-            <div class="stat-card">
-                <span class="stat-value">@q.QueueLength</span>
-                <span class="stat-label">@q.TherapistName</span>
+            <div class="kpi-card">
+                <div class="kpi-value">@q.QueueLength</div>
+                <div class="kpi-label">@q.TherapistName</div>
             </div>
         }
     </div>
@@ -43,21 +46,24 @@
     <div class="card form-card">
         <h3>Patient zur Warteliste hinzufügen</h3>
         <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" style="position:relative;">
                 <label>Patient suchen</label>
                 <input class="form-control" @bind="patientSearch" @bind:event="oninput" @bind:after="SearchPatients" placeholder="Name eingeben..." />
                 @if (searchResults.Count > 0)
                 {
-                    <div class="dropdown-list">
+                    <div class="search-dropdown">
                         @foreach (var p in searchResults)
                         {
-                            <div class="dropdown-item" @onclick="() => SelectPatient(p)">@p.FullName (@p.DateOfBirth.ToString("dd.MM.yyyy"))</div>
+                            <div class="search-item" @onclick="() => SelectPatient(p)">
+                                <span class="item-name">@p.FullName</span>
+                                <span class="item-detail">@p.DateOfBirth.ToString("dd.MM.yyyy")</span>
+                            </div>
                         }
                     </div>
                 }
                 @if (selectedPatient is not null)
                 {
-                    <small class="text-muted">Gewählt: @selectedPatient.FullName</small>
+                    <small style="color:var(--color-primary);">Gewählt: @selectedPatient.FullName</small>
                 }
             </div>
             <div class="form-group">
@@ -70,7 +76,7 @@
                     }
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="flex:0.5;">
                 <label>Priorität</label>
                 <select class="form-control" @bind="newEntry.Priority">
                     <option value="@WaitlistPriority.Normal">Normal</option>
@@ -79,7 +85,7 @@
             </div>
         </div>
         <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" style="flex:0.5;">
                 <label>Bevorzugte Zeit</label>
                 <select class="form-control" @bind="newEntry.PreferredTimeSlot">
                     <option value="">— Egal —</option>
@@ -87,31 +93,31 @@
                     <option value="Nachmittags">Nachmittags</option>
                 </select>
             </div>
-            <div class="form-group wide">
+            <div class="form-group">
                 <label>Anmerkungen</label>
-                <input class="form-control" @bind="newEntry.Notes" />
+                <input class="form-control" @bind="newEntry.Notes" placeholder="z.B. Therapieform, besondere Umstände..." />
             </div>
         </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" @onclick="AddToWaitlist" disabled="@(selectedPatient is null)">Hinzufügen</button>
-            <button class="btn btn-secondary" @onclick="() => showAddForm = false">Abbrechen</button>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+            <button class="btn btn-primary btn-sm" @onclick="AddToWaitlist" disabled="@(selectedPatient is null)">Hinzufügen</button>
+            <button class="btn btn-secondary btn-sm" @onclick="() => showAddForm = false">Abbrechen</button>
         </div>
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div style="color:var(--color-danger);font-size:0.8rem;margin-top:0.5rem;">@errorMessage</div>
         }
     </div>
 }
 
-<div class="toolbar">
-    <select class="form-control" @bind="filterStatus" @bind:after="LoadWaitlist">
+<div class="filter-bar">
+    <select class="form-control" style="max-width:180px;" @bind="filterStatus" @bind:after="LoadWaitlist">
         <option value="">Alle Status</option>
         <option value="@WaitlistStatus.Waiting">Wartend</option>
         <option value="@WaitlistStatus.Offered">Angeboten</option>
         <option value="@WaitlistStatus.Scheduled">Eingeplant</option>
         <option value="@WaitlistStatus.Cancelled">Storniert</option>
     </select>
-    <select class="form-control" @bind="filterTherapistId" @bind:after="LoadWaitlist">
+    <select class="form-control" style="max-width:220px;" @bind="filterTherapistId" @bind:after="LoadWaitlist">
         <option value="">Alle Therapeuten</option>
         @foreach (var doc in doctors)
         {
@@ -126,7 +132,7 @@
 }
 else if (entries.Count == 0)
 {
-    <p class="empty-state">Keine Einträge in der Warteliste.</p>
+    <div class="empty-state">Keine Einträge in der Warteliste.</div>
 }
 else
 {
@@ -137,33 +143,37 @@ else
                 <th>Wartetage</th>
                 <th>Priorität</th>
                 <th>Therapeut</th>
-                <th>Zeitpräferenz</th>
+                <th>Zeit</th>
                 <th>Status</th>
                 <th>Anmerkungen</th>
-                <th>Aktionen</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
             @foreach (var entry in entries)
             {
                 <tr class="@(entry.Priority == WaitlistPriority.Urgent ? "row-urgent" : "")">
-                    <td>@entry.PatientName</td>
-                    <td>@entry.WaitDays Tage</td>
+                    <td style="font-weight:500;">@entry.PatientName</td>
+                    <td>
+                        <span class="wait-days @(entry.WaitDays > 90 ? "critical" : entry.WaitDays > 30 ? "warning" : "")">
+                            @entry.WaitDays Tage
+                        </span>
+                    </td>
                     <td><span class="badge badge-@(entry.Priority == WaitlistPriority.Urgent ? "danger" : "secondary")">@entry.PriorityDisplay</span></td>
                     <td>@(entry.PreferredTherapistName ?? "—")</td>
                     <td>@(entry.PreferredTimeSlot ?? "—")</td>
                     <td><span class="badge badge-@GetStatusColor(entry.Status)">@entry.StatusDisplay</span></td>
-                    <td>@(entry.Notes ?? "—")</td>
-                    <td class="actions">
+                    <td style="font-size:0.78rem;color:var(--color-text-secondary);">@(entry.Notes ?? "—")</td>
+                    <td style="white-space:nowrap;">
                         @if (entry.Status == WaitlistStatus.Waiting)
                         {
-                            <button class="btn btn-sm btn-primary" @onclick="() => OfferSlot(entry.Id)" title="Termin anbieten">Anbieten</button>
-                            <button class="btn btn-sm btn-danger" @onclick="() => CancelEntry(entry.Id)" title="Stornieren">✕</button>
+                            <button class="btn btn-sm btn-primary" @onclick="() => OfferSlot(entry.Id)">Anbieten</button>
+                            <button class="btn btn-sm btn-link danger" @onclick="() => CancelEntry(entry.Id)">Stornieren</button>
                         }
                         @if (entry.Status == WaitlistStatus.Offered)
                         {
-                            <button class="btn btn-sm btn-success" @onclick="() => ScheduleEntry(entry)" title="Einplanen">Einplanen</button>
-                            <button class="btn btn-sm btn-secondary" @onclick="() => ResetToWaiting(entry.Id)" title="Zurücksetzen">Zurück</button>
+                            <button class="btn btn-sm btn-primary" @onclick="() => ScheduleEntry(entry)">Einplanen</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="() => ResetToWaiting(entry.Id)">Zurück</button>
                         }
                     </td>
                 </tr>
@@ -227,10 +237,7 @@ else
             patientSearch = string.Empty;
             await LoadWaitlist();
         }
-        catch (Exception ex)
-        {
-            errorMessage = ex.Message;
-        }
+        catch (Exception ex) { errorMessage = ex.Message; }
     }
 
     private async Task OfferSlot(Guid entryId)

@@ -153,6 +153,21 @@ public static class DemoSeedService
             richter, wolf, schaefer, otto, seidel, kramer,
             drMeier, drSchmidt, drBauer, drWagner, drKrause, drLehmann, drFrank, drVogt);
 
+        // --- Waitlist entries ---
+        if (!db.WaitlistEntries.Any())
+        {
+            db.WaitlistEntries.AddRange(
+                new WaitlistEntry { PatientId = richter.Id, PreferredTherapistId = drMeier.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-92)), Priority = WaitlistPriority.Normal, PreferredTimeSlot = "Vormittags", Notes = "VT gewünscht, Angststörung", Status = WaitlistStatus.Waiting },
+                new WaitlistEntry { PatientId = wolf.Id, PreferredTherapistId = drLehmann.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-75)), Priority = WaitlistPriority.Urgent, PreferredTimeSlot = "Nachmittags", Notes = "Schwere Depression, dringend", Status = WaitlistStatus.Waiting },
+                new WaitlistEntry { PatientId = otto.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-60)), Priority = WaitlistPriority.Normal, Notes = "TP bevorzugt, Burnout", Status = WaitlistStatus.Waiting },
+                new WaitlistEntry { PatientId = seidel.Id, PreferredTherapistId = drMeier.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-45)), Priority = WaitlistPriority.Normal, PreferredTimeSlot = "Vormittags", Notes = "PTBS, Überweisung Hausarzt", Status = WaitlistStatus.Waiting },
+                new WaitlistEntry { PatientId = kramer.Id, PreferredTherapistId = drVogt.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-30)), Priority = WaitlistPriority.Urgent, Notes = "Essstörung, BMI 16", Status = WaitlistStatus.Waiting },
+                new WaitlistEntry { PatientId = schaefer.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-120)), Priority = WaitlistPriority.Normal, PreferredTimeSlot = "Nachmittags", Notes = "Schmerztherapie, chronisch", Status = WaitlistStatus.Offered, OfferedDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-5)) },
+                new WaitlistEntry { PatientId = lang.Id, PreferredTherapistId = drMeier.Id, RequestDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-150)), Priority = WaitlistPriority.Normal, Notes = "VT abgeschlossen, jetzt eingeplant", Status = WaitlistStatus.Scheduled }
+            );
+            db.SaveChanges();
+        }
+
     }
 
     private static void SeedAppointments(MediPraxDbContext db, Patient weber, Patient mueller,
