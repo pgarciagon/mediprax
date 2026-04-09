@@ -66,11 +66,29 @@
 }
 
 .md-nav {
-    font-size: 0.68rem;
+    font-size: 0.6rem;
+}
+
+.md-nav__item .md-nav__link {
+    font-size: 0.6rem;
+    padding: 0.3em 0.6em;
+}
+
+.md-nav__title {
+    font-size: 0.6rem;
 }
 
 .md-sidebar__scrollwrap {
-    font-size: 0.72rem;
+    font-size: 0.6rem;
+}
+
+/* Right-side TOC */
+.md-typeset .md-nav--secondary .md-nav__link {
+    font-size: 0.58rem;
+}
+
+.md-typeset .toc .md-nav__link {
+    font-size: 0.58rem;
 }
 
 /* Sidebar nav styling */
