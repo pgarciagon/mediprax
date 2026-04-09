@@ -108,7 +108,7 @@ else
                 <button type="submit" class="btn btn-primary" disabled="@saving">
                     @(saving ? "Speichern..." : IsEdit ? "Speichern" : "Termin anlegen")
                 </button>
-                <a href="/termine" class="btn btn-secondary">Abbrechen</a>
+                <a href="@backUrl" class="btn btn-secondary">Abbrechen</a>
             </div>
         </EditForm>
     </div>
@@ -119,6 +119,9 @@ else
     [SupplyParameterFromQuery] public Guid? PatientIdQuery { get; set; }
     [SupplyParameterFromQuery] public Guid? DoctorIdQuery { get; set; }
     [SupplyParameterFromQuery] public string? NotesQuery { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    private string backUrl => !string.IsNullOrEmpty(ReturnUrl) ? Uri.UnescapeDataString(ReturnUrl) : "/termine";
 
     private bool IsEdit => Id.HasValue;
     private bool notFound;
@@ -248,7 +251,7 @@ else
                 });
             }
 
-            Navigation.NavigateTo("/termine");
+            Navigation.NavigateTo(backUrl);
         }
         catch (Exception ex)
         {

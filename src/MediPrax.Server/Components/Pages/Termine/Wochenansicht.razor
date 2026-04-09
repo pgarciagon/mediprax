@@ -255,6 +255,9 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery] public string? Arzt { get; set; }
+    [SupplyParameterFromQuery] public string? Ansicht { get; set; }
+
     private WeekScheduleDto? schedule;
     private IReadOnlyList<DoctorListItemDto> doctors = [];
     private DateOnly weekStart;
@@ -269,9 +272,23 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Restore state from query params
+        if (!string.IsNullOrEmpty(Arzt)) selectedDoctorId = Arzt;
+        if (!string.IsNullOrEmpty(Ansicht)) viewMode = Ansicht;
+
         weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today));
         doctors = await UserService.GetDoctorsAsync();
         await LoadSchedule();
+    }
+
+    private string BuildReturnUrl()
+    {
+        var url = "/termine";
+        var parms = new List<string>();
+        if (!string.IsNullOrEmpty(selectedDoctorId)) parms.Add($"arzt={selectedDoctorId}");
+        if (viewMode != "kalender") parms.Add($"ansicht={viewMode}");
+        if (parms.Count > 0) url += "?" + string.Join("&", parms);
+        return url;
     }
 
     private async Task LoadSchedule()
@@ -301,7 +318,11 @@ else
         await LoadSchedule();
     }
 
-    private void ViewAppointment(Guid id) => Navigation.NavigateTo($"/termine/{id}");
+    private void ViewAppointment(Guid id)
+    {
+        var returnUrl = Uri.EscapeDataString(BuildReturnUrl());
+        Navigation.NavigateTo($"/termine/{id}?returnUrl={returnUrl}");
+    }
 
     private void CreateAtSlot(DateOnly date, Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
     {
