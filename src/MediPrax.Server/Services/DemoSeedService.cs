@@ -24,24 +24,17 @@ public static class DemoSeedService
         var drFrank = EnsureUser(db, "Dr. Jan", "Frank", "frank@neuropsych-bremen.de", UserRole.Arzt);
         var drVogt = EnsureUser(db, "Dr. Sabine", "Vogt", "vogt@neuropsych-bremen.de", UserRole.Arzt);
 
+        // --- Bulk patients (stress test) ---
+        if (db.Patients.Count() < 100)
+            SeedBulkPatients(db);
+
         // Check if demo data was already seeded
         var hasWeber = db.Patients.Any(p => p.LastName == "Weber" && p.FirstName == "Klaus");
-        if (hasWeber && db.Appointments.Any()) return; // Already fully seeded
-        if (hasWeber)
-        {
-            // Patients exist but appointments were cleared — re-seed appointments only
-            ReSeedAppointments(db);
-            return;
-        }
+        if (hasWeber && db.Appointments.Any()) return;
+        if (hasWeber) { ReSeedAppointments(db); return; }
 
         // --- Users (Doctors + MFA) ---
         var mfaKoch = EnsureUser(db, "Sabine", "Koch", "koch@neuropsych-bremen.de", UserRole.MFA);
-
-        // --- Bulk patients (stress test: 300 patients) ---
-        if (db.Patients.Count() < 100)
-        {
-            SeedBulkPatients(db);
-        }
 
         // --- Patients ---
         var weber = CreatePatient(db, "Klaus", "Weber", new DateOnly(1958, 3, 12), "M", InsuranceType.GKV,
