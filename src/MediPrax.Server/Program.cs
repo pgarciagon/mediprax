@@ -57,6 +57,7 @@ builder.Services.AddScoped<IPsychometricTestService, PsychometricTestService>();
 builder.Services.AddScoped<ITherapyCaseService, TherapyCaseService>();
 builder.Services.AddScoped<INeurologicalExamService, NeurologicalExamService>();
 builder.Services.AddScoped<IIcd10CodeService, Icd10CodeService>();
+builder.Services.AddScoped<ISuicidalityAssessmentService, SuicidalityAssessmentService>();
 builder.Services.AddScoped<ISeizureDiaryService, SeizureDiaryService>();
 builder.Services.AddScoped<IHeadacheDiaryService, HeadacheDiaryService>();
 builder.Services.AddScoped<IMsDocumentationService, MsDocumentationService>();

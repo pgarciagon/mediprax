@@ -18,6 +18,9 @@ public class Patient : BaseEntity
     public string? Phone { get; set; }
     public string? Email { get; set; }
 
+    public SuicidalityRiskLevel? CurrentSuicidalityRisk { get; set; }
+    public DateTime? SuicidalityRiskUpdatedAt { get; set; }
+
     public string FullName => $"{FirstName} {LastName}";
 
     public ICollection<Appointment> Appointments { get; set; } = [];

@@ -31,6 +31,7 @@ public class MediPraxDbContext : DbContext
     public DbSet<HeadacheDiary> HeadacheDiaries => Set<HeadacheDiary>();
     public DbSet<MsDocumentation> MsDocumentations => Set<MsDocumentation>();
     public DbSet<ParkinsonDocumentation> ParkinsonDocumentations => Set<ParkinsonDocumentation>();
+    public DbSet<SuicidalityAssessment> SuicidalityAssessments => Set<SuicidalityAssessment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +57,7 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<HeadacheDiary>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<MsDocumentation>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ParkinsonDocumentation>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SuicidalityAssessment>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

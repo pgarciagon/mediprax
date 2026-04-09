@@ -1,0 +1,40 @@
+@inject ISuicidalityAssessmentService SuicidalityService
+
+@if (riskLevel.HasValue && riskLevel.Value >= SuicidalityRiskLevel.Moderate)
+{
+    <div class="suicidality-alert alert-@GetAlertClass(riskLevel.Value)">
+        <strong>SUIZIDALITÄTSRISIKO: @GetRiskLevelText(riskLevel.Value)</strong>
+        @if (riskLevel.Value == SuicidalityRiskLevel.Acute)
+        {
+            <span> — Sofortige Maßnahmen erforderlich!</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    private SuicidalityRiskLevel? riskLevel;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PatientId != Guid.Empty)
+            riskLevel = await SuicidalityService.GetCurrentRiskLevelAsync(PatientId);
+    }
+
+    private static string GetAlertClass(SuicidalityRiskLevel level) => level switch
+    {
+        SuicidalityRiskLevel.Moderate => "warning",
+        SuicidalityRiskLevel.High => "danger",
+        SuicidalityRiskLevel.Acute => "danger acute",
+        _ => "info"
+    };
+
+    private static string GetRiskLevelText(SuicidalityRiskLevel level) => level switch
+    {
+        SuicidalityRiskLevel.Moderate => "Mittel",
+        SuicidalityRiskLevel.High => "Hoch",
+        SuicidalityRiskLevel.Acute => "AKUT",
+        _ => level.ToString()
+    };
+}
