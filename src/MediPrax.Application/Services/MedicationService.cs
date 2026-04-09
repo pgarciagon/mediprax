@@ -28,7 +28,11 @@ public class MedicationService(DbContext context) : IMedicationService
                 Einheit = m.Einheit, Hinweis = m.Hinweis,
                 SeitDatum = m.SeitDatum, BisDatum = m.BisDatum,
                 IsBtm = m.IsBtm, IsActive = m.IsActive,
-                PrescribedByName = m.PrescribedBy.FirstName + " " + m.PrescribedBy.LastName
+                PrescribedByName = m.PrescribedBy.FirstName + " " + m.PrescribedBy.LastName,
+                Category = m.Category, TargetDose = m.TargetDose,
+                IsDepot = m.IsDepot, DepotIntervalDays = m.DepotIntervalDays,
+                LastDepotDate = m.LastDepotDate, NextDepotDate = m.NextDepotDate,
+                RequiresMonitoring = m.RequiresMonitoring, MonitoringType = m.MonitoringType
             })
             .ToListAsync(ct);
     }
@@ -42,7 +46,11 @@ public class MedicationService(DbContext context) : IMedicationService
             Staerke = dto.Staerke, Dosierung = dto.Dosierung,
             Einheit = dto.Einheit, Hinweis = dto.Hinweis,
             SeitDatum = dto.SeitDatum, BisDatum = dto.BisDatum,
-            IsBtm = dto.IsBtm
+            IsBtm = dto.IsBtm,
+            Category = dto.Category, TargetDose = dto.TargetDose,
+            IsDepot = dto.IsDepot, DepotIntervalDays = dto.DepotIntervalDays,
+            LastDepotDate = dto.LastDepotDate,
+            RequiresMonitoring = dto.RequiresMonitoring, MonitoringType = dto.MonitoringType
         };
         Medications.Add(med);
         await context.SaveChangesAsync(ct);
