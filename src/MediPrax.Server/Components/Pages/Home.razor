@@ -17,28 +17,85 @@ else
         <span class="date-label">@DateTime.Today.ToString("dddd, dd. MMMM yyyy", new System.Globalization.CultureInfo("de-DE"))</span>
     </div>
 
+    @* === SHARED KPIs === *@
     <div class="kpi-grid">
-        <div class="kpi-card">
-            <span class="kpi-value">@data.TotalPatients</span>
-            <span class="kpi-label">Patienten</span>
-            <a href="/patienten" class="kpi-link">Alle anzeigen</a>
-        </div>
         <div class="kpi-card accent">
             <span class="kpi-value">@data.AppointmentsToday</span>
             <span class="kpi-label">Termine heute</span>
-            <a href="/wartezimmer" class="kpi-link">Wartezimmer</a>
+            <a href="/termine" class="kpi-link">Kalender</a>
         </div>
-        <div class="kpi-card">
-            <span class="kpi-value">@data.EncountersThisWeek</span>
-            <span class="kpi-label">Dokumentationen diese Woche</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-value">@data.PendingArztbriefe</span>
-            <span class="kpi-label">Arztbriefe gesamt</span>
-        </div>
+        <AuthorizeView Roles="Arzt,Admin">
+            <Authorized>
+                <div class="kpi-card @(data.OpenArztbriefe > 0 ? "warn" : "")">
+                    <span class="kpi-value">@data.OpenArztbriefe</span>
+                    <span class="kpi-label">Offene Arztbriefe</span>
+                </div>
+                <div class="kpi-card @(data.OverdueRecalls > 0 ? "warn" : "")">
+                    <span class="kpi-value">@data.DueRecalls</span>
+                    <span class="kpi-label">Wiedervorlagen fällig</span>
+                    @if (data.OverdueRecalls > 0) { <span class="kpi-sub">@data.OverdueRecalls überfällig</span> }
+                    <a href="/wiedervorlagen" class="kpi-link">Alle anzeigen</a>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="MFA,Empfang,Admin">
+            <Authorized>
+                <div class="kpi-card">
+                    <span class="kpi-value">@data.WaitingRoomCount</span>
+                    <span class="kpi-label">Im Wartezimmer</span>
+                    @if (data.InTreatmentCount > 0) { <span class="kpi-sub">@data.InTreatmentCount in Behandlung</span> }
+                    <a href="/wartezimmer" class="kpi-link">Wartezimmer</a>
+                </div>
+                <div class="kpi-card @(data.WaitlistUrgent > 0 ? "warn" : "")">
+                    <span class="kpi-value">@data.WaitlistTotal</span>
+                    <span class="kpi-label">Warteliste</span>
+                    @if (data.WaitlistUrgent > 0) { <span class="kpi-sub">@data.WaitlistUrgent dringend · Ø @data.WaitlistAvgDays.ToString("F0") Tage</span> }
+                    <a href="/warteliste" class="kpi-link">Warteliste</a>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="kpi-card @(data.OverdueInvoices > 0 ? "warn" : "")">
+                    <span class="kpi-value">@data.OpenInvoices</span>
+                    <span class="kpi-label">Offene Rechnungen</span>
+                    @if (data.OpenInvoiceAmount > 0) { <span class="kpi-sub">@data.OpenInvoiceAmount.ToString("N0") € · @data.OverdueInvoices überfällig</span> }
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-value">@data.TotalPatients</span>
+                    <span class="kpi-label">Patienten gesamt</span>
+                    <a href="/patienten" class="kpi-link">Alle anzeigen</a>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </div>
 
+    @* === WARNINGS (Arzt + Admin) === *@
+    <AuthorizeView Roles="Arzt,Admin">
+        <Authorized>
+            @if (data.Warnings.Count > 0)
+            {
+                <div class="dashboard-warnings">
+                    @foreach (var w in data.Warnings)
+                    {
+                        <div class="warning-row level-@w.Level">
+                            <span class="warning-icon">@(w.Level == "danger" ? "!" : "⚠")</span>
+                            <div class="warning-content">
+                                @if (w.PatientId.HasValue)
+                                {
+                                    <a href="/patienten/@w.PatientId"><strong>@w.PatientName</strong></a>
+                                }
+                                <span>@w.Message</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+
     <div class="dashboard-grid">
+        @* === TODAY'S APPOINTMENTS === *@
         <section class="dashboard-card">
             <h2>Termine heute</h2>
             @if (data.UpcomingAppointments.Count == 0)
@@ -54,6 +111,10 @@ else
                             <span class="appt-time">@appt.StartTime.ToLocalTime().ToString("HH:mm")</span>
                             <a href="/patienten/@appt.PatientId" class="appt-patient">@appt.PatientName</a>
                             <span class="appt-doctor">@appt.DoctorName</span>
+                            @if (!string.IsNullOrEmpty(appt.Notes))
+                            {
+                                <span class="appt-notes">@appt.Notes</span>
+                            }
                             <span class="appt-status">@StatusLabel(appt.Status)</span>
                         </div>
                     }
@@ -61,6 +122,7 @@ else
             }
         </section>
 
+        @* === RECENT ACTIVITY === *@
         <section class="dashboard-card">
             <h2>Letzte Aktivität</h2>
             @if (data.RecentActivity.Count == 0)
@@ -74,8 +136,7 @@ else
                     {
                         <div class="activity-row">
                             <span class="activity-icon type-@act.Type">
-                                @if (act.Type == "encounter") { <text>D</text> }
-                                else { <text>B</text> }
+                                @(act.Type == "encounter" ? "K" : "B")
                             </span>
                             <div class="activity-info">
                                 @if (act.PatientId.HasValue)
@@ -95,6 +156,21 @@ else
         </section>
     </div>
 
+    @* === MFA: MISSING DATA === *@
+    <AuthorizeView Roles="MFA,Admin">
+        <Authorized>
+            @if (data.PatientsWithMissingData > 0)
+            {
+                <div class="dashboard-info">
+                    <span style="font-size:0.82rem;color:var(--color-text-secondary);">
+                        <strong>@data.PatientsWithMissingData</strong> Patienten mit fehlenden Stammdaten (KVNR oder Krankenkasse)
+                    </span>
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+
+    @* === QUICK ACTIONS === *@
     <div class="quick-actions">
         <a href="/patienten/neu" class="action-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -106,7 +182,11 @@ else
         </a>
         <a href="/termine" class="action-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span class="action-title">Wochenplan</span>
+            <span class="action-title">Kalender</span>
+        </a>
+        <a href="/wartezimmer" class="action-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="action-title">Wartezimmer</span>
         </a>
     </div>
 }
