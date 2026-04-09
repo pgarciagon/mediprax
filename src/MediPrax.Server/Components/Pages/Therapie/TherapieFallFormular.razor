@@ -27,18 +27,30 @@ else
             <legend>Patient &amp; Therapeut</legend>
 
             <div class="form-row">
-                <div class="form-group">
+                <div class="form-group" style="position:relative;">
                     <label>Patient *</label>
-                    <InputSelect @bind-Value="form.PatientId" class="form-control">
-                        <option value="@Guid.Empty">— Patient wählen —</option>
-                        @if (patients is not null)
-                        {
-                            @foreach (var p in patients)
+                    <input type="text"
+                           @bind="patientSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchPatients"
+                           placeholder="Patient suchen..."
+                           class="form-control" />
+                    @if (patientResults is not null && patientResults.Count > 0 && !patientSelected)
+                    {
+                        <div class="search-dropdown" style="max-height:200px;overflow-y:auto;">
+                            @foreach (var p in patientResults)
                             {
-                                <option value="@p.Id">@p.FullName (@p.DateOfBirth.ToString("dd.MM.yyyy"))</option>
+                                <div class="search-item" @onclick="() => SelectPatient(p)">
+                                    <span class="item-name">@p.FullName</span>
+                                    <span style="font-size:0.75rem;color:var(--color-text-secondary);">@p.DateOfBirth.ToString("dd.MM.yyyy")</span>
+                                </div>
                             }
-                        }
-                    </InputSelect>
+                        </div>
+                    }
+                    @if (patientSelected)
+                    {
+                        <small style="color:var(--color-primary);">Gewählt: @patientSearchTerm</small>
+                    }
                 </div>
                 <div class="form-group">
                     <label>Therapeut *</label>
@@ -246,12 +258,13 @@ else
     private bool showIcdDropdown;
     private IReadOnlyList<Icd10CodeDto> icdDropdownItems = [];
     private Dictionary<string, string> icdDescriptions = new();
-    private IReadOnlyList<PatientListItemDto>? patients;
+    private string patientSearchTerm = string.Empty;
+    private IReadOnlyList<PatientListItemDto>? patientResults;
+    private bool patientSelected;
     private IReadOnlyList<UserListItemDto>? therapists;
 
     protected override async Task OnInitializedAsync()
     {
-        patients = (await PatientService.SearchAsync(new PatientSearchDto { PageSize = 500 })).Items;
         therapists = await UserService.GetAllAsync();
 
         if (isEdit)
@@ -282,8 +295,31 @@ else
                 var desc = await Icd10Service.GetDescriptionAsync(c);
                 if (desc is not null) icdDescriptions[c] = desc;
             }
+            // Pre-fill patient search field
+            var existingPatient = await PatientService.GetByIdAsync(tc.PatientId);
+            if (existingPatient is not null)
+            {
+                patientSearchTerm = existingPatient.FullName;
+                patientSelected = true;
+            }
         }
         loading = false;
+    }
+
+    private async Task SearchPatients()
+    {
+        patientSelected = false;
+        if (patientSearchTerm.Length < 2) { patientResults = null; return; }
+        var result = await PatientService.SearchAsync(new PatientSearchDto { SearchTerm = patientSearchTerm, Page = 1, PageSize = 8 });
+        patientResults = result.Items.ToList();
+    }
+
+    private void SelectPatient(PatientListItemDto p)
+    {
+        form.PatientId = p.Id;
+        patientSearchTerm = p.FullName;
+        patientSelected = true;
+        patientResults = null;
     }
 
     private void OnTherapyTypeChanged()
