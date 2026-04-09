@@ -19,16 +19,26 @@
 
 <div class="toolbar">
     <div class="week-nav">
-        <button class="btn btn-secondary btn-sm" @onclick="PreviousWeek">&larr;</button>
+        <button class="btn btn-secondary btn-sm" @onclick="NavigateBack">&larr;</button>
         <button class="btn btn-secondary btn-sm" @onclick="GoToToday">Heute</button>
-        <button class="btn btn-secondary btn-sm" @onclick="NextWeek">&rarr;</button>
-        <span class="week-label">@weekStart.ToString("dd.MM.") – @weekStart.AddDays(6).ToString("dd.MM.yyyy")</span>
+        <button class="btn btn-secondary btn-sm" @onclick="NavigateForward">&rarr;</button>
+        <span class="week-label">
+            @if (viewMode == "tag")
+            {
+                @($"{GetDayName(selectedDate.DayOfWeek)}, {selectedDate:dd.MM.yyyy}")
+            }
+            else
+            {
+                @($"{weekStart:dd.MM.} – {weekStart.AddDays(6):dd.MM.yyyy}")
+            }
+        </span>
     </div>
 
     <div style="display:flex;gap:0.5rem;align-items:center;">
         <div class="view-toggle">
+            <button class="btn btn-sm @(viewMode == "tag" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "tag"'>Tag</button>
+            <button class="btn btn-sm @(viewMode == "kalender" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "kalender"'>Woche</button>
             <button class="btn btn-sm @(viewMode == "liste" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "liste"'>Liste</button>
-            <button class="btn btn-sm @(viewMode == "kalender" ? "btn-primary" : "btn-secondary")" @onclick='() => viewMode = "kalender"'>Kalender</button>
         </div>
         <label style="font-size:0.78rem;display:flex;align-items:center;gap:0.3rem;color:var(--color-text-secondary);cursor:pointer;">
             <input type="checkbox" @bind="showWeekend" style="width:auto;margin:0;" /> Sa/So
@@ -48,6 +58,63 @@
 @if (schedule is null)
 {
     <p>Laden...</p>
+}
+else if (viewMode == "tag")
+{
+    @* === DAY VIEW === *@
+    var dayData = schedule.Days.FirstOrDefault(d => d.Date == selectedDate);
+    var dayAppts = dayData?.Appointments.ToList() ?? [];
+    <div class="timeline-container" style="display:flex;">
+        @* Time axis *@
+        <div class="time-axis" style="flex:0 0 55px;">
+            <div class="time-axis-header" style="height:48px;"></div>
+            @for (var h = startHour; h < endHour; h++)
+            {
+                <div class="time-label" style="height:@(slotHeight * 2)px;">
+                    <span>@($"{h:00}:00")</span>
+                </div>
+            }
+        </div>
+        @* Single day, full width *@
+        <div class="timeline-day today" style="flex:1;">
+            <div class="timeline-day-header">
+                <span class="day-name" style="font-size:0.9rem;">@GetDayName(selectedDate.DayOfWeek), @selectedDate.ToString("dd. MMMM yyyy", new System.Globalization.CultureInfo("de-DE"))</span>
+            </div>
+            <div class="timeline-slots" style="height:@((endHour - startHour) * slotHeight * 2)px;position:relative;">
+                @for (var h = startHour; h < endHour; h++)
+                {
+                    var topHour = (h - startHour) * slotHeight * 2;
+                    <div class="grid-line" style="top:@(topHour)px;"></div>
+                    <div class="grid-line half" style="top:@(topHour + slotHeight)px;"></div>
+                }
+
+                @{ var dayLayout = CalculateLayout(dayAppts); }
+                @foreach (var item in dayLayout)
+                {
+                    var appt = item.Appt;
+                    var color = GetDoctorColor(appt.DoctorName);
+                    var widthPct = 100.0 / item.TotalColumns;
+                    var leftPct = widthPct * item.Column;
+
+                    <div class="timeline-appt status-@appt.Status.ToString().ToLower()"
+                         style="top:@(item.Top)px;height:@(item.Height)px;left:@(F(leftPct))%;width:calc(@(F(widthPct))% - 4px);border-left-color:@color;background:@(color)12;"
+                         @onclick="() => ViewAppointment(appt.Id)"
+                         title="@appt.PatientName — @appt.Notes">
+                        <span class="appt-time">@item.StartLocal.ToString("HH:mm") – @appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
+                        <span class="appt-patient">@appt.PatientName</span>
+                        @if (!string.IsNullOrEmpty(appt.DoctorName))
+                        {
+                            <span class="appt-doctor" style="color:@color;font-weight:600;">@appt.DoctorName</span>
+                        }
+                        @if (!string.IsNullOrEmpty(appt.Notes) && item.Height > 45)
+                        {
+                            <span class="appt-notes">@appt.Notes</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 }
 else if (viewMode == "liste")
 {
@@ -184,6 +251,7 @@ else
     private string selectedDoctorId = string.Empty;
     private string viewMode = "kalender";
     private bool showWeekend;
+    private DateOnly selectedDate = DateOnly.FromDateTime(DateTime.Today);
 
     private const int startHour = 8;
     private const int endHour = 18;
@@ -202,9 +270,26 @@ else
         schedule = await AppointmentService.GetWeekScheduleAsync(weekStart, doctorId);
     }
 
-    private async Task PreviousWeek() { weekStart = weekStart.AddDays(-7); await LoadSchedule(); }
-    private async Task NextWeek() { weekStart = weekStart.AddDays(7); await LoadSchedule(); }
-    private async Task GoToToday() { weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today)); await LoadSchedule(); }
+    private async Task NavigateBack()
+    {
+        if (viewMode == "tag") { selectedDate = selectedDate.AddDays(-1); weekStart = GetMonday(selectedDate); }
+        else { weekStart = weekStart.AddDays(-7); selectedDate = weekStart; }
+        await LoadSchedule();
+    }
+
+    private async Task NavigateForward()
+    {
+        if (viewMode == "tag") { selectedDate = selectedDate.AddDays(1); weekStart = GetMonday(selectedDate); }
+        else { weekStart = weekStart.AddDays(7); selectedDate = weekStart; }
+        await LoadSchedule();
+    }
+
+    private async Task GoToToday()
+    {
+        selectedDate = DateOnly.FromDateTime(DateTime.Today);
+        weekStart = GetMonday(selectedDate);
+        await LoadSchedule();
+    }
 
     private void ViewAppointment(Guid id) => Navigation.NavigateTo($"/termine/{id}");
 
