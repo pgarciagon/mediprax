@@ -14,7 +14,8 @@ public static class DemoSeedService
 {
     public static void Seed(MediPraxDbContext db)
     {
-        if (db.Patients.Count() >= 5) return; // Already seeded
+        // Check if demo data was already seeded by looking for a known demo patient
+        if (db.Patients.Any(p => p.LastName == "Weber" && p.FirstName == "Klaus")) return;
 
         // --- Users (Doctors + MFA) ---
         var drMeier = EnsureUser(db, "Dr. Thomas", "Meier", "meier@neuropsych-bremen.de", UserRole.Arzt);
