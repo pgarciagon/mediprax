@@ -14,8 +14,15 @@ public static class DemoSeedService
 {
     public static void Seed(MediPraxDbContext db)
     {
-        // Check if demo data was already seeded by looking for a known demo patient
-        if (db.Patients.Any(p => p.LastName == "Weber" && p.FirstName == "Klaus")) return;
+        // Check if demo data was already seeded
+        var hasWeber = db.Patients.Any(p => p.LastName == "Weber" && p.FirstName == "Klaus");
+        if (hasWeber && db.Appointments.Any()) return; // Already fully seeded
+        if (hasWeber)
+        {
+            // Patients exist but appointments were cleared — re-seed appointments only
+            ReSeedAppointments(db);
+            return;
+        }
 
         // --- Users (Doctors + MFA) ---
         var drMeier = EnsureUser(db, "Dr. Thomas", "Meier", "meier@neuropsych-bremen.de", UserRole.Arzt);
@@ -122,23 +129,104 @@ public static class DemoSeedService
 
         db.SaveChanges();
 
-        // --- Appointments (this week + next) ---
+        SeedAppointments(db, weber, mueller, hoffmann, fischer, braun, klein, schulz, lang, drMeier, drSchmidt);
+
+    }
+
+    private static void SeedAppointments(MediPraxDbContext db, Patient weber, Patient mueller,
+        Patient hoffmann, Patient fischer, Patient braun, Patient klein, Patient schulz, Patient lang,
+        User drMeier, User drSchmidt)
+    {
         var today = DateTime.UtcNow.Date;
         var monday = today.AddDays(-(int)today.DayOfWeek + 1);
 
-        AddAppointment(db, weber, drMeier, monday.AddHours(9), 25, "Kontrolltermin Depression");
-        AddAppointment(db, hoffmann, drMeier, monday.AddHours(10), 50, "Psychotherapie VT Sitzung 3");
-        AddAppointment(db, schulz, drMeier, monday.AddHours(11), 25, "Demenz-Kontrolle mit Ehefrau");
-        AddAppointment(db, mueller, drSchmidt, monday.AddDays(1).AddHours(9), 30, "MS-Kontrolle + MRT-Besprechung");
-        AddAppointment(db, fischer, drSchmidt, monday.AddDays(1).AddHours(10), 25, "Parkinson-Kontrolle");
-        AddAppointment(db, braun, drSchmidt, monday.AddDays(2).AddHours(9), 30, "Epilepsie-Kontrolle + EEG");
-        AddAppointment(db, klein, drSchmidt, monday.AddDays(2).AddHours(10), 25, "Migräne-Prophylaxe Kontrolle");
-        AddAppointment(db, lang, drMeier, monday.AddDays(3).AddHours(9), 50, "Erstgespräch");
-        AddAppointment(db, weber, drMeier, monday.AddDays(3).AddHours(10), 25, "Folgetermin");
-        AddAppointment(db, hoffmann, drMeier, monday.AddDays(4).AddHours(9), 50, "Psychotherapie VT Sitzung 4");
+        // MONTAG — Dr. Meier
+        AddAppointment(db, weber, drMeier, monday.AddHours(8), 25, "Kontrolltermin Depression");
+        AddAppointment(db, hoffmann, drMeier, monday.AddHours(8.5), 50, "Psychotherapie VT Sitzung 3");
+        AddAppointment(db, schulz, drMeier, monday.AddHours(9.5), 25, "Demenz-Kontrolle mit Ehefrau");
+        AddAppointment(db, lang, drMeier, monday.AddHours(10), 50, "Erstgespräch Diagnostik");
+        AddAppointment(db, weber, drMeier, monday.AddHours(11), 25, "Medikamentenkontrolle");
+        AddAppointment(db, hoffmann, drMeier, monday.AddHours(14), 50, "VT Probatorik");
+        AddAppointment(db, schulz, drMeier, monday.AddHours(15), 25, "Angehörigengespräch");
+        // MONTAG — Dr. Schmidt
+        AddAppointment(db, mueller, drSchmidt, monday.AddHours(8), 30, "MS-Kontrolle + MRT");
+        AddAppointment(db, fischer, drSchmidt, monday.AddHours(9), 25, "Parkinson-Kontrolle");
+        AddAppointment(db, braun, drSchmidt, monday.AddHours(9.5), 30, "EEG-Kontrolle");
+        AddAppointment(db, klein, drSchmidt, monday.AddHours(10.5), 25, "Migräne-Prophylaxe");
+        AddAppointment(db, mueller, drSchmidt, monday.AddHours(11), 25, "Fatigue-Besprechung");
+        AddAppointment(db, fischer, drSchmidt, monday.AddHours(14), 45, "EMG Kontrolle");
+        AddAppointment(db, braun, drSchmidt, monday.AddHours(15), 25, "Levetiracetam-Kontrolle");
+
+        // DIENSTAG — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(1).AddHours(8), 50, "VT Sitzung 4");
+        AddAppointment(db, weber, drMeier, monday.AddDays(1).AddHours(9), 25, "Folgetermin Depression");
+        AddAppointment(db, lang, drMeier, monday.AddDays(1).AddHours(9.5), 50, "Diagnostik Fortsetzung");
+        AddAppointment(db, schulz, drMeier, monday.AddDays(1).AddHours(10.5), 25, "MMST-Kontrolle");
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(1).AddHours(11), 25, "Krisenintervention");
+        AddAppointment(db, weber, drMeier, monday.AddDays(1).AddHours(14), 25, "Suizidalitätseinschätzung");
+        AddAppointment(db, lang, drMeier, monday.AddDays(1).AddHours(15), 25, "Befundbesprechung");
+        // DIENSTAG — Dr. Schmidt
+        AddAppointment(db, klein, drSchmidt, monday.AddDays(1).AddHours(8), 25, "Kopfschmerz-Kontrolle");
+        AddAppointment(db, braun, drSchmidt, monday.AddDays(1).AddHours(8.5), 30, "Anfallskalender-Besprechung");
+        AddAppointment(db, mueller, drSchmidt, monday.AddDays(1).AddHours(9.5), 30, "Ocrelizumab Planung");
+        AddAppointment(db, fischer, drSchmidt, monday.AddDays(1).AddHours(10.5), 25, "Medikamentenanpassung");
+        AddAppointment(db, klein, drSchmidt, monday.AddDays(1).AddHours(11), 45, "Botox-Beratung Migräne");
+        AddAppointment(db, braun, drSchmidt, monday.AddDays(1).AddHours(14), 30, "NLG obere Extremität");
+
+        // MITTWOCH — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(2).AddHours(8), 50, "VT Sitzung 5");
+        AddAppointment(db, schulz, drMeier, monday.AddDays(2).AddHours(9), 25, "Verhaltensauffälligkeiten");
+        AddAppointment(db, weber, drMeier, monday.AddDays(2).AddHours(9.5), 25, "Medikamentenkontrolle");
+        AddAppointment(db, lang, drMeier, monday.AddDays(2).AddHours(10), 50, "Psychotherapeutische Sprechstunde");
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(2).AddHours(11), 25, "Befundbesprechung");
+        AddAppointment(db, schulz, drMeier, monday.AddDays(2).AddHours(14), 25, "Betreuungsgespräch");
+        // MITTWOCH — Dr. Schmidt
+        AddAppointment(db, fischer, drSchmidt, monday.AddDays(2).AddHours(8), 25, "Tremor-Evaluation");
+        AddAppointment(db, mueller, drSchmidt, monday.AddDays(2).AddHours(8.5), 30, "EDSS-Kontrolle");
+        AddAppointment(db, braun, drSchmidt, monday.AddDays(2).AddHours(9.5), 30, "EEG langzeit");
+        AddAppointment(db, klein, drSchmidt, monday.AddDays(2).AddHours(10.5), 25, "Tagebuch-Besprechung");
+        AddAppointment(db, fischer, drSchmidt, monday.AddDays(2).AddHours(11), 25, "Freezing-Evaluation");
+        AddAppointment(db, mueller, drSchmidt, monday.AddDays(2).AddHours(14), 25, "Ergotherapie-Überweisung");
+        AddAppointment(db, klein, drSchmidt, monday.AddDays(2).AddHours(14.5), 25, "Akuttermin Migräne");
+
+        // DONNERSTAG — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(3).AddHours(8), 50, "VT Sitzung 6");
+        AddAppointment(db, weber, drMeier, monday.AddDays(3).AddHours(9), 25, "PHQ-9 Kontrolle");
+        AddAppointment(db, lang, drMeier, monday.AddDays(3).AddHours(9.5), 25, "Rückmeldung Diagnostik");
+        AddAppointment(db, schulz, drMeier, monday.AddDays(3).AddHours(10), 25, "Donepezil-Kontrolle");
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(3).AddHours(11), 25, "Sozialberatung");
+        AddAppointment(db, weber, drMeier, monday.AddDays(3).AddHours(14), 25, "Arbeitsunfähigkeit");
+        AddAppointment(db, lang, drMeier, monday.AddDays(3).AddHours(14.5), 50, "Psychotherapie Indikation");
+        // DONNERSTAG — Dr. Schmidt
+        AddAppointment(db, braun, drSchmidt, monday.AddDays(3).AddHours(8), 30, "EEG + Befund");
+        AddAppointment(db, fischer, drSchmidt, monday.AddDays(3).AddHours(9), 25, "Pramipexol-Anpassung");
+        AddAppointment(db, mueller, drSchmidt, monday.AddDays(3).AddHours(9.5), 30, "Schub-Nachkontrolle");
+        AddAppointment(db, klein, drSchmidt, monday.AddDays(3).AddHours(10.5), 25, "Prophylaxe-Evaluation");
+        AddAppointment(db, braun, drSchmidt, monday.AddDays(3).AddHours(11), 25, "Führerschein-Gutachten");
+        AddAppointment(db, fischer, drSchmidt, monday.AddDays(3).AddHours(14), 45, "Doppler hirnvers. Gefäße");
+
+        // FREITAG — Dr. Meier (halber Tag)
+        AddAppointment(db, hoffmann, drMeier, monday.AddDays(4).AddHours(8), 50, "VT Sitzung 7");
+        AddAppointment(db, weber, drMeier, monday.AddDays(4).AddHours(9), 25, "Verlaufskontrolle");
+        AddAppointment(db, schulz, drMeier, monday.AddDays(4).AddHours(9.5), 25, "Pflegegrad-Dokumentation");
+        AddAppointment(db, lang, drMeier, monday.AddDays(4).AddHours(10), 25, "Arztbrief-Besprechung");
+        // FREITAG — Dr. Schmidt (halber Tag)
+        AddAppointment(db, braun, drSchmidt, monday.AddDays(4).AddHours(8), 30, "Epilepsie Jahres-Kontrolle");
+        AddAppointment(db, mueller, drSchmidt, monday.AddDays(4).AddHours(9), 25, "Rezept + Labor");
+        AddAppointment(db, klein, drSchmidt, monday.AddDays(4).AddHours(9.5), 25, "Topiramat Nebenwirkungen");
+        AddAppointment(db, fischer, drSchmidt, monday.AddDays(4).AddHours(10), 25, "Kontrolle motorisch");
+
+        // SAMSTAG — Notfallsprechstunde (nur Dr. Meier)
+        AddAppointment(db, weber, drMeier, monday.AddDays(5).AddHours(9), 15, "Notfall: Krisenintervention");
+        AddAppointment(db, braun, drMeier, monday.AddDays(5).AddHours(9.25), 15, "Notfall: Anfall gestern");
 
         db.SaveChanges();
+    }
 
+    private static void SeedDiseaseData(MediPraxDbContext db, Patient weber, Patient mueller,
+        Patient hoffmann, Patient fischer, Patient braun, Patient klein, Patient schulz,
+        User drMeier, User drSchmidt, Encounter encWeber2)
+    {
         // --- Disease-specific data ---
 
         // Epilepsy: seizure diary for Braun
@@ -305,6 +393,21 @@ public static class DemoSeedService
             Hinweis = hinweis, IsActive = true,
             RequiresMonitoring = requiresMonitoring, MonitoringType = monitoringType
         });
+    }
+
+    private static void ReSeedAppointments(MediPraxDbContext db)
+    {
+        var w = db.Patients.First(p => p.LastName == "Weber" && p.FirstName == "Klaus");
+        var mu = db.Patients.First(p => p.LastName == "Müller" && p.FirstName == "Maria");
+        var ho = db.Patients.First(p => p.LastName == "Hoffmann" && p.FirstName == "Stefan");
+        var fi = db.Patients.First(p => p.LastName == "Fischer" && p.FirstName == "Ursula");
+        var br = db.Patients.First(p => p.LastName == "Braun" && p.FirstName == "Thomas");
+        var kl = db.Patients.First(p => p.LastName == "Klein" && p.FirstName == "Sabrina");
+        var sc = db.Patients.First(p => p.LastName == "Schulz" && p.FirstName == "Jürgen");
+        var la = db.Patients.First(p => p.LastName == "Lang" && p.FirstName == "Petra");
+        var m = db.Users.First(u => u.Email == "meier@neuropsych-bremen.de");
+        var s = db.Users.First(u => u.Email == "schmidt@neuropsych-bremen.de");
+        SeedAppointments(db, w, mu, ho, fi, br, kl, sc, la, m, s);
     }
 
     private static void AddAppointment(MediPraxDbContext db, Patient patient, User doctor,
