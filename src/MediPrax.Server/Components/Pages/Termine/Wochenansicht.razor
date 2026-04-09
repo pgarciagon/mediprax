@@ -319,10 +319,18 @@ else
     private static string GetInitials(string? name)
     {
         if (string.IsNullOrEmpty(name)) return "?";
-        var parts = name.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        // "Dr. Thomas Meier" → "TM", "Weber, Klaus" → "KW", "Anna Schmidt" → "AS"
+        var clean = name.Replace("Dr.", "").Replace("dr.", "").Trim();
+        var parts = clean.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}";
-        return name[..1];
+        {
+            // If "LastName, FirstName" format
+            if (name.Contains(','))
+                return $"{parts[1][0]}{parts[0][0]}".ToUpper();
+            // If "FirstName LastName" format — take first of first, first of last
+            return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+        }
+        return parts[0][..1].ToUpper();
     }
 
     private static string GetDoctorColor(string? doctorName)
