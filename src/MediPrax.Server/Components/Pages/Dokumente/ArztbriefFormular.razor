@@ -39,13 +39,13 @@ else
                 </div>
                 <div class="form-group">
                     <label>Konsultation (optional)</label>
-                    <InputSelect @bind-Value="form.EncounterId" @bind:after="OnEncounterSelected" class="form-control">
+                    <select class="form-control" @onchange="OnEncounterChanged">
                         <option value="">— Ohne Bezug —</option>
                         @foreach (var enc in encounters)
                         {
-                            <option value="@enc.Id">@enc.EncounterDate.ToString("dd.MM.yyyy") — @string.Join(", ", enc.Icd10Codes)</option>
+                            <option value="@enc.Id" selected="@(form.EncounterId == enc.Id.ToString())">@enc.EncounterDate.ToString("dd.MM.yyyy") — @string.Join(", ", enc.Icd10Codes)</option>
                         }
-                    </InputSelect>
+                    </select>
                 </div>
             </div>
         </fieldset>
@@ -165,9 +165,11 @@ else
         form.Subject = $"Arztbrief — {patient.FullName}";
     }
 
-    private async Task OnEncounterSelected()
+    private async Task OnEncounterChanged(ChangeEventArgs e)
     {
         selectedEncounter = null;
+        form.EncounterId = e.Value?.ToString() ?? "";
+
         if (Guid.TryParse(form.EncounterId, out var encId))
         {
             selectedEncounter = await EncounterService.GetByIdAsync(encId);
@@ -175,8 +177,11 @@ else
             {
                 form.Diagnoses = selectedEncounter.Icd10Codes.Select(c => c.Code).ToList();
                 form.Subject = $"Arztbrief — {patient!.FullName}, Konsultation {selectedEncounter.EncounterDate:dd.MM.yyyy}";
-                StateHasChanged();
             }
+        }
+        else
+        {
+            form.Diagnoses.Clear();
         }
     }
 
