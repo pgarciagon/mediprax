@@ -1,3 +1,5 @@
+using MediPrax.Core.Enums;
+
 namespace MediPrax.Application.DTOs;
 
 public class MedicationDto
@@ -16,6 +18,16 @@ public class MedicationDto
     public bool IsBtm { get; set; }
     public bool IsActive { get; set; }
     public string PrescribedByName { get; set; } = string.Empty;
+
+    // Psychiatric medication management
+    public MedicationCategory? Category { get; set; }
+    public string? TargetDose { get; set; }
+    public bool IsDepot { get; set; }
+    public int? DepotIntervalDays { get; set; }
+    public DateOnly? LastDepotDate { get; set; }
+    public DateOnly? NextDepotDate { get; set; }
+    public bool RequiresMonitoring { get; set; }
+    public string? MonitoringType { get; set; }
 }
 
 public class CreateMedicationDto
@@ -32,4 +44,13 @@ public class CreateMedicationDto
     public DateOnly SeitDatum { get; set; }
     public DateOnly? BisDatum { get; set; }
     public bool IsBtm { get; set; }
+
+    // Psychiatric medication management
+    public MedicationCategory? Category { get; set; }
+    public string? TargetDose { get; set; }
+    public bool IsDepot { get; set; }
+    public int? DepotIntervalDays { get; set; }
+    public DateOnly? LastDepotDate { get; set; }
+    public bool RequiresMonitoring { get; set; }
+    public string? MonitoringType { get; set; }
 }
