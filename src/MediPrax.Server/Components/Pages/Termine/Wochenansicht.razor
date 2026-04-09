@@ -132,12 +132,13 @@ else
                                  style="top:@(item.Top)px;height:@(item.Height)px;left:@(F(leftPct))%;width:calc(@(F(widthPct))% - 3px);border-left-color:@color;background:@(color)12;"
                                  @onclick="() => ViewAppointment(appt.Id)"
                                  title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
+                                @{ var allDocs = string.IsNullOrEmpty(selectedDoctorId); }
                                 @if (cols <= 3)
                                 {
                                     @* Full detail *@
                                     <span class="appt-time">@item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm")</span>
                                     <span class="appt-patient">@appt.PatientName</span>
-                                    @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId) && item.Height > 35)
+                                    @if (!string.IsNullOrEmpty(appt.DoctorName) && allDocs && item.Height > 35)
                                     {
                                         <span class="appt-doctor">@appt.DoctorName</span>
                                     }
@@ -148,14 +149,18 @@ else
                                 }
                                 else if (cols <= 5)
                                 {
-                                    @* Compact: time + short name *@
+                                    @* Compact: time + short name, doctor initials if all docs *@
                                     <span class="appt-time">@item.StartLocal.ToString("HH:mm")</span>
                                     <span class="appt-patient">@GetShortName(appt.PatientName)</span>
+                                    @if (allDocs && !string.IsNullOrEmpty(appt.DoctorName))
+                                    {
+                                        <span class="appt-doctor">@GetInitials(appt.DoctorName)</span>
+                                    }
                                 }
                                 else
                                 {
-                                    @* Minimal: initials only *@
-                                    <span class="appt-patient" style="font-size:0.65rem;">@GetInitials(appt.PatientName)</span>
+                                    @* Minimal: doctor initials (in Alle Ärzte) or patient initials *@
+                                    <span class="appt-patient" style="font-size:0.65rem;">@(allDocs ? GetInitials(appt.DoctorName) : GetInitials(appt.PatientName))</span>
                                 }
                             </div>
                         }
