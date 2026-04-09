@@ -141,6 +141,15 @@ else
             {
                 <span style="color:var(--color-text-secondary);font-size:0.85rem">Versendet — Keine Bearbeitung möglich</span>
             }
+            else if (isEdit && arztbriefStatus == ArztbriefStatus.Freigegeben)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="BackToEntwurf" disabled="@saving">
+                    Bearbeiten (zurück zu Entwurf)
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="MarkVersendet" disabled="@saving">
+                    Als versendet markieren
+                </button>
+            }
             else
             {
                 <button type="button" class="btn btn-secondary" @onclick="SaveDraft" disabled="@saving">
@@ -149,7 +158,7 @@ else
                 <button type="button" class="btn btn-primary" @onclick="SaveAndGeneratePdf" disabled="@saving">
                     @(saving ? "PDF wird erzeugt..." : isEdit ? "PDF aktualisieren" : "PDF erzeugen")
                 </button>
-                @if (isEdit && arztbriefStatus == ArztbriefStatus.Entwurf)
+                @if (isEdit && hasPdf)
                 {
                     <button type="button" class="btn btn-primary" @onclick="Freigeben" disabled="@saving">
                         Freigeben
@@ -518,6 +527,32 @@ Mit freundlichen kollegialen Grüßen
             arztbriefStatus = ArztbriefStatus.Freigegeben;
             hasPdf = true;
             successMessage = "Arztbrief freigegeben.";
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        saving = false;
+    }
+
+    private async Task MarkVersendet()
+    {
+        saving = true;
+        try
+        {
+            await ArztbriefService.UpdateStatusAsync(EditId!.Value, ArztbriefStatus.Versendet);
+            arztbriefStatus = ArztbriefStatus.Versendet;
+            successMessage = "Arztbrief als versendet markiert.";
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        saving = false;
+    }
+
+    private async Task BackToEntwurf()
+    {
+        saving = true;
+        try
+        {
+            await ArztbriefService.UpdateStatusAsync(EditId!.Value, ArztbriefStatus.Entwurf);
+            arztbriefStatus = ArztbriefStatus.Entwurf;
+            successMessage = "Zurück zu Entwurf — Bearbeitung möglich.";
         }
         catch (Exception ex) { errorMessage = ex.Message; }
         saving = false;
