@@ -29,6 +29,8 @@ public static class GopCatalog
             .ToList();
     }
 
+    public static IReadOnlyList<GopEntry> GetAll() => Entries;
+
     public static GopEntry? GetByCode(string code)
         => Entries.FirstOrDefault(e => e.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
 

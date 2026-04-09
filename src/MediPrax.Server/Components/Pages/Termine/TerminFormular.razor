@@ -108,6 +108,12 @@ else
                 <button type="submit" class="btn btn-primary" disabled="@saving">
                     @(saving ? "Speichern..." : IsEdit ? "Speichern" : "Termin anlegen")
                 </button>
+                @if (IsEdit && form.PatientId != Guid.Empty)
+                {
+                    <a href="/patienten/@form.PatientId/dokumentation/neu?DoctorIdQuery=@form.DoctorId&DurationQuery=@form.DurationMinutes&AppointmentIdQuery=@Id" class="btn btn-accent">
+                        Konsultation starten
+                    </a>
+                }
                 <a href="@backUrl" class="btn btn-secondary">Abbrechen</a>
             </div>
         </EditForm>
@@ -154,6 +160,7 @@ else
             form.Time = appointment.StartTime.ToString("HH:mm");
             form.DurationMinutes = appointment.DurationMinutes;
             form.Notes = appointment.Notes;
+            selectedTemplate = appointment.AppointmentType ?? "";
             patientSearchTerm = appointment.PatientName;
             patientSelected = true;
         }
@@ -236,6 +243,7 @@ else
                     DoctorId = doctorId,
                     StartTime = startTime,
                     DurationMinutes = form.DurationMinutes,
+                    AppointmentType = string.IsNullOrEmpty(selectedTemplate) ? null : selectedTemplate,
                     Notes = form.Notes
                 });
             }
@@ -247,6 +255,7 @@ else
                     DoctorId = doctorId,
                     StartTime = startTime,
                     DurationMinutes = form.DurationMinutes,
+                    AppointmentType = string.IsNullOrEmpty(selectedTemplate) ? null : selectedTemplate,
                     Notes = form.Notes
                 });
             }

@@ -12,6 +12,7 @@ public class AppointmentDto
     public DateTime StartTime { get; set; }
     public int DurationMinutes { get; set; }
     public AppointmentStatus Status { get; set; }
+    public string? AppointmentType { get; set; }
     public string? Notes { get; set; }
 
     public DateTime EndTime => StartTime.AddMinutes(DurationMinutes);
@@ -24,6 +25,7 @@ public class CreateAppointmentDto
     public Guid DoctorId { get; set; }
     public DateTime StartTime { get; set; }
     public int DurationMinutes { get; set; } = 10;
+    public string? AppointmentType { get; set; }
     public string? Notes { get; set; }
 }
 
@@ -33,6 +35,7 @@ public class UpdateAppointmentDto
     public Guid DoctorId { get; set; }
     public DateTime StartTime { get; set; }
     public int DurationMinutes { get; set; } = 10;
+    public string? AppointmentType { get; set; }
     public string? Notes { get; set; }
 }
 
@@ -57,6 +60,7 @@ public class WaitingRoomEntryDto
     public string PatientName { get; set; } = string.Empty;
     public DateTime StartTime { get; set; }
     public int DurationMinutes { get; set; }
+    public Guid DoctorId { get; set; }
     public string DoctorName { get; set; } = string.Empty;
     public AppointmentStatus Status { get; set; }
     public string? Notes { get; set; }

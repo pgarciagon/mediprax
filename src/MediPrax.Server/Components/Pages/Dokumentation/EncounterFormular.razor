@@ -6,13 +6,15 @@
 @inject IUserService UserService
 @inject IBillingService BillingService
 @inject IIcd10CodeService Icd10Service
+@inject IPsychopathFindingService PsychopathFindingService
+@inject INeurologicalExamService NeuroExamService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(isEdit ? "Dokumentation bearbeiten" : "Neue Dokumentation")</PageTitle>
+<PageTitle>@(isEdit ? "Konsultation bearbeiten" : "Neue Konsultation")</PageTitle>
 
 <div class="page-header">
-    <h1>@(isEdit ? "Dokumentation bearbeiten" : "Neue Dokumentation")</h1>
+    <h1>@(isEdit ? "Konsultation bearbeiten" : "Neue Konsultation")</h1>
     @if (patientName is not null)
     {
         <span class="patient-context">@patientName</span>
@@ -103,7 +105,62 @@ else
         </fieldset>
 
         <fieldset>
+            <legend>Strukturierte Befunde</legend>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                @if (isEdit)
+                {
+                    <a href="/dokumentation/psychopath-befund/@Id"
+                       class="btn btn-sm @(psychopathFindingId.HasValue ? "btn-primary" : "btn-secondary")">
+                        Psychopath. Befund (AMDP) @(psychopathFindingId.HasValue ? " ✓" : "")
+                    </a>
+                    <a href="/dokumentation/neurologischer-befund/@Id"
+                       class="btn btn-sm @(neuroExamId.HasValue ? "btn-primary" : "btn-secondary")">
+                        Neurologischer Befund @(neuroExamId.HasValue ? " ✓" : "")
+                    </a>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick='() => SaveAndNavigate("psychopath-befund")'>Psychopath. Befund (AMDP)</button>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick='() => SaveAndNavigate("neurologischer-befund")'>Neurologischer Befund</button>
+                }
+                <a href="/patienten/@PatientId/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Krankheitsspezifische Module</legend>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <a href="/patienten/@PatientId/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
+                <a href="/patienten/@PatientId/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
+                <a href="/patienten/@PatientId/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
+                <a href="/patienten/@PatientId/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
+            </div>
+        </fieldset>
+
+        <fieldset>
             <legend>Befund / Notizen</legend>
+
+            @if (!string.IsNullOrEmpty(psychopathNarrative))
+            {
+                <div class="narrative-block">
+                    <div class="narrative-header">
+                        <span class="narrative-label">Psychopathologischer Befund (AMDP)</span>
+                        <a href="/dokumentation/psychopath-befund/@Id" class="btn-link btn-sm">Bearbeiten</a>
+                    </div>
+                    <div class="narrative-text">@psychopathNarrative</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(neuroNarrative))
+            {
+                <div class="narrative-block">
+                    <div class="narrative-header">
+                        <span class="narrative-label">Neurologischer Befund</span>
+                        <a href="/dokumentation/neurologischer-befund/@Id" class="btn-link btn-sm">Bearbeiten</a>
+                    </div>
+                    <div class="narrative-text">@neuroNarrative</div>
+                </div>
+            }
 
             <div class="template-bar">
                 <span class="template-label">Vorlage:</span>
@@ -133,16 +190,26 @@ else
             else
             {
 
-                <div class="gop-search">
-                    <input type="text"
-                           @bind="gopSearchTerm"
-                           @bind:event="oninput"
-                           @bind:after="SearchGop"
-                           placeholder="GOP-Ziffer oder Beschreibung suchen..."
-                           class="form-control" />
-                    @if (gopResults.Count > 0)
+                <div class="gop-search" style="position:relative;">
+                    <div style="display:flex;gap:0;">
+                        <input type="text"
+                               @bind="gopSearchTerm"
+                               @bind:event="oninput"
+                               @bind:after="SearchGop"
+                               @onfocus="OnGopFocus"
+                               placeholder="GOP-Ziffer oder Beschreibung suchen..."
+                               class="form-control"
+                               style="border-top-right-radius:0;border-bottom-right-radius:0;" />
+                        <button type="button"
+                                class="btn btn-secondary"
+                                style="border-top-left-radius:0;border-bottom-left-radius:0;padding:0 0.75rem;min-width:2.5rem;font-size:0.8rem;"
+                                @onclick="ToggleGopDropdown">
+                            ▼
+                        </button>
+                    </div>
+                    @if (showGopDropdown && gopResults.Count > 0)
                     {
-                        <div class="search-dropdown">
+                        <div class="search-dropdown" style="max-height:250px;overflow-y:auto;">
                             @foreach (var entry in gopResults)
                             {
                                 <div class="search-item" @onclick="() => AddGop(entry)">
@@ -200,33 +267,6 @@ else
             }
         </fieldset>
 
-        <fieldset>
-            <legend>Strukturierte Befunde</legend>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                @if (isEdit)
-                {
-                    <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-sm btn-secondary">Psychopath. Befund (AMDP)</a>
-                    <a href="/dokumentation/neurologischer-befund/@Id" class="btn btn-sm btn-secondary">Neurologischer Befund</a>
-                }
-                else
-                {
-                    <span class="btn btn-sm btn-secondary" style="opacity:0.5;cursor:default;">Psychopath. Befund (AMDP)</span>
-                    <span class="btn btn-sm btn-secondary" style="opacity:0.5;cursor:default;">Neurologischer Befund</span>
-                }
-                <a href="/patienten/@PatientId/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
-            </div>
-        </fieldset>
-
-        <fieldset>
-            <legend>Krankheitsspezifische Module</legend>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                <a href="/patienten/@PatientId/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
-                <a href="/patienten/@PatientId/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
-                <a href="/patienten/@PatientId/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
-                <a href="/patienten/@PatientId/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
-            </div>
-        </fieldset>
-
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="error-message">@errorMessage</div>
@@ -244,6 +284,9 @@ else
 @code {
     [Parameter] public Guid? PatientId { get; set; }
     [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery] public Guid? DoctorIdQuery { get; set; }
+    [SupplyParameterFromQuery] public int? DurationQuery { get; set; }
+    [SupplyParameterFromQuery] public Guid? AppointmentIdQuery { get; set; }
 
     private EncounterFormModel form = new();
     private IReadOnlyList<DoctorListItemDto> doctors = [];
@@ -254,7 +297,12 @@ else
     private string icdSearchTerm = string.Empty;
     private bool showIcdDropdown;
     private string gopSearchTerm = string.Empty;
+    private bool showGopDropdown;
     private string? patientName;
+    private string? psychopathNarrative;
+    private string? neuroNarrative;
+    private Guid? psychopathFindingId;
+    private Guid? neuroExamId;
     private string backUrl = "/patienten";
     private bool isEdit => Id.HasValue;
     private bool loading = true;
@@ -289,6 +337,20 @@ else
                 var desc = await Icd10Service.GetDescriptionAsync(c);
                 if (desc is not null) icdDescriptions[c] = desc;
             }
+
+            // Load structured finding narratives
+            var psychFinding = await PsychopathFindingService.GetByEncounterAsync(Id!.Value);
+            if (psychFinding is not null)
+            {
+                psychopathNarrative = psychFinding.NarrativeText;
+                psychopathFindingId = psychFinding.Id;
+            }
+            var neuroExam = await NeuroExamService.GetByEncounterAsync(Id!.Value);
+            if (neuroExam is not null)
+            {
+                neuroNarrative = neuroExam.NarrativeText;
+                neuroExamId = neuroExam.Id;
+            }
         }
         else if (PatientId.HasValue)
         {
@@ -296,6 +358,10 @@ else
             patientName = patient?.FullName;
             backUrl = $"/patienten/{PatientId}";
             form.EncounterDate = DateOnly.FromDateTime(DateTime.Today);
+            if (DoctorIdQuery.HasValue)
+                form.DoctorId = DoctorIdQuery.Value.ToString();
+            if (DurationQuery.HasValue)
+                form.DurationMinutes = DurationQuery.Value;
         }
 
         loading = false;
@@ -355,7 +421,36 @@ else
 
     private void SearchGop()
     {
-        gopResults = MediPrax.Application.Data.GopCatalog.Search(gopSearchTerm);
+        if (string.IsNullOrWhiteSpace(gopSearchTerm))
+        {
+            showGopDropdown = false;
+            gopResults = [];
+        }
+        else
+        {
+            gopResults = MediPrax.Application.Data.GopCatalog.Search(gopSearchTerm);
+            showGopDropdown = gopResults.Count > 0;
+        }
+    }
+
+    private void OnGopFocus()
+    {
+        if (!showGopDropdown)
+            ToggleGopDropdown();
+    }
+
+    private void ToggleGopDropdown()
+    {
+        if (showGopDropdown) { showGopDropdown = false; return; }
+        if (string.IsNullOrWhiteSpace(gopSearchTerm))
+        {
+            gopResults = MediPrax.Application.Data.GopCatalog.GetAll();
+        }
+        else
+        {
+            gopResults = MediPrax.Application.Data.GopCatalog.Search(gopSearchTerm);
+        }
+        showGopDropdown = gopResults.Count > 0;
     }
 
     private async Task AddGop(MediPrax.Application.Data.GopCatalog.GopEntry entry)
@@ -371,6 +466,7 @@ else
         billingItems.Add(item);
         gopSearchTerm = string.Empty;
         gopResults = [];
+        showGopDropdown = false;
     }
 
     private async Task RemoveGop(Guid billingItemId)
@@ -428,6 +524,34 @@ else
         };
     }
 
+    private async Task SaveAndNavigate(string befundType)
+    {
+        if (!Guid.TryParse(form.DoctorId, out var doctorId))
+        {
+            errorMessage = "Bitte wählen Sie einen Arzt.";
+            return;
+        }
+
+        try
+        {
+            var created = await EncounterService.CreateAsync(new CreateEncounterDto
+            {
+                PatientId = PatientId!.Value,
+                DoctorId = doctorId,
+                AppointmentId = AppointmentIdQuery,
+                EncounterDate = form.EncounterDate,
+                Notes = form.Notes,
+                Icd10Codes = form.Icd10Codes,
+                DurationMinutes = form.DurationMinutes
+            });
+            Navigation.NavigateTo($"/dokumentation/{befundType}/{created.Id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
     private async Task HandleSubmit()
     {
         saving = true;
@@ -463,6 +587,7 @@ else
                 {
                     PatientId = PatientId!.Value,
                     DoctorId = doctorId,
+                    AppointmentId = AppointmentIdQuery,
                     EncounterDate = form.EncounterDate,
                     Notes = form.Notes,
                     Icd10Codes = form.Icd10Codes,

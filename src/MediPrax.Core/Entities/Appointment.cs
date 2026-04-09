@@ -13,6 +13,7 @@ public class Appointment : BaseEntity
     public required DateTime StartTime { get; set; }
     public int DurationMinutes { get; set; } = 10;
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Scheduled;
+    public string? AppointmentType { get; set; }
     public string? Notes { get; set; }
 
     public bool IsVideoConsultation { get; set; }

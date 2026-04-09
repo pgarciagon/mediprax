@@ -1,13 +1,25 @@
 @page "/wartezimmer"
 @attribute [Authorize]
 @inject IAppointmentService AppointmentService
+@inject IUserService UserService
 @rendermode InteractiveServer
+@using System.Security.Claims
+@using MediPrax.Core.Enums
 
 <PageTitle>Wartezimmer</PageTitle>
 
 <div class="page-header">
     <h1>Wartezimmer</h1>
-    <span class="today-label">@DateOnly.FromDateTime(DateTime.Today).ToString("dddd, dd. MMMM yyyy", new System.Globalization.CultureInfo("de-DE"))</span>
+    <div style="display:flex;align-items:center;gap:1rem;">
+        <select class="form-control" style="max-width:220px;font-size:0.85rem;" @bind="selectedDoctorId" @bind:after="LoadEntries">
+            <option value="">Alle Ärzte</option>
+            @foreach (var doc in doctors)
+            {
+                <option value="@doc.Id">@doc.FullName</option>
+            }
+        </select>
+        <span class="today-label">@DateOnly.FromDateTime(DateTime.Today).ToString("dddd, dd. MMMM yyyy", new System.Globalization.CultureInfo("de-DE"))</span>
+    </div>
 </div>
 
 @if (entries is null)
@@ -44,7 +56,7 @@ else
             <h2 class="section-title checked-in">Im Wartezimmer (@waiting.Count)</h2>
             @foreach (var e in waiting)
             {
-                <div class="entry-card status-checkedin">
+                <div class="entry-card status-checkedin @(e.AppointmentId == HighlightId ? "highlight" : "")">
                     @RenderEntry(e)
                     <div class="entry-actions">
                         <button class="btn btn-sm btn-primary" @onclick="() => ChangeStatus(e.AppointmentId, AppointmentStatus.InProgress)">Aufrufen</button>
@@ -86,15 +98,45 @@ else
 
 @code {
     private IReadOnlyList<WaitingRoomEntryDto>? entries;
+    private IReadOnlyList<WaitingRoomEntryDto>? allEntries;
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private string selectedDoctorId = "";
+
+    [SupplyParameterFromQuery(Name = "highlight")] public Guid? HighlightId { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadEntries();
+        doctors = await UserService.GetDoctorsAsync();
+
+        if (AuthState is not null)
+        {
+            var auth = await AuthState;
+            var roleClaim = auth.User.FindFirst(ClaimTypes.Role)?.Value;
+            if (roleClaim == "Arzt")
+            {
+                var idClaim = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (idClaim is not null) selectedDoctorId = idClaim;
+            }
+        }
+
+        allEntries = await AppointmentService.GetWaitingRoomAsync(DateOnly.FromDateTime(DateTime.Today));
+        ApplyFilter();
     }
 
     private async Task LoadEntries()
     {
-        entries = await AppointmentService.GetWaitingRoomAsync(DateOnly.FromDateTime(DateTime.Today));
+        allEntries = await AppointmentService.GetWaitingRoomAsync(DateOnly.FromDateTime(DateTime.Today));
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (string.IsNullOrEmpty(selectedDoctorId) || !Guid.TryParse(selectedDoctorId, out var docId))
+            entries = allEntries;
+        else
+            entries = allEntries?.Where(e => e.DoctorId == docId).ToList();
     }
 
     private async Task ChangeStatus(Guid appointmentId, AppointmentStatus status)

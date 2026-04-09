@@ -53,6 +53,15 @@ public class EncounterService(DbContext context) : IEncounterService
         };
 
         Encounters.Add(encounter);
+
+        // Set appointment to InProgress when consultation starts
+        if (dto.AppointmentId.HasValue)
+        {
+            var appointment = await context.Set<Appointment>().FindAsync([dto.AppointmentId.Value], ct);
+            if (appointment is not null && appointment.Status != AppointmentStatus.Completed)
+                appointment.Status = AppointmentStatus.InProgress;
+        }
+
         await context.SaveChangesAsync(ct);
 
         var created = await Encounters
@@ -75,6 +84,14 @@ public class EncounterService(DbContext context) : IEncounterService
         encounter.Icd10Codes = dto.Icd10Codes;
         encounter.DurationMinutes = dto.DurationMinutes;
         encounter.Status = dto.Status;
+
+        // Set appointment to Completed when encounter is completed
+        if (dto.Status == EncounterStatus.Completed && encounter.AppointmentId.HasValue)
+        {
+            var appointment = await context.Set<Appointment>().FindAsync([encounter.AppointmentId.Value], ct);
+            if (appointment is not null)
+                appointment.Status = AppointmentStatus.Completed;
+        }
 
         await context.SaveChangesAsync(ct);
         return MapToDto(encounter);

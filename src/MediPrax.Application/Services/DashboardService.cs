@@ -8,45 +8,72 @@ namespace MediPrax.Application.Services;
 
 public class DashboardService(DbContext context) : IDashboardService
 {
-    public async Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default)
+    public async Task<DashboardDto> GetDashboardAsync(Guid? userId = null, UserRole? role = null, CancellationToken ct = default)
     {
-        var today = DateTime.UtcNow.Date;
-        var todayEnd = today.AddDays(1);
-        var weekStart = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+        var localToday = localNow.Date;
+        var today = TimeZoneInfo.ConvertTimeToUtc(localToday, tz);
+        var todayEnd = TimeZoneInfo.ConvertTimeToUtc(localToday.AddDays(1), tz);
+        var weekStart = localToday.AddDays(-(int)localToday.DayOfWeek + (int)DayOfWeek.Monday);
         var weekEnd = weekStart.AddDays(7);
+        var isArzt = role == UserRole.Arzt;
 
         var totalPatients = await context.Set<Patient>().CountAsync(ct);
-        var appointmentsToday = await context.Set<Appointment>()
-            .CountAsync(a => a.StartTime >= today && a.StartTime < todayEnd, ct);
-        var encountersThisWeek = await context.Set<Encounter>()
-            .CountAsync(e => e.CreatedAt >= weekStart && e.CreatedAt < weekEnd, ct);
+
+        var apptQuery = context.Set<Appointment>()
+            .Where(a => a.StartTime >= today && a.StartTime < todayEnd);
+        if (isArzt && userId.HasValue)
+            apptQuery = apptQuery.Where(a => a.DoctorId == userId.Value);
+
+        var appointmentsToday = await apptQuery.CountAsync(ct);
+
+        var encounterQuery = context.Set<Encounter>()
+            .Where(e => e.CreatedAt >= weekStart && e.CreatedAt < weekEnd);
+        if (isArzt && userId.HasValue)
+            encounterQuery = encounterQuery.Where(e => e.DoctorId == userId.Value);
+        var encountersThisWeek = await encounterQuery.CountAsync(ct);
+
         var pendingArztbriefe = await context.Set<Document>()
             .CountAsync(d => d.DocType == DocumentType.Arztbrief && d.PdfData != null, ct);
 
-        var upcoming = await context.Set<Appointment>()
+        var upcomingQuery = context.Set<Appointment>()
             .Include(a => a.Patient).Include(a => a.Doctor)
             .Where(a => a.StartTime >= today && a.StartTime < todayEnd)
-            .Where(a => a.Status != AppointmentStatus.Cancelled && a.Status != AppointmentStatus.NoShow)
+            .Where(a => a.Status != AppointmentStatus.Cancelled && a.Status != AppointmentStatus.NoShow);
+        if (isArzt && userId.HasValue)
+            upcomingQuery = upcomingQuery.Where(a => a.DoctorId == userId.Value);
+
+        var upcoming = await upcomingQuery
             .OrderBy(a => a.StartTime).Take(15)
             .Select(a => new DashboardAppointmentDto
             {
                 Id = a.Id, PatientName = a.Patient.LastName + ", " + a.Patient.FirstName,
-                PatientId = a.PatientId, DoctorName = a.Doctor.FirstName + " " + a.Doctor.LastName,
+                PatientId = a.PatientId, DoctorId = a.DoctorId, DoctorName = a.Doctor.FirstName + " " + a.Doctor.LastName,
                 StartTime = a.StartTime, DurationMinutes = a.DurationMinutes,
-                Status = a.Status, Notes = a.Notes
+                Status = a.Status, AppointmentType = a.AppointmentType, Notes = a.Notes
             }).ToListAsync(ct);
 
         // Recent activity
-        var recentEncounters = await context.Set<Encounter>()
-            .Include(e => e.Patient).OrderByDescending(e => e.CreatedAt).Take(5)
+        var encounterActivityQuery = context.Set<Encounter>()
+            .Include(e => e.Patient).AsQueryable();
+        if (isArzt && userId.HasValue)
+            encounterActivityQuery = encounterActivityQuery.Where(e => e.DoctorId == userId.Value);
+
+        var recentEncounters = await encounterActivityQuery
+            .OrderByDescending(e => e.CreatedAt).Take(5)
             .Select(e => new DashboardActivityDto
             {
-                Type = "encounter", Description = "Dokumentation: " + e.Patient.LastName + ", " + e.Patient.FirstName,
+                Type = "encounter", Description = "Konsultation: " + e.Patient.LastName + ", " + e.Patient.FirstName,
                 PatientId = e.PatientId, Timestamp = e.CreatedAt
             }).ToListAsync(ct);
 
-        var recentDocs = await context.Set<Document>()
-            .Include(d => d.Patient).Where(d => d.DocType == DocumentType.Arztbrief)
+        var docActivityQuery = context.Set<Document>()
+            .Include(d => d.Patient).Where(d => d.DocType == DocumentType.Arztbrief);
+        if (isArzt && userId.HasValue)
+            docActivityQuery = docActivityQuery.Where(d => d.DoctorId == userId.Value);
+
+        var recentDocs = await docActivityQuery
             .OrderByDescending(d => d.CreatedAt).Take(5)
             .Select(d => new DashboardActivityDto
             {
@@ -58,15 +85,21 @@ public class DashboardService(DbContext context) : IDashboardService
             .OrderByDescending(a => a.Timestamp).Take(8).ToList();
 
         // --- Arzt data ---
-        var openBriefe = await context.Set<Document>()
-            .CountAsync(d => d.DocType == DocumentType.Arztbrief
-                && (d.ArztbriefStatus == ArztbriefStatus.Entwurf || d.ArztbriefStatus == null), ct);
+        var briefeQuery = context.Set<Document>()
+            .Where(d => d.DocType == DocumentType.Arztbrief
+                && (d.ArztbriefStatus == ArztbriefStatus.Entwurf || d.ArztbriefStatus == null));
+        if (isArzt && userId.HasValue)
+            briefeQuery = briefeQuery.Where(d => d.DoctorId == userId.Value);
+        var openBriefe = await briefeQuery.CountAsync(ct);
 
         var todayDate = DateOnly.FromDateTime(DateTime.Today);
-        var dueRecalls = await context.Set<Recall>()
-            .CountAsync(r => r.Status == RecallStatus.Open && r.DueDate <= todayDate.AddDays(7), ct);
-        var overdueRecalls = await context.Set<Recall>()
-            .CountAsync(r => r.Status == RecallStatus.Open && r.DueDate < todayDate, ct);
+        var recallQuery = context.Set<Recall>().Where(r => r.Status == RecallStatus.Open);
+        if (isArzt && userId.HasValue)
+            recallQuery = recallQuery.Where(r => r.CreatedById == userId.Value);
+        var dueRecalls = await recallQuery
+            .CountAsync(r => r.DueDate <= todayDate.AddDays(7), ct);
+        var overdueRecalls = await recallQuery
+            .CountAsync(r => r.DueDate < todayDate, ct);
 
         // Warnings: suicidality, therapy limits, lab due
         var warnings = new List<DashboardWarningDto>();

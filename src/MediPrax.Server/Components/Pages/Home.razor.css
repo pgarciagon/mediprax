@@ -12,6 +12,13 @@
     color: var(--color-text-secondary, #64748b);
 }
 
+.role-subtitle {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-primary, #2563eb);
+    letter-spacing: 0.03em;
+}
+
 /* KPI Cards */
 .kpi-grid {
     display: grid;
@@ -125,6 +132,11 @@
     font-weight: 700;
     min-width: 40px;
     color: var(--color-text, #1e293b);
+    text-decoration: none;
+}
+
+.appt-time:hover {
+    color: var(--color-primary, #2563eb);
 }
 
 .appt-patient {
@@ -142,6 +154,15 @@
     min-width: 100px;
 }
 
+.appt-type {
+    font-size: 0.72rem;
+    color: var(--color-primary, #2563eb);
+    background: #eff6ff;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
 .appt-status {
     font-size: 0.7rem;
     font-weight: 600;
@@ -149,6 +170,58 @@
     color: var(--color-text-secondary, #64748b);
     min-width: 80px;
     text-align: right;
+}
+
+.appt-checkin {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-primary, #2563eb);
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    transition: all 150ms;
+    min-width: 80px;
+    text-align: center;
+}
+
+.appt-checkin:hover {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+
+.appt-row.highlight {
+    background: #dcfce7;
+    animation: highlight-fade 3s ease-out;
+}
+
+@keyframes highlight-fade {
+    0% { background: #bbf7d0; }
+    100% { background: transparent; }
+}
+
+.appt-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: #059669;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 150ms;
+}
+
+.appt-action:hover {
+    background: #047857;
+    color: #fff;
 }
 
 /* Activity List */

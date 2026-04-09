@@ -139,6 +139,12 @@
     color: var(--color-text, #1e293b);
 }
 
+.slot-type {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--color-primary, #2563eb);
+}
+
 .slot-doctor {
     display: block;
     font-size: 0.7rem;

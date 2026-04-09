@@ -59,6 +59,16 @@
 .entry-card.status-scheduled  { border-left-color: #38bdf8; background: #f0f9ff; }
 .entry-card.status-completed  { border-left-color: #94a3b8; opacity: 0.65; }
 
+.entry-card.highlight {
+    animation: highlight-pulse 3s ease-out;
+    box-shadow: 0 0 0 3px #34d399;
+}
+
+@keyframes highlight-pulse {
+    0% { box-shadow: 0 0 0 5px #86efac; background: #dcfce7; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
 .entry-info {
     display: flex;
     gap: 0.8rem;

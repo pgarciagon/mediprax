@@ -105,6 +105,7 @@ public class AppointmentService(DbContext context) : IAppointmentService
                 PatientName = a.Patient.LastName + ", " + a.Patient.FirstName,
                 StartTime = a.StartTime,
                 DurationMinutes = a.DurationMinutes,
+                DoctorId = a.DoctorId,
                 DoctorName = a.Doctor.FirstName + " " + a.Doctor.LastName,
                 Status = a.Status,
                 Notes = a.Notes
@@ -120,6 +121,7 @@ public class AppointmentService(DbContext context) : IAppointmentService
             DoctorId = dto.DoctorId,
             StartTime = DateTime.SpecifyKind(dto.StartTime, DateTimeKind.Utc),
             DurationMinutes = dto.DurationMinutes,
+            AppointmentType = dto.AppointmentType,
             Notes = dto.Notes
         };
 
@@ -144,6 +146,7 @@ public class AppointmentService(DbContext context) : IAppointmentService
         appointment.DoctorId = dto.DoctorId;
         appointment.StartTime = DateTime.SpecifyKind(dto.StartTime, DateTimeKind.Utc);
         appointment.DurationMinutes = dto.DurationMinutes;
+        appointment.AppointmentType = dto.AppointmentType;
         appointment.Notes = dto.Notes;
         await context.SaveChangesAsync(ct);
     }
@@ -392,6 +395,7 @@ public class AppointmentService(DbContext context) : IAppointmentService
         StartTime = a.StartTime,
         DurationMinutes = a.DurationMinutes,
         Status = a.Status,
+        AppointmentType = a.AppointmentType,
         Notes = a.Notes
     };
 

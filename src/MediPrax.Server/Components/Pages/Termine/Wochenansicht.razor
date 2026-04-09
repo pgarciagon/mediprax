@@ -4,6 +4,7 @@
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
+@using System.Security.Claims
 
 <PageTitle>Terminplanung</PageTitle>
 <style>.main-content:has(.week-grid), .main-content:has(.timeline-grid), .main-content:has(.timeline-container) { max-width: none !important; padding: 1rem !important; }</style>
@@ -139,6 +140,10 @@ else if (viewMode == "liste")
                             <div class="appointment-slot status-@appt.Status.ToString().ToLower()" @onclick="() => ViewAppointment(appt.Id)">
                                 <span class="slot-time">@appt.StartTime.ToLocalTime().ToString("HH:mm")</span>
                                 <span class="slot-patient">@appt.PatientName</span>
+                                @if (!string.IsNullOrEmpty(appt.AppointmentType))
+                                {
+                                    <span class="slot-type">@appt.AppointmentType</span>
+                                }
                                 @if (!string.IsNullOrEmpty(appt.DoctorName) && string.IsNullOrEmpty(selectedDoctorId))
                                 {
                                     <span class="slot-doctor">@appt.DoctorName</span>
@@ -270,11 +275,26 @@ else
     private const int endHour = 18;
     private const int slotHeight = 40; // pixels per 30 min
 
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         // Restore state from query params
         if (!string.IsNullOrEmpty(Arzt)) selectedDoctorId = Arzt;
         if (!string.IsNullOrEmpty(Ansicht)) viewMode = Ansicht;
+
+        // Default: Arzt sees own schedule, Tag view
+        if (string.IsNullOrEmpty(selectedDoctorId) && AuthState is not null)
+        {
+            var auth = await AuthState;
+            var roleClaim = auth.User.FindFirst(ClaimTypes.Role)?.Value;
+            if (roleClaim == "Arzt")
+            {
+                var idClaim = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (idClaim is not null) selectedDoctorId = idClaim;
+                if (string.IsNullOrEmpty(Ansicht)) viewMode = "tag";
+            }
+        }
 
         weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today));
         doctors = await UserService.GetDoctorsAsync();
