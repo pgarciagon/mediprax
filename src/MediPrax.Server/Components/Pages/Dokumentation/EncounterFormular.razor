@@ -115,22 +115,23 @@ else
             <InputTextArea @bind-Value="form.Notes" class="form-control notes-area" rows="12" />
         </fieldset>
 
-        @if (isEdit)
-        {
-            <fieldset>
-                <legend>Status</legend>
-                <InputSelect @bind-Value="form.Status" class="form-control" style="max-width:200px">
-                    <option value="Open">Offen</option>
-                    <option value="InProgress">In Bearbeitung</option>
-                    <option value="Completed">Abgeschlossen</option>
-                </InputSelect>
-            </fieldset>
-        }
+        <fieldset>
+            <legend>Status</legend>
+            <InputSelect @bind-Value="form.Status" class="form-control" style="max-width:200px">
+                <option value="Open">Offen</option>
+                <option value="InProgress">In Bearbeitung</option>
+                <option value="Completed">Abgeschlossen</option>
+            </InputSelect>
+        </fieldset>
 
-        @if (isEdit)
-        {
-            <fieldset>
-                <legend>Abrechnung</legend>
+        <fieldset>
+            <legend>Abrechnung</legend>
+            @if (!isEdit)
+            {
+                <p class="no-codes">Bitte speichern Sie zuerst, um Abrechnungspositionen hinzuzufügen.</p>
+            }
+            else
+            {
 
                 <div class="gop-search">
                     <input type="text"
@@ -196,30 +197,35 @@ else
                 {
                     <p class="no-codes">Keine Abrechnungspositionen hinzugefügt.</p>
                 }
-            </fieldset>
-        }
+            }
+        </fieldset>
 
-        @if (isEdit)
-        {
-            <fieldset>
-                <legend>Strukturierte Befunde</legend>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <fieldset>
+            <legend>Strukturierte Befunde</legend>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                @if (isEdit)
+                {
                     <a href="/dokumentation/psychopath-befund/@Id" class="btn btn-sm btn-secondary">Psychopath. Befund (AMDP)</a>
                     <a href="/dokumentation/neurologischer-befund/@Id" class="btn btn-sm btn-secondary">Neurologischer Befund</a>
-                    <a href="/patienten/@PatientId/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
-                </div>
-            </fieldset>
+                }
+                else
+                {
+                    <span class="btn btn-sm btn-secondary" style="opacity:0.5;cursor:default;">Psychopath. Befund (AMDP)</span>
+                    <span class="btn btn-sm btn-secondary" style="opacity:0.5;cursor:default;">Neurologischer Befund</span>
+                }
+                <a href="/patienten/@PatientId/suizidalitaet" class="btn btn-sm btn-secondary">Suizidalität</a>
+            </div>
+        </fieldset>
 
-            <fieldset>
-                <legend>Krankheitsspezifische Module</legend>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    <a href="/patienten/@PatientId/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
-                    <a href="/patienten/@PatientId/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
-                    <a href="/patienten/@PatientId/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
-                    <a href="/patienten/@PatientId/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
-                </div>
-            </fieldset>
-        }
+        <fieldset>
+            <legend>Krankheitsspezifische Module</legend>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <a href="/patienten/@PatientId/anfallskalender" class="btn btn-sm btn-secondary">Anfallskalender</a>
+                <a href="/patienten/@PatientId/kopfschmerz-tagebuch" class="btn btn-sm btn-secondary">Kopfschmerz-Tagebuch</a>
+                <a href="/patienten/@PatientId/ms-dokumentation" class="btn btn-sm btn-secondary">MS-Dokumentation</a>
+                <a href="/patienten/@PatientId/parkinson-dokumentation" class="btn btn-sm btn-secondary">Parkinson</a>
+            </div>
+        </fieldset>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
