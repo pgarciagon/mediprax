@@ -116,6 +116,9 @@ else
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery] public Guid? PatientIdQuery { get; set; }
+    [SupplyParameterFromQuery] public Guid? DoctorIdQuery { get; set; }
+    [SupplyParameterFromQuery] public string? NotesQuery { get; set; }
 
     private bool IsEdit => Id.HasValue;
     private bool notFound;
@@ -150,6 +153,24 @@ else
             form.Notes = appointment.Notes;
             patientSearchTerm = appointment.PatientName;
             patientSelected = true;
+        }
+        else
+        {
+            // Pre-fill from query parameters (e.g. from Warteliste)
+            if (PatientIdQuery.HasValue)
+            {
+                var patient = await PatientService.GetByIdAsync(PatientIdQuery.Value);
+                if (patient is not null)
+                {
+                    form.PatientId = patient.Id;
+                    patientSearchTerm = patient.FullName;
+                    patientSelected = true;
+                }
+            }
+            if (DoctorIdQuery.HasValue)
+                form.DoctorId = DoctorIdQuery.Value.ToString();
+            if (!string.IsNullOrEmpty(NotesQuery))
+                form.Notes = NotesQuery;
         }
     }
 

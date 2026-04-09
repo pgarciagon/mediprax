@@ -248,7 +248,12 @@ else
 
     private void ScheduleEntry(WaitlistEntryDto entry)
     {
-        Navigation.NavigateTo($"/termine/neu?patientId={entry.PatientId}");
+        var url = $"/termine/neu?patientIdQuery={entry.PatientId}";
+        if (entry.PreferredTherapistId.HasValue)
+            url += $"&doctorIdQuery={entry.PreferredTherapistId.Value}";
+        if (!string.IsNullOrEmpty(entry.Notes))
+            url += $"&notesQuery={Uri.EscapeDataString(entry.Notes)}";
+        Navigation.NavigateTo(url);
     }
 
     private async Task CancelEntry(Guid entryId)
