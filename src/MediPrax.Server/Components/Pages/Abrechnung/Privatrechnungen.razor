@@ -1,0 +1,326 @@
+@page "/abrechnung/privatrechnungen"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPrivateInvoiceService InvoiceService
+@inject IPatientService PatientService
+@rendermode InteractiveServer
+
+<PageTitle>Privatrechnungen</PageTitle>
+
+<div class="page-header">
+    <h1>Privatrechnungen (GOÄ)</h1>
+    <button class="btn btn-primary" @onclick="ShowCreate">+ Neue Rechnung</button>
+</div>
+
+<div class="tabs" style="margin-bottom:1rem">
+    <button class="btn @(activeTab == "all" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => { activeTab = "all"; _ = LoadAll(); }'>Alle</button>
+    <button class="btn @(activeTab == "overdue" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => { activeTab = "overdue"; _ = LoadOverdue(); }'>Überfällig</button>
+</div>
+
+@if (invoices.Count == 0)
+{
+    <p class="empty-state">Keine Rechnungen vorhanden.</p>
+}
+else
+{
+    <table class="billing-table">
+        <thead>
+            <tr>
+                <th>Rechnungsnr.</th>
+                <th>Patient</th>
+                <th>Datum</th>
+                <th>Fällig</th>
+                <th>Brutto</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inv in invoices)
+            {
+                <tr class="@(inv.Status == InvoiceStatus.Overdue ? "row-warning" : "")">
+                    <td><strong>@inv.InvoiceNumber</strong></td>
+                    <td>@inv.PatientName</td>
+                    <td>@inv.InvoiceDate.ToString("dd.MM.yyyy")</td>
+                    <td>@inv.DueDate.ToString("dd.MM.yyyy")</td>
+                    <td>@inv.TotalGross.ToString("N2") €</td>
+                    <td>
+                        <span class="status-badge status-@inv.Status.ToString().ToLower()">
+                            @inv.StatusDisplay
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => ShowDetail(inv)">Detail</button>
+                        @if (inv.Status == InvoiceStatus.Draft)
+                        {
+                            <button class="btn btn-sm btn-primary"
+                                    @onclick="() => UpdateStatus(inv.Id, InvoiceStatus.Sent)">Versenden</button>
+                        }
+                        @if (inv.Status == InvoiceStatus.Sent || inv.Status == InvoiceStatus.Overdue || inv.Status == InvoiceStatus.PartiallyPaid)
+                        {
+                            <button class="btn btn-sm btn-success"
+                                    @onclick="() => ShowPayment(inv)">Zahlung</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (showCreate)
+{
+    <div class="modal-overlay" @onclick="() => showCreate = false">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:700px">
+            <h2>Neue Privatrechnung</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Patient *</label>
+                    <select class="form-control" @bind="createDto.PatientId">
+                        <option value="@Guid.Empty">— Patient wählen —</option>
+                        @foreach (var p in patients)
+                        {
+                            <option value="@p.Id">@p.FullName</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Rechnungsdatum</label>
+                    <InputDate @bind-Value="createDto.InvoiceDate" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Fällig am</label>
+                    <InputDate @bind-Value="createDto.DueDate" class="form-control" />
+                </div>
+            </div>
+
+            <h3>Positionen</h3>
+            @foreach (var (item, idx) in createDto.Items.Select((x, i) => (x, i)))
+            {
+                <div class="form-row" style="align-items:flex-end;gap:0.5rem">
+                    <div class="form-group" style="flex:2">
+                        <label>Beschreibung</label>
+                        <input class="form-control" @bind="item.Description" placeholder="Leistung" />
+                    </div>
+                    <div class="form-group" style="flex:0.8">
+                        <label>GOÄ-Ziffer</label>
+                        <input class="form-control" @bind="item.GoaePosition" placeholder="z.B. 1" />
+                    </div>
+                    <div class="form-group" style="flex:0.8">
+                        <label>Einzelpreis €</label>
+                        <InputNumber @bind-Value="item.UnitPrice" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.5">
+                        <label>Faktor</label>
+                        <InputNumber @bind-Value="item.Factor" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.5">
+                        <label>Anzahl</label>
+                        <InputNumber @bind-Value="item.Quantity" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.8">
+                        <label>Gesamt</label>
+                        <input class="form-control" value="@item.Total.ToString("N2") €" readonly />
+                    </div>
+                    <button class="btn btn-sm btn-danger" @onclick="() => createDto.Items.RemoveAt(idx)">X</button>
+                </div>
+            }
+            <button class="btn btn-sm btn-secondary" @onclick="AddItem" style="margin-bottom:1rem">+ Position</button>
+
+            <div style="text-align:right;font-weight:bold">
+                Gesamt: @createDto.Items.Sum(i => i.Total).ToString("N2") €
+            </div>
+
+            <div class="form-group">
+                <label>Notizen</label>
+                <InputText @bind-Value="createDto.Notes" class="form-control" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => showCreate = false">Abbrechen</button>
+                <button class="btn btn-primary" @onclick="SaveInvoice" disabled="@isSaving">
+                    @(isSaving ? "Speichern..." : "Rechnung erstellen")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (selectedInvoice is not null)
+{
+    <div class="modal-overlay" @onclick="() => selectedInvoice = null">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:600px">
+            <h2>Rechnung @selectedInvoice.InvoiceNumber</h2>
+            <p><strong>Patient:</strong> @selectedInvoice.PatientName</p>
+            <p><strong>Datum:</strong> @selectedInvoice.InvoiceDate.ToString("dd.MM.yyyy")
+               &nbsp;|&nbsp;<strong>Fällig:</strong> @selectedInvoice.DueDate.ToString("dd.MM.yyyy")</p>
+            <p><strong>Status:</strong> @selectedInvoice.StatusDisplay</p>
+
+            <table class="table" style="margin-top:1rem">
+                <thead>
+                    <tr><th>Beschreibung</th><th>Ziffer</th><th>Preis</th><th>Faktor</th><th>Anz.</th><th>Gesamt</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in selectedInvoice.Items)
+                    {
+                        <tr>
+                            <td>@item.Description</td>
+                            <td>@item.GoaePosition</td>
+                            <td>@item.UnitPrice.ToString("N2") €</td>
+                            <td>@item.Factor</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Total.ToString("N2") €</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div style="text-align:right;font-weight:bold;margin-top:0.5rem">
+                Gesamtbetrag: @selectedInvoice.TotalGross.ToString("N2") €
+            </div>
+            @if (selectedInvoice.PaidAmount > 0)
+            {
+                <p><strong>Gezahlt:</strong> @selectedInvoice.PaidAmount.ToString("N2") €
+                   am @selectedInvoice.PaidDate?.ToString("dd.MM.yyyy")</p>
+            }
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => selectedInvoice = null">Schließen</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (paymentInvoice is not null)
+{
+    <div class="modal-overlay" @onclick="() => paymentInvoice = null">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:380px">
+            <h2>Zahlung erfassen</h2>
+            <p>Rechnung: <strong>@paymentInvoice.InvoiceNumber</strong></p>
+            <p>Betrag: <strong>@paymentInvoice.TotalGross.ToString("N2") €</strong></p>
+
+            <div class="form-group">
+                <label>Gezahlter Betrag *</label>
+                <InputNumber @bind-Value="paymentAmount" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label>Zahlungsdatum *</label>
+                <InputDate @bind-Value="paymentDate" class="form-control" />
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => paymentInvoice = null">Abbrechen</button>
+                <button class="btn btn-success" @onclick="SavePayment">Zahlung speichern</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<PrivateInvoiceDto> invoices = [];
+    private List<PatientListItemDto> patients = [];
+    private string activeTab = "all";
+    private bool showCreate;
+    private bool isSaving;
+    private string errorMessage = "";
+    private PrivateInvoiceDto? selectedInvoice;
+    private PrivateInvoiceDto? paymentInvoice;
+    private decimal paymentAmount;
+    private DateOnly paymentDate = DateOnly.FromDateTime(DateTime.Today);
+
+    private CreatePrivateInvoiceDto createDto = new()
+    {
+        InvoiceDate = DateOnly.FromDateTime(DateTime.Today),
+        DueDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30))
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        patients = (await PatientService.SearchAsync(new PatientSearchDto { PageSize = 500 })).Items.ToList();
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        if (patients.Count == 0) return;
+        var allInvoices = new List<PrivateInvoiceDto>();
+        foreach (var p in patients.Take(50))
+        {
+            var pi = await InvoiceService.GetByPatientAsync(p.Id);
+            allInvoices.AddRange(pi);
+        }
+        invoices = allInvoices.OrderByDescending(i => i.InvoiceDate).ToList();
+    }
+
+    private async Task LoadOverdue()
+    {
+        invoices = (await InvoiceService.GetOverdueAsync()).ToList();
+    }
+
+    private void ShowCreate()
+    {
+        createDto = new CreatePrivateInvoiceDto
+        {
+            InvoiceDate = DateOnly.FromDateTime(DateTime.Today),
+            DueDate = DateOnly.FromDateTime(DateTime.Today.AddDays(30))
+        };
+        errorMessage = "";
+        showCreate = true;
+    }
+
+    private void AddItem()
+    {
+        createDto.Items.Add(new MediPrax.Core.Entities.InvoiceItem { Factor = 2.3m });
+    }
+
+    private void ShowDetail(PrivateInvoiceDto inv) => selectedInvoice = inv;
+
+    private void ShowPayment(PrivateInvoiceDto inv)
+    {
+        paymentInvoice = inv;
+        paymentAmount = inv.TotalGross;
+        paymentDate = DateOnly.FromDateTime(DateTime.Today);
+    }
+
+    private async Task SaveInvoice()
+    {
+        if (createDto.PatientId == Guid.Empty || createDto.Items.Count == 0)
+        {
+            errorMessage = "Bitte Patient wählen und mindestens eine Position hinzufügen.";
+            return;
+        }
+        isSaving = true;
+        errorMessage = "";
+        try
+        {
+            await InvoiceService.CreateAsync(createDto);
+            showCreate = false;
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally { isSaving = false; }
+    }
+
+    private async Task UpdateStatus(Guid id, InvoiceStatus status)
+    {
+        await InvoiceService.UpdateStatusAsync(id, status);
+        await LoadAll();
+    }
+
+    private async Task SavePayment()
+    {
+        if (paymentInvoice is null) return;
+        await InvoiceService.MarkAsPaidAsync(paymentInvoice.Id, paymentAmount, paymentDate);
+        paymentInvoice = null;
+        await LoadAll();
+    }
+}

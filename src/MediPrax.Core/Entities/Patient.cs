@@ -21,6 +21,12 @@ public class Patient : BaseEntity
     public SuicidalityRiskLevel? CurrentSuicidalityRisk { get; set; }
     public DateTime? SuicidalityRiskUpdatedAt { get; set; }
 
+    // Legal guardian (Betreuer)
+    public bool HasLegalGuardian { get; set; }
+    public string? GuardianName { get; set; }
+    public string? GuardianContact { get; set; }
+    public string? GuardianScope { get; set; }
+
     public string FullName => $"{FirstName} {LastName}";
 
     public ICollection<Appointment> Appointments { get; set; } = [];

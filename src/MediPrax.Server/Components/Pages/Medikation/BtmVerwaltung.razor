@@ -1,0 +1,319 @@
+@page "/medikation/btm"
+@attribute [Authorize(Policy = "Arzt")]
+@inject IBtmComplianceService BtmService
+@inject IPatientService PatientService
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<PageTitle>BtM-Verwaltung</PageTitle>
+
+<div class="page-header">
+    <h1>BtM-Verwaltung</h1>
+    <button class="btn btn-primary" @onclick="ShowCreate">+ Neue BtM-Verschreibung</button>
+</div>
+
+<div class="tabs" style="margin-bottom:1rem">
+    <button class="btn @(activeTab == "prescriptions" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => { activeTab = "prescriptions"; _ = LoadPrescriptions(); }'>Verschreibungen</button>
+    <button class="btn @(activeTab == "summary" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => { activeTab = "summary"; _ = LoadSummary(); }'>30-Tage-Übersicht</button>
+    <button class="btn @(activeTab == "catalog" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => activeTab = "catalog"'>Substanzkatalog</button>
+</div>
+
+@if (activeTab == "prescriptions")
+{
+    @if (prescriptions.Count == 0)
+    {
+        <p class="empty-state">Keine BtM-Verschreibungen vorhanden.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Patient</th>
+                    <th>Medikament</th>
+                    <th>Substanz</th>
+                    <th>Menge</th>
+                    <th>BtM-Rezept-Nr.</th>
+                    <th>eBtM</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in prescriptions)
+                {
+                    <tr>
+                        <td>@p.PrescriptionDate.ToString("dd.MM.yyyy")</td>
+                        <td>@p.PatientName</td>
+                        <td>@p.MedicationName</td>
+                        <td>@p.Substance</td>
+                        <td>@p.Amount</td>
+                        <td>@p.BtmRecipeNumber</td>
+                        <td>@(p.IsEBtm ? "Ja" : "Nein")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (activeTab == "summary")
+{
+    @if (summaries.Count == 0)
+    {
+        <p class="empty-state">Keine BtM-Verschreibungen in den letzten 30 Tagen.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Substanz</th>
+                    <th>Verschrieben (30 Tage)</th>
+                    <th>Maximum</th>
+                    <th>Compliance</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in summaries)
+                {
+                    <tr class="@(s.ExceedsLimit ? "row-danger" : "")">
+                        <td>@s.PatientName</td>
+                        <td>@s.Substance</td>
+                        <td>@s.TotalAmount30Days @s.Unit</td>
+                        <td>@(s.MaxAllowed.HasValue ? $"{s.MaxAllowed} {s.Unit}" : "—")</td>
+                        <td>
+                            @if (s.ExceedsLimit)
+                            {
+                                <span class="status-badge status-danger">Überschritten!</span>
+                            }
+                            else
+                            {
+                                <span class="status-badge status-active">OK</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (activeTab == "catalog")
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Substanz</th>
+                <th>Einheit</th>
+                <th>Max. 30-Tage-Menge</th>
+                <th>Hinweis</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in BtmSubstanceCatalog.AllSubstances)
+            {
+                <tr>
+                    <td><strong>@s.Name</strong></td>
+                    <td>@s.Unit</td>
+                    <td>@s.Max30DayQuantity</td>
+                    <td>@s.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (showCreate)
+{
+    <div class="modal-overlay" @onclick="() => showCreate = false">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:600px">
+            <h2>Neue BtM-Verschreibung</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Patient *</label>
+                    <select class="form-control" @bind="dto.PatientId" @bind:after="CheckCompliance">
+                        <option value="@Guid.Empty">— Patient wählen —</option>
+                        @foreach (var p in patients)
+                        {
+                            <option value="@p.Id">@p.FullName</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Datum *</label>
+                    <InputDate @bind-Value="dto.PrescriptionDate" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Medikament *</label>
+                    <InputText @bind-Value="dto.MedicationName" class="form-control" placeholder="z.B. Ritalin 10mg N3" />
+                </div>
+                <div class="form-group">
+                    <label>PZN</label>
+                    <InputText @bind-Value="dto.Pzn" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Substanz *</label>
+                    <select class="form-control" @bind="dto.Substance" @bind:after="CheckCompliance">
+                        <option value="">— Substanz wählen —</option>
+                        @foreach (var s in BtmSubstanceCatalog.AllSubstances)
+                        {
+                            <option value="@s.Name">@s.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Menge *</label>
+                    <InputText @bind-Value="dto.Amount" class="form-control"
+                               placeholder="z.B. 2640 mg"
+                               @oninput="OnAmountInput" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Dosierung</label>
+                    <InputText @bind-Value="dto.Dosierung" class="form-control" placeholder="z.B. 1-0-1" />
+                </div>
+                <div class="form-group">
+                    <label>BtM-Rezept-Nummer *</label>
+                    <InputText @bind-Value="dto.BtmRecipeNumber" class="form-control" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Verordner-BtM-Nummer</label>
+                    <InputText @bind-Value="dto.PrescriberBtmNumber" class="form-control" />
+                </div>
+                <div class="form-group" style="align-self:flex-end;padding-bottom:0.5rem">
+                    <label>
+                        <InputCheckbox @bind-Value="dto.IsEBtm" /> Elektronisches BtM-Rezept (eBtM)
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notizen</label>
+                <InputText @bind-Value="dto.Notes" class="form-control" />
+            </div>
+
+            @if (complianceCheck is not null)
+            {
+                <div class="alert @(complianceCheck.IsCompliant ? "alert-info" : "alert-danger")" style="margin-top:1rem">
+                    <strong>Compliance-Prüfung:</strong>
+                    @if (!complianceCheck.IsCompliant)
+                    {
+                        <span> NICHT KONFORM</span>
+                    }
+                    <ul style="margin:0.5rem 0 0 1rem">
+                        @foreach (var w in complianceCheck.Warnings)
+                        {
+                            <li>@w</li>
+                        }
+                    </ul>
+                    @if (complianceCheck.MaxQuantity is not null)
+                    {
+                        <div>Max. 30-Tage-Menge: @complianceCheck.MaxQuantity</div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => showCreate = false">Abbrechen</button>
+                <button class="btn btn-primary" @onclick="SavePrescription" disabled="@isSaving">
+                    @(isSaving ? "Speichern..." : "Verschreibung speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<BtmPrescriptionDto> prescriptions = [];
+    private List<BtmSummaryDto> summaries = [];
+    private List<PatientListItemDto> patients = [];
+    private string activeTab = "prescriptions";
+    private bool showCreate;
+    private bool isSaving;
+    private string errorMessage = "";
+    private BtmComplianceCheckDto? complianceCheck;
+
+    private CreateBtmPrescriptionDto dto = new()
+    {
+        PrescriptionDate = DateOnly.FromDateTime(DateTime.Today)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        patients = (await PatientService.SearchAsync(new PatientSearchDto { PageSize = 500 })).Items.ToList();
+        await LoadPrescriptions();
+    }
+
+    private async Task LoadPrescriptions()
+    {
+        prescriptions = (await BtmService.GetAllAsync()).ToList();
+    }
+
+    private async Task LoadSummary()
+    {
+        summaries = (await BtmService.GetAll30DaySummaryAsync()).ToList();
+    }
+
+    private void ShowCreate()
+    {
+        dto = new CreateBtmPrescriptionDto { PrescriptionDate = DateOnly.FromDateTime(DateTime.Today) };
+        complianceCheck = null;
+        errorMessage = "";
+        showCreate = true;
+    }
+
+    private async Task CheckCompliance()
+    {
+        if (dto.PatientId != Guid.Empty && !string.IsNullOrEmpty(dto.Substance))
+            complianceCheck = await BtmService.CheckPrescriptionAsync(dto);
+    }
+
+    private async Task OnAmountInput(ChangeEventArgs e)
+    {
+        dto.Amount = e.Value?.ToString() ?? string.Empty;
+        await CheckCompliance();
+    }
+
+    private async Task SavePrescription()
+    {
+        if (dto.PatientId == Guid.Empty || string.IsNullOrEmpty(dto.MedicationName)
+            || string.IsNullOrEmpty(dto.Substance) || string.IsNullOrEmpty(dto.BtmRecipeNumber))
+        {
+            errorMessage = "Bitte alle Pflichtfelder ausfüllen.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = "";
+        try
+        {
+            await BtmService.CreatePrescriptionAsync(dto);
+            showCreate = false;
+            await LoadPrescriptions();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally { isSaving = false; }
+    }
+}

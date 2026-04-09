@@ -1,0 +1,282 @@
+@page "/dmp"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IDmpService DmpService
+@inject IPatientService PatientService
+@rendermode InteractiveServer
+
+<PageTitle>DMP-Übersicht</PageTitle>
+
+<div class="page-header">
+    <h1>DMP-Übersicht</h1>
+    <button class="btn btn-primary" @onclick="ShowEnrollForm">+ Einschreibung</button>
+</div>
+
+<div class="tabs" style="margin-bottom:1rem">
+    <button class="btn @(activeTab == "enrollments" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => activeTab = "enrollments"'>Einschreibungen</button>
+    <button class="btn @(activeTab == "documentation" ? "btn-primary" : "btn-secondary")"
+            @onclick='() => activeTab = "documentation"'>Dokumentation</button>
+</div>
+
+@if (activeTab == "enrollments")
+{
+    @if (enrollments.Count == 0)
+    {
+        <p class="empty-state">Keine DMP-Einschreibungen vorhanden.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>DMP-Typ</th>
+                    <th>Einschreibedatum</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in enrollments)
+                {
+                    <tr>
+                        <td>@e.PatientName</td>
+                        <td>@e.DmpType</td>
+                        <td>@e.EnrollmentDate.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            <span class="status-badge status-@e.Status.ToString().ToLower()">
+                                @e.StatusDisplay
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary"
+                                    @onclick="() => ShowDocumentation(e)">Dokumentation</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (activeTab == "documentation" && selectedEnrollment is not null)
+{
+    <div style="margin-bottom:1rem">
+        <strong>Patient:</strong> @selectedEnrollment.PatientName —
+        <strong>DMP:</strong> @selectedEnrollment.DmpType
+        <button class="btn btn-sm btn-secondary" style="margin-left:1rem"
+                @onclick="BackToEnrollments">Zurück</button>
+        <button class="btn btn-sm btn-primary" style="margin-left:0.5rem"
+                @onclick="ShowCreateDocumentation">+ Neue Dokumentation</button>
+    </div>
+
+    @if (documentations.Count == 0)
+    {
+        <p class="empty-state">Keine Dokumentationen vorhanden.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Quartal</th>
+                    <th>Datum</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in documentations)
+                {
+                    <tr>
+                        <td>@d.Quarter</td>
+                        <td>@d.DocumentationDate.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            @if (d.Submitted)
+                            {
+                                <span class="status-badge status-active">Übermittelt</span>
+                            }
+                            else
+                            {
+                                <span class="status-badge status-pending">Ausstehend</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!d.Submitted)
+                            {
+                                <button class="btn btn-sm btn-primary"
+                                        @onclick="() => SubmitDoc(d.Id)">Übermitteln</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (showEnrollForm)
+{
+    <div class="modal-overlay" @onclick="() => showEnrollForm = false">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:480px">
+            <h2>DMP-Einschreibung</h2>
+
+            <div class="form-group">
+                <label>Patient *</label>
+                <select class="form-control" @bind="enrollDto.PatientId">
+                    <option value="@Guid.Empty">— Patient wählen —</option>
+                    @foreach (var p in patients)
+                    {
+                        <option value="@p.Id">@p.FullName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label>DMP-Typ *</label>
+                <select class="form-control" @bind="enrollDto.DmpType">
+                    <option value="">— Typ wählen —</option>
+                    <option value="Depression">Depression</option>
+                    <option value="Diabetes mellitus Typ 2">Diabetes mellitus Typ 2</option>
+                    <option value="Koronare Herzkrankheit">Koronare Herzkrankheit</option>
+                    <option value="Herzinsuffizienz">Herzinsuffizienz</option>
+                    <option value="COPD">COPD</option>
+                    <option value="Asthma">Asthma</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Einschreibedatum *</label>
+                <InputDate @bind-Value="enrollDto.EnrollmentDate" class="form-control" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => showEnrollForm = false">Abbrechen</button>
+                <button class="btn btn-primary" @onclick="SaveEnrollment" disabled="@isSaving">
+                    @(isSaving ? "Speichern..." : "Einschreiben")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDocForm)
+{
+    <div class="modal-overlay" @onclick="() => showDocForm = false">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:480px">
+            <h2>Neue DMP-Dokumentation</h2>
+
+            <div class="form-group">
+                <label>Quartal *</label>
+                <InputText @bind-Value="docDto.Quarter" class="form-control" placeholder="z.B. 1/2026" />
+            </div>
+            <div class="form-group">
+                <label>Dokumentationsdatum *</label>
+                <InputDate @bind-Value="docDto.DocumentationDate" class="form-control" />
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => showDocForm = false">Abbrechen</button>
+                <button class="btn btn-primary" @onclick="SaveDocumentation" disabled="@isSaving">
+                    @(isSaving ? "Speichern..." : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DmpEnrollmentDto> enrollments = [];
+    private List<DmpDocumentationDto> documentations = [];
+    private List<PatientListItemDto> patients = [];
+    private string activeTab = "enrollments";
+    private DmpEnrollmentDto? selectedEnrollment;
+    private bool showEnrollForm;
+    private bool showDocForm;
+    private bool isSaving;
+    private string errorMessage = "";
+
+    private CreateDmpEnrollmentDto enrollDto = new() { EnrollmentDate = DateOnly.FromDateTime(DateTime.Today) };
+    private CreateDmpDocumentationDto docDto = new() { DocumentationDate = DateOnly.FromDateTime(DateTime.Today) };
+
+    protected override async Task OnInitializedAsync()
+    {
+        enrollments = (await DmpService.GetEnrollmentsAsync()).ToList();
+        patients = (await PatientService.SearchAsync(new PatientSearchDto { PageSize = 500 })).Items.ToList();
+    }
+
+    private void BackToEnrollments()
+    {
+        activeTab = "enrollments";
+        selectedEnrollment = null;
+    }
+
+    private void ShowEnrollForm()
+    {
+        enrollDto = new CreateDmpEnrollmentDto { EnrollmentDate = DateOnly.FromDateTime(DateTime.Today) };
+        errorMessage = "";
+        showEnrollForm = true;
+    }
+
+    private async Task ShowDocumentation(DmpEnrollmentDto enrollment)
+    {
+        selectedEnrollment = enrollment;
+        documentations = (await DmpService.GetDocumentationsAsync(enrollment.Id)).ToList();
+        activeTab = "documentation";
+    }
+
+    private void ShowCreateDocumentation()
+    {
+        var quarter = $"{((DateTime.Today.Month - 1) / 3) + 1}/{DateTime.Today.Year}";
+        docDto = new CreateDmpDocumentationDto
+        {
+            DmpEnrollmentId = selectedEnrollment!.Id,
+            DocumentationDate = DateOnly.FromDateTime(DateTime.Today),
+            Quarter = quarter
+        };
+        showDocForm = true;
+    }
+
+    private async Task SaveEnrollment()
+    {
+        if (enrollDto.PatientId == Guid.Empty || string.IsNullOrEmpty(enrollDto.DmpType))
+        {
+            errorMessage = "Bitte alle Felder ausfüllen.";
+            return;
+        }
+        isSaving = true;
+        errorMessage = "";
+        try
+        {
+            await DmpService.EnrollAsync(enrollDto);
+            enrollments = (await DmpService.GetEnrollmentsAsync()).ToList();
+            showEnrollForm = false;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally { isSaving = false; }
+    }
+
+    private async Task SaveDocumentation()
+    {
+        isSaving = true;
+        try
+        {
+            await DmpService.CreateDocumentationAsync(docDto);
+            documentations = (await DmpService.GetDocumentationsAsync(selectedEnrollment!.Id)).ToList();
+            showDocForm = false;
+        }
+        catch { }
+        finally { isSaving = false; }
+    }
+
+    private async Task SubmitDoc(Guid id)
+    {
+        await DmpService.SubmitDocumentationAsync(id);
+        documentations = (await DmpService.GetDocumentationsAsync(selectedEnrollment!.Id)).ToList();
+    }
+}

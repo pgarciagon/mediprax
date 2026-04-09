@@ -1,0 +1,223 @@
+@page "/verwaltung/textbausteine"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject ITextModuleService TextModuleService
+@rendermode InteractiveServer
+
+<PageTitle>Textbausteine</PageTitle>
+
+<div class="page-header">
+    <h1>Textbausteine</h1>
+    <button class="btn btn-primary" @onclick="ShowCreate">+ Neuer Textbaustein</button>
+</div>
+
+<div class="filter-bar" style="display:flex;gap:1rem;margin-bottom:1rem;align-items:center">
+    <select class="form-control" style="width:200px" @bind="selectedCategory" @bind:after="LoadModules">
+        <option value="">Alle Kategorien</option>
+        @foreach (var cat in categories)
+        {
+            <option value="@cat">@cat</option>
+        }
+    </select>
+    <span>@modules.Count Baustein(e)</span>
+</div>
+
+@if (modules.Count == 0)
+{
+    <p class="empty-state">Keine Textbausteine gefunden.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Kürzel</th>
+                <th>Titel</th>
+                <th>Kategorie</th>
+                <th>Inhalt (Vorschau)</th>
+                <th>Global</th>
+                <th>Verwendungen</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in modules)
+            {
+                <tr>
+                    <td><code>@m.Shortcut</code></td>
+                    <td>@m.Title</td>
+                    <td>@m.Category</td>
+                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                        @m.Content
+                    </td>
+                    <td>@(m.IsGlobal ? "Ja" : "Nein")</td>
+                    <td>@m.UsageCount</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => ShowEdit(m)">Bearbeiten</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(m)">Löschen</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (showForm)
+{
+    <div class="modal-overlay" @onclick="HideForm">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:640px">
+            <h2>@(editingId.HasValue ? "Textbaustein bearbeiten" : "Neuer Textbaustein")</h2>
+
+            <div class="form-group">
+                <label>Kürzel *</label>
+                <InputText @bind-Value="form.Shortcut" class="form-control" placeholder="z.B. /diagnose" />
+            </div>
+            <div class="form-group">
+                <label>Titel *</label>
+                <InputText @bind-Value="form.Title" class="form-control" placeholder="Kurze Beschreibung" />
+            </div>
+            <div class="form-group">
+                <label>Kategorie</label>
+                <InputText @bind-Value="form.Category" class="form-control" placeholder="z.B. Befundbericht, Brief, Diagnose" />
+            </div>
+            <div class="form-group">
+                <label>Inhalt *</label>
+                <p class="help-text" style="font-size:0.8rem;color:#666">
+                    Verfügbare Variablen: <code>{"{Patient.Name}"}</code> <code>{"{Patient.Geburtsdatum}"}</code>
+                    <code>{"{Patient.Alter}"}</code> <code>{"{Datum}"}</code>
+                </p>
+                <textarea class="form-control" rows="8" @bind="form.Content"
+                          style="font-family:monospace;font-size:0.9rem"></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <InputCheckbox @bind-Value="form.IsGlobal" /> Globaler Baustein (für alle Benutzer sichtbar)
+                </label>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="HideForm">Abbrechen</button>
+                <button class="btn btn-primary" @onclick="SaveModule" disabled="@isSaving">
+                    @(isSaving ? "Speichern..." : "Speichern")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (deleteTarget is not null)
+{
+    <div class="modal-overlay" @onclick="() => deleteTarget = null">
+        <div class="modal-card" @onclick:stopPropagation="true" style="max-width:400px">
+            <h3>Textbaustein löschen?</h3>
+            <p>Möchten Sie den Textbaustein "<strong>@deleteTarget.Title</strong>" wirklich löschen?</p>
+            <div class="form-actions">
+                <button class="btn btn-secondary" @onclick="() => deleteTarget = null">Abbrechen</button>
+                <button class="btn btn-danger" @onclick="DeleteModule">Löschen</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TextModuleDto> modules = [];
+    private List<string> categories = [];
+    private string selectedCategory = "";
+    private bool showForm;
+    private Guid? editingId;
+    private bool isSaving;
+    private string errorMessage = "";
+    private TextModuleDto? deleteTarget;
+
+    private CreateTextModuleDto form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadModules();
+    }
+
+    private async Task LoadModules()
+    {
+        modules = (await TextModuleService.GetAllAsync(
+            string.IsNullOrEmpty(selectedCategory) ? null : selectedCategory)).ToList();
+        var allModules = await TextModuleService.GetAllAsync();
+        categories = allModules.Select(m => m.Category)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct().OrderBy(c => c).ToList();
+    }
+
+    private void ShowCreate()
+    {
+        editingId = null;
+        form = new CreateTextModuleDto();
+        errorMessage = "";
+        showForm = true;
+    }
+
+    private void ShowEdit(TextModuleDto m)
+    {
+        editingId = m.Id;
+        form = new CreateTextModuleDto
+        {
+            Shortcut = m.Shortcut,
+            Title = m.Title,
+            Content = m.Content,
+            Category = m.Category,
+            IsGlobal = m.IsGlobal
+        };
+        errorMessage = "";
+        showForm = true;
+    }
+
+    private void HideForm()
+    {
+        showForm = false;
+        errorMessage = "";
+    }
+
+    private async Task SaveModule()
+    {
+        if (string.IsNullOrWhiteSpace(form.Shortcut) ||
+            string.IsNullOrWhiteSpace(form.Title) ||
+            string.IsNullOrWhiteSpace(form.Content))
+        {
+            errorMessage = "Bitte alle Pflichtfelder ausfüllen.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = "";
+        try
+        {
+            if (editingId.HasValue)
+                await TextModuleService.UpdateAsync(editingId.Value, form);
+            else
+                await TextModuleService.CreateAsync(form);
+
+            showForm = false;
+            await LoadModules();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ConfirmDelete(TextModuleDto m) => deleteTarget = m;
+
+    private async Task DeleteModule()
+    {
+        if (deleteTarget is null) return;
+        await TextModuleService.DeleteAsync(deleteTarget.Id);
+        deleteTarget = null;
+        await LoadModules();
+    }
+}

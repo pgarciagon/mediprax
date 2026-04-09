@@ -68,12 +68,26 @@ builder.Services.AddScoped<IMsDocumentationService, MsDocumentationService>();
 builder.Services.AddScoped<IParkinsonDocumentationService, ParkinsonDocumentationService>();
 builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>();
 
+// M30: Text Modules
+builder.Services.AddScoped<ITextModuleService, TextModuleService>();
+
+// M31: DMP
+builder.Services.AddScoped<IDmpService, DmpService>();
+
+// M33: Private Invoices
+builder.Services.AddScoped<IPrivateInvoiceService, PrivateInvoiceService>();
+
+// M35: BtM Compliance
+builder.Services.AddScoped<IBtmComplianceService, BtmComplianceService>();
+
 // Telematik — Mock services (replace with real implementations when TI access is available)
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEgkService, MediPrax.Server.Services.Telematik.MockEgkService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IERezeptService, MediPrax.Server.Services.Telematik.MockERezeptService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IKimService, MediPrax.Server.Services.Telematik.MockKimService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEpaService, MediPrax.Server.Services.Telematik.MockEpaService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Konnektor.IKonnektorClient, MediPrax.Server.Services.Telematik.MockKonnektorClient>();
+// M34: eAU
+builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEauService, MediPrax.Server.Services.Telematik.MockEauService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Health Checks
@@ -340,6 +354,52 @@ app.MapGet("/api/formulare/soziotherapie", async (Guid patientId, string diagnos
     var pdf = doc.GeneratePdf();
     return Results.File(pdf, "application/pdf", $"Soziotherapie_{patient.LastName}.pdf");
 }).RequireAuthorization("Klinisch");
+
+// M32: PsychKG PDF endpoints
+app.MapGet("/api/formulare/psychkg-zeugnis", async (Guid patientId, string untersuchungsDatum, string? untersuchungsZeit, string psychopathBefunde, string selbstgefaehrdung, string fremdgefaehrdung, string diagnose, string empfehlung, string? dauer, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.PsychKGZeugnisDocument(new MediPrax.Reporting.Formulare.PsychKGZeugnisData
+    {
+        PatientName = patient.FullName,
+        PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        PatientAdresse = patient.Street != null ? $"{patient.Street}, {patient.PostalCode} {patient.City}" : string.Empty,
+        UntersuchungsDatum = untersuchungsDatum,
+        UntersuchungsZeit = untersuchungsZeit ?? string.Empty,
+        PsychopathologischeBefunde = psychopathBefunde,
+        Selbstgefaehrdung = selbstgefaehrdung,
+        Fremdgefaehrdung = fremdgefaehrdung,
+        Diagnose = diagnose,
+        Empfehlung = empfehlung,
+        VorgeschlageneDauer = dauer ?? string.Empty,
+        ArztName = "Dr. med.",
+        Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"PsychKGZeugnis_{patient.LastName}.pdf");
+}).RequireAuthorization("Arzt");
+
+app.MapGet("/api/formulare/betreuungsanregung", async (Guid patientId, string diagnose, string begruendung, string? betreuer, string? aufgaben, string? hinweise, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.BetreuungsanregungDocument(new MediPrax.Reporting.Formulare.BetreuungsanregungData
+    {
+        PatientName = patient.FullName,
+        PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        PatientAdresse = patient.Street != null ? $"{patient.Street}, {patient.PostalCode} {patient.City}" : string.Empty,
+        Diagnose = diagnose,
+        BegruendungBetreuungsbedarf = begruendung,
+        VorgeschlagenerBetreuer = betreuer ?? string.Empty,
+        BetreuungsAufgaben = aufgaben ?? string.Empty,
+        ZusaetzlicheHinweise = hinweise ?? string.Empty,
+        ArztName = "Dr. med.",
+        Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"Betreuungsanregung_{patient.LastName}.pdf");
+}).RequireAuthorization("Arzt");
 
 // KVDT export endpoint
 app.MapGet("/api/kvdt-export/{quarter}", async (string quarter, IKvdtExportService kvdtService, IAuditService auditService) =>

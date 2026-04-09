@@ -33,6 +33,19 @@ public class MediPraxDbContext : DbContext
     public DbSet<ParkinsonDocumentation> ParkinsonDocumentations => Set<ParkinsonDocumentation>();
     public DbSet<SuicidalityAssessment> SuicidalityAssessments => Set<SuicidalityAssessment>();
 
+    // M30: Text Modules
+    public DbSet<TextModule> TextModules => Set<TextModule>();
+
+    // M31: DMP
+    public DbSet<DmpEnrollment> DmpEnrollments => Set<DmpEnrollment>();
+    public DbSet<DmpDocumentation> DmpDocumentations => Set<DmpDocumentation>();
+
+    // M33: Private Invoices
+    public DbSet<PrivateInvoice> PrivateInvoices => Set<PrivateInvoice>();
+
+    // M35: BtM Prescriptions
+    public DbSet<BtmPrescription> BtmPrescriptions => Set<BtmPrescription>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MediPraxDbContext).Assembly);
