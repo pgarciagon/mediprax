@@ -1,0 +1,12 @@
+::deep .docs-frame {
+    position: fixed;
+    top: 0;
+    left: 240px; /* sidebar width */
+    right: 0;
+    bottom: 0;
+    width: calc(100vw - 240px);
+    height: 100vh;
+    border: none;
+    z-index: 10;
+    background: #ffffff;
+}

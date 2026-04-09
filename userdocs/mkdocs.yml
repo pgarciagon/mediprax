@@ -25,14 +25,13 @@ theme:
     code: JetBrains Mono
   custom_dir: overrides
   features:
-    - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.indexes
     - search.highlight
     - search.suggest
     - toc.follow
     - content.tabs.link
-    - navigation.instant
 
 plugins:
   - search:
