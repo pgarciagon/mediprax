@@ -1,138 +1,118 @@
 @page "/patienten/{PatientId:guid}/ms-dokumentation"
 @attribute [Authorize(Policy = "Klinisch")]
 @inject IMsDocumentationService MsDocService
+@inject IPatientService PatientService
 @rendermode InteractiveServer
 
-<PageTitle>Multiple Sklerose Dokumentation</PageTitle>
+<PageTitle>MS-Dokumentation — @(patient?.FullName ?? "Laden...")</PageTitle>
 
-<div class="page-header">
-    <h1>MS-Dokumentation</h1>
-    <button class="btn btn-primary" @onclick="() => showForm = !showForm">+ Neue Dokumentation</button>
-</div>
-
-@if (showForm)
-{
-    <div class="card form-card">
-        <h3>MS-Verlauf dokumentieren</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Datum *</label>
-                <input class="form-control" @bind="formDateStr" placeholder="2026-04-09" />
-            </div>
-            <div class="form-group">
-                <label>EDSS-Score (0.0 – 10.0) *</label>
-                <input type="number" class="form-control" @bind="form.EdssScore" min="0" max="10" step="0.5" />
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.IsRelapse" /> Schub</label>
-            </div>
-        </div>
-        @if (form.IsRelapse)
-        {
-            <div class="form-row">
-                <div class="form-group wide">
-                    <label>Schubbeschreibung</label>
-                    <textarea class="form-control" @bind="form.RelapseDescription" rows="2"></textarea>
-                </div>
-            </div>
-        }
-        <div class="form-row">
-            <div class="form-group">
-                <label>MRT-Datum</label>
-                <input class="form-control" @bind="mriDateStr" placeholder="2026-04-09" />
-            </div>
-            <div class="form-group">
-                <label>Neue T2-Läsionen</label>
-                <input type="number" class="form-control" @bind="form.NewLesions" min="0" />
-            </div>
-            <div class="form-group">
-                <label>Gd-aufnehmende Läsionen</label>
-                <input type="number" class="form-control" @bind="form.GadEnhancing" min="0" />
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>MRT-Befund</label>
-                <textarea class="form-control" @bind="form.MriFindings" rows="2"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Aktuelle DMT</label>
-                <input class="form-control" @bind="form.CurrentDmt" placeholder="z.B. Ocrelizumab, Natalizumab..." />
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group wide">
-                <label>Anmerkungen</label>
-                <textarea class="form-control" @bind="form.Notes" rows="2"></textarea>
-            </div>
-        </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" @onclick="Save">Speichern</button>
-            <button class="btn btn-secondary" @onclick="() => showForm = false">Abbrechen</button>
-        </div>
-    </div>
-}
-
-@if (entries is null)
+@if (patient is null)
 {
     <p>Laden...</p>
 }
-else if (entries.Count == 0)
-{
-    <p class="empty-state">Noch keine MS-Dokumentation vorhanden.</p>
-}
 else
 {
-    <div class="stats-row">
-        <div class="stat-card">
-            <span class="stat-value">@entries.First().EdssDisplay</span>
-            <span class="stat-label">Aktueller EDSS</span>
+    <SuicidalityAlert PatientId="PatientId" />
+
+    <div class="page-header">
+        <div>
+            <a href="/patienten/@PatientId" class="back-link">&larr; @patient.FullName</a>
+            <h1>Multiple Sklerose — Dokumentation</h1>
         </div>
-        <div class="stat-card">
-            <span class="stat-value">@entries.Count(e => e.IsRelapse)</span>
-            <span class="stat-label">Schübe dokumentiert</span>
-        </div>
-        @if (!string.IsNullOrEmpty(entries.First().CurrentDmt))
-        {
-            <div class="stat-card">
-                <span class="stat-value">@entries.First().CurrentDmt</span>
-                <span class="stat-label">Aktuelle DMT</span>
-            </div>
-        }
+        <button class="btn btn-primary btn-sm" @onclick="() => showForm = !showForm">+ Neue Dokumentation</button>
     </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Datum</th>
-                <th>EDSS</th>
-                <th>Schub</th>
-                <th>MRT</th>
-                <th>Neue Läsionen</th>
-                <th>DMT</th>
-                <th>Aktionen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var entry in entries)
+    @if (showForm)
+    {
+        <div class="card form-card">
+            <h3>MS-Verlauf dokumentieren</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Datum *</label>
+                    <input class="form-control" @bind="formDateStr" placeholder="2026-04-09" />
+                </div>
+                <div class="form-group" style="flex:0.5">
+                    <label>EDSS (0–10) *</label>
+                    <input type="number" class="form-control" @bind="form.EdssScore" min="0" max="10" step="0.5" />
+                </div>
+                <div class="form-group" style="flex:0.3">
+                    <label><input type="checkbox" @bind="form.IsRelapse" /> Schub</label>
+                </div>
+            </div>
+            @if (form.IsRelapse)
             {
-                <tr class="@(entry.IsRelapse ? "row-urgent" : "")">
-                    <td>@entry.DocumentationDate.ToString("dd.MM.yyyy")</td>
-                    <td>@entry.EdssScore.ToString("F1")</td>
-                    <td>@(entry.IsRelapse ? "Ja" : "—")</td>
-                    <td>@(entry.MriDate?.ToString("dd.MM.yyyy") ?? "—")</td>
-                    <td>@(entry.NewLesions?.ToString() ?? "—") / @(entry.GadEnhancing?.ToString() ?? "—") Gd+</td>
-                    <td>@(entry.CurrentDmt ?? "—")</td>
-                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
-                </tr>
+                <div class="form-row">
+                    <div class="form-group full"><label>Schubbeschreibung</label><textarea class="form-control" @bind="form.RelapseDescription" rows="2"></textarea></div>
+                </div>
             }
-        </tbody>
-    </table>
+            <div class="form-row">
+                <div class="form-group"><label>MRT-Datum</label><input class="form-control" @bind="mriDateStr" placeholder="2026-04-09" /></div>
+                <div class="form-group" style="flex:0.4"><label>Neue T2-Läsionen</label><input type="number" class="form-control" @bind="form.NewLesions" min="0" /></div>
+                <div class="form-group" style="flex:0.4"><label>Gd+-Läsionen</label><input type="number" class="form-control" @bind="form.GadEnhancing" min="0" /></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>MRT-Befund</label><textarea class="form-control" @bind="form.MriFindings" rows="2"></textarea></div>
+                <div class="form-group"><label>Aktuelle DMT</label><input class="form-control" @bind="form.CurrentDmt" placeholder="z.B. Ocrelizumab" /></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full"><label>Anmerkungen</label><textarea class="form-control" @bind="form.Notes" rows="2"></textarea></div>
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                <button class="btn btn-primary btn-sm" @onclick="Save">Speichern</button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => showForm = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (entries is not null && entries.Count > 0)
+    {
+        <div class="summary-cards" style="display:flex;gap:1rem;margin:1rem 0;">
+            <div class="detail-card" style="flex:1;padding:1rem;">
+                <div style="font-size:1.2rem;font-weight:700;color:var(--color-primary)">@entries.First().EdssDisplay</div>
+                <div style="font-size:0.75rem;color:var(--color-text-secondary)">Aktueller EDSS</div>
+            </div>
+            <div class="detail-card" style="flex:1;padding:1rem;">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--color-danger)">@entries.Count(e => e.IsRelapse)</div>
+                <div style="font-size:0.75rem;color:var(--color-text-secondary)">Schübe</div>
+            </div>
+            @if (!string.IsNullOrEmpty(entries.First().CurrentDmt))
+            {
+                <div class="detail-card" style="flex:1;padding:1rem;">
+                    <div style="font-size:0.95rem;font-weight:600;color:var(--color-text)">@entries.First().CurrentDmt</div>
+                    <div style="font-size:0.75rem;color:var(--color-text-secondary)">Aktuelle DMT</div>
+                </div>
+            }
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr><th>Datum</th><th>EDSS</th><th>Schub</th><th>MRT</th><th>Läsionen</th><th>DMT</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in entries)
+                {
+                    <tr class="@(e.IsRelapse ? "row-highlight" : "")">
+                        <td>@e.DocumentationDate.ToString("dd.MM.yyyy")</td>
+                        <td>@e.EdssScore.ToString("F1")</td>
+                        <td>@(e.IsRelapse ? "Ja" : "—")</td>
+                        <td>@(e.MriDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                        <td>@(e.NewLesions?.ToString() ?? "—") T2 / @(e.GadEnhancing?.ToString() ?? "—") Gd+</td>
+                        <td>@(e.CurrentDmt ?? "—")</td>
+                        <td><button class="btn btn-sm btn-link danger" @onclick="() => Delete(e.Id)">Löschen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (entries is not null)
+    {
+        <div class="empty-encounters">Noch keine MS-Dokumentation vorhanden.</div>
+    }
 }
 
 @code {
     [Parameter] public Guid PatientId { get; set; }
-
+    private PatientDto? patient;
     private IReadOnlyList<MsDocumentationDto>? entries;
     private CreateMsDocumentationDto form = new();
     private string formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
@@ -141,6 +121,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        patient = await PatientService.GetByIdAsync(PatientId);
         form.PatientId = PatientId;
         await LoadEntries();
     }
@@ -150,20 +131,12 @@ else
     private async Task Save()
     {
         form.PatientId = PatientId;
-        if (DateOnly.TryParse(formDateStr, out var date))
-            form.DocumentationDate = date;
-        form.MriDate = DateOnly.TryParse(mriDateStr, out var mriDate) ? mriDate : null;
+        if (DateOnly.TryParse(formDateStr, out var d)) form.DocumentationDate = d;
+        form.MriDate = DateOnly.TryParse(mriDateStr, out var m) ? m : null;
         await MsDocService.CreateAsync(form);
-        form = new() { PatientId = PatientId };
-        formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
-        mriDateStr = string.Empty;
-        showForm = false;
+        form = new() { PatientId = PatientId }; formDateStr = DateTime.Today.ToString("yyyy-MM-dd"); mriDateStr = ""; showForm = false;
         await LoadEntries();
     }
 
-    private async Task Delete(Guid id)
-    {
-        await MsDocService.DeleteAsync(id);
-        await LoadEntries();
-    }
+    private async Task Delete(Guid id) { await MsDocService.DeleteAsync(id); await LoadEntries(); }
 }

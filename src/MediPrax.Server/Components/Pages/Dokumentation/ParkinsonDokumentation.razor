@@ -1,130 +1,107 @@
 @page "/patienten/{PatientId:guid}/parkinson-dokumentation"
 @attribute [Authorize(Policy = "Klinisch")]
 @inject IParkinsonDocumentationService ParkinsonService
+@inject IPatientService PatientService
 @rendermode InteractiveServer
 
-<PageTitle>Parkinson-Dokumentation</PageTitle>
+<PageTitle>Parkinson — @(patient?.FullName ?? "Laden...")</PageTitle>
 
-<div class="page-header">
-    <h1>Parkinson-Dokumentation</h1>
-    <button class="btn btn-primary" @onclick="() => showForm = !showForm">+ Neue Dokumentation</button>
-</div>
-
-@if (showForm)
-{
-    <div class="card form-card">
-        <h3>Parkinson-Verlauf dokumentieren</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Datum *</label>
-                <input class="form-control" @bind="formDateStr" placeholder="2026-04-09" />
-            </div>
-            <div class="form-group">
-                <label>Hoehn & Yahr (0–5) *</label>
-                <input type="number" class="form-control" @bind="form.HoehnYahrStage" min="0" max="5" step="0.5" />
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Tremor (0–4)</label>
-                <input type="number" class="form-control" @bind="form.Tremor" min="0" max="4" />
-            </div>
-            <div class="form-group">
-                <label>Rigor (0–4)</label>
-                <input type="number" class="form-control" @bind="form.Rigidity" min="0" max="4" />
-            </div>
-            <div class="form-group">
-                <label>Bradykinese (0–4)</label>
-                <input type="number" class="form-control" @bind="form.Bradykinesia" min="0" max="4" />
-            </div>
-            <div class="form-group">
-                <label>Posturale Instabilität (0–4)</label>
-                <input type="number" class="form-control" @bind="form.PosturalInstability" min="0" max="4" />
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.OnOffFluctuations" /> On-Off-Fluktuationen</label>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.Dyskinesia" /> Dyskinesien</label>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.FreezeOfGait" /> Freezing</label>
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group wide">
-                <label>Anmerkungen</label>
-                <textarea class="form-control" @bind="form.Notes" rows="2"></textarea>
-            </div>
-        </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" @onclick="Save">Speichern</button>
-            <button class="btn btn-secondary" @onclick="() => showForm = false">Abbrechen</button>
-        </div>
-    </div>
-}
-
-@if (entries is null)
+@if (patient is null)
 {
     <p>Laden...</p>
 }
-else if (entries.Count == 0)
-{
-    <p class="empty-state">Noch keine Parkinson-Dokumentation vorhanden.</p>
-}
 else
 {
-    <div class="stats-row">
-        <div class="stat-card">
-            <span class="stat-value">@entries.First().HoehnYahrDisplay</span>
-            <span class="stat-label">Aktuelles Stadium</span>
+    <SuicidalityAlert PatientId="PatientId" />
+
+    <div class="page-header">
+        <div>
+            <a href="/patienten/@PatientId" class="back-link">&larr; @patient.FullName</a>
+            <h1>Parkinson-Dokumentation</h1>
         </div>
-        <div class="stat-card">
-            <span class="stat-value">@entries.First().MotorScore</span>
-            <span class="stat-label">Motor-Score (max 16)</span>
-        </div>
+        <button class="btn btn-primary btn-sm" @onclick="() => showForm = !showForm">+ Neue Dokumentation</button>
     </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Datum</th>
-                <th>H&Y</th>
-                <th>Tremor</th>
-                <th>Rigor</th>
-                <th>Bradyk.</th>
-                <th>Instab.</th>
-                <th>On/Off</th>
-                <th>Dysk.</th>
-                <th>Freezing</th>
-                <th>Aktionen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var entry in entries)
-            {
-                <tr>
-                    <td>@entry.DocumentationDate.ToString("dd.MM.yyyy")</td>
-                    <td>@entry.HoehnYahrStage.ToString("F1")</td>
-                    <td>@entry.Tremor</td>
-                    <td>@entry.Rigidity</td>
-                    <td>@entry.Bradykinesia</td>
-                    <td>@entry.PosturalInstability</td>
-                    <td>@(entry.OnOffFluctuations ? "Ja" : "—")</td>
-                    <td>@(entry.Dyskinesia ? "Ja" : "—")</td>
-                    <td>@(entry.FreezeOfGait ? "Ja" : "—")</td>
-                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    @if (showForm)
+    {
+        <div class="card form-card">
+            <h3>Parkinson-Verlauf dokumentieren</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Datum *</label>
+                    <input class="form-control" @bind="formDateStr" placeholder="2026-04-09" />
+                </div>
+                <div class="form-group" style="flex:0.5">
+                    <label>Hoehn & Yahr (0–5) *</label>
+                    <input type="number" class="form-control" @bind="form.HoehnYahrStage" min="0" max="5" step="0.5" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:0.5"><label>Tremor (0–4)</label><input type="number" class="form-control" @bind="form.Tremor" min="0" max="4" /></div>
+                <div class="form-group" style="flex:0.5"><label>Rigor (0–4)</label><input type="number" class="form-control" @bind="form.Rigidity" min="0" max="4" /></div>
+                <div class="form-group" style="flex:0.5"><label>Bradykinese (0–4)</label><input type="number" class="form-control" @bind="form.Bradykinesia" min="0" max="4" /></div>
+                <div class="form-group" style="flex:0.5"><label>Post. Instab. (0–4)</label><input type="number" class="form-control" @bind="form.PosturalInstability" min="0" max="4" /></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.OnOffFluctuations" /> On/Off</label></div>
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.Dyskinesia" /> Dyskinesien</label></div>
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.FreezeOfGait" /> Freezing</label></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full"><label>Anmerkungen</label><textarea class="form-control" @bind="form.Notes" rows="2"></textarea></div>
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                <button class="btn btn-primary btn-sm" @onclick="Save">Speichern</button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => showForm = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (entries is not null && entries.Count > 0)
+    {
+        <div class="summary-cards" style="display:flex;gap:1rem;margin:1rem 0;">
+            <div class="detail-card" style="flex:1;padding:1rem;">
+                <div style="font-size:1.1rem;font-weight:700;color:var(--color-primary)">@entries.First().HoehnYahrDisplay</div>
+                <div style="font-size:0.75rem;color:var(--color-text-secondary)">Aktuelles Stadium</div>
+            </div>
+            <div class="detail-card" style="flex:1;padding:1rem;">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--color-primary)">@entries.First().MotorScore / 16</div>
+                <div style="font-size:0.75rem;color:var(--color-text-secondary)">Motor-Score</div>
+            </div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr><th>Datum</th><th>H&Y</th><th>Tremor</th><th>Rigor</th><th>Bradyk.</th><th>Instab.</th><th>On/Off</th><th>Dysk.</th><th>Freeze</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in entries)
+                {
+                    <tr>
+                        <td>@e.DocumentationDate.ToString("dd.MM.yyyy")</td>
+                        <td>@e.HoehnYahrStage.ToString("F1")</td>
+                        <td>@e.Tremor</td>
+                        <td>@e.Rigidity</td>
+                        <td>@e.Bradykinesia</td>
+                        <td>@e.PosturalInstability</td>
+                        <td>@(e.OnOffFluctuations ? "Ja" : "—")</td>
+                        <td>@(e.Dyskinesia ? "Ja" : "—")</td>
+                        <td>@(e.FreezeOfGait ? "Ja" : "—")</td>
+                        <td><button class="btn btn-sm btn-link danger" @onclick="() => Delete(e.Id)">Löschen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (entries is not null)
+    {
+        <div class="empty-encounters">Noch keine Parkinson-Dokumentation vorhanden.</div>
+    }
 }
 
 @code {
     [Parameter] public Guid PatientId { get; set; }
-
+    private PatientDto? patient;
     private IReadOnlyList<ParkinsonDocumentationDto>? entries;
     private CreateParkinsonDocumentationDto form = new();
     private string formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
@@ -132,6 +109,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        patient = await PatientService.GetByIdAsync(PatientId);
         form.PatientId = PatientId;
         await LoadEntries();
     }
@@ -141,18 +119,11 @@ else
     private async Task Save()
     {
         form.PatientId = PatientId;
-        if (DateOnly.TryParse(formDateStr, out var date))
-            form.DocumentationDate = date;
+        if (DateOnly.TryParse(formDateStr, out var d)) form.DocumentationDate = d;
         await ParkinsonService.CreateAsync(form);
-        form = new() { PatientId = PatientId };
-        formDateStr = DateTime.Today.ToString("yyyy-MM-dd");
-        showForm = false;
+        form = new() { PatientId = PatientId }; formDateStr = DateTime.Today.ToString("yyyy-MM-dd"); showForm = false;
         await LoadEntries();
     }
 
-    private async Task Delete(Guid id)
-    {
-        await ParkinsonService.DeleteAsync(id);
-        await LoadEntries();
-    }
+    private async Task Delete(Guid id) { await ParkinsonService.DeleteAsync(id); await LoadEntries(); }
 }

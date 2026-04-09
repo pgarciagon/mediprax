@@ -1,146 +1,144 @@
 @page "/patienten/{PatientId:guid}/anfallskalender"
 @attribute [Authorize(Policy = "Klinisch")]
 @inject ISeizureDiaryService SeizureDiaryService
-@inject NavigationManager Navigation
+@inject IPatientService PatientService
 @rendermode InteractiveServer
 
-<PageTitle>Anfallskalender</PageTitle>
+<PageTitle>Anfallskalender — @(patient?.FullName ?? "Laden...")</PageTitle>
 
-<div class="page-header">
-    <h1>Anfallskalender</h1>
-    <button class="btn btn-primary" @onclick="() => showForm = !showForm">+ Neuer Eintrag</button>
-</div>
-
-@if (showForm)
-{
-    <div class="card form-card">
-        <h3>Anfall dokumentieren</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Datum/Uhrzeit *</label>
-                <input class="form-control" @bind="form.SeizureDate" />
-            </div>
-            <div class="form-group">
-                <label>Anfallstyp *</label>
-                <select class="form-control" @bind="form.SeizureType">
-                    <option value="Fokal">Fokal</option>
-                    <option value="Generalisiert">Generalisiert</option>
-                    <option value="Fokal zu bilateral tonisch-klonisch">Fokal zu bilateral tonisch-klonisch</option>
-                    <option value="Unklassifiziert">Unklassifiziert</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Dauer (Sekunden)</label>
-                <input type="number" class="form-control" @bind="form.DurationSeconds" />
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Trigger</label>
-                <input class="form-control" @bind="form.Trigger" placeholder="z.B. Schlafmangel, Alkohol..." />
-            </div>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" @bind="form.AuraPresent" /> Aura vorhanden
-                </label>
-            </div>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" @bind="form.ConsciousnessImpaired" /> Bewusstseinsstörung
-                </label>
-            </div>
-        </div>
-        @if (form.AuraPresent)
-        {
-            <div class="form-row">
-                <div class="form-group wide">
-                    <label>Aura-Beschreibung</label>
-                    <input class="form-control" @bind="form.AuraDescription" />
-                </div>
-            </div>
-        }
-        <div class="form-row">
-            <div class="form-group">
-                <label>Postiktaler Zustand</label>
-                <input class="form-control" @bind="form.PostictalState" placeholder="z.B. Verwirrtheit, Müdigkeit..." />
-            </div>
-            <div class="form-group">
-                <label>Aktuelle Medikation</label>
-                <input class="form-control" @bind="form.MedicationAtTime" />
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group wide">
-                <label>Anmerkungen</label>
-                <textarea class="form-control" @bind="form.Notes" rows="2"></textarea>
-            </div>
-        </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" @onclick="Save">Speichern</button>
-            <button class="btn btn-secondary" @onclick="() => showForm = false">Abbrechen</button>
-        </div>
-    </div>
-}
-
-@if (entries is null)
+@if (patient is null)
 {
     <p>Laden...</p>
 }
-else if (entries.Count == 0)
-{
-    <p class="empty-state">Noch keine Anfälle dokumentiert.</p>
-}
 else
 {
-    <div class="stats-row">
-        <div class="stat-card">
-            <span class="stat-value">@entries.Count</span>
-            <span class="stat-label">Anfälle gesamt</span>
+    <SuicidalityAlert PatientId="PatientId" />
+
+    <div class="page-header">
+        <div>
+            <a href="/patienten/@PatientId" class="back-link">&larr; @patient.FullName</a>
+            <h1>Anfallskalender</h1>
         </div>
-        <div class="stat-card">
-            <span class="stat-value">@entries.Count(e => e.SeizureDate >= DateTime.UtcNow.AddDays(-30))</span>
-            <span class="stat-label">Letzte 30 Tage</span>
-        </div>
+        <button class="btn btn-primary btn-sm" @onclick="() => showForm = !showForm">+ Neuer Eintrag</button>
     </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Datum</th>
-                <th>Typ</th>
-                <th>Dauer</th>
-                <th>Aura</th>
-                <th>Bewusstlosigkeit</th>
-                <th>Trigger</th>
-                <th>Aktionen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var entry in entries)
+    @if (showForm)
+    {
+        <div class="card form-card">
+            <h3>Anfall dokumentieren</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Datum/Uhrzeit *</label>
+                    <input class="form-control" @bind="form.SeizureDate" />
+                </div>
+                <div class="form-group">
+                    <label>Anfallstyp *</label>
+                    <select class="form-control" @bind="form.SeizureType">
+                        <option value="Fokal">Fokal</option>
+                        <option value="Generalisiert">Generalisiert</option>
+                        <option value="Fokal zu bilateral tonisch-klonisch">Fokal zu bilateral t.-k.</option>
+                        <option value="Unklassifiziert">Unklassifiziert</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:0.5">
+                    <label>Dauer (Sek.)</label>
+                    <input type="number" class="form-control" @bind="form.DurationSeconds" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Trigger</label>
+                    <input class="form-control" @bind="form.Trigger" placeholder="z.B. Schlafmangel, Alkohol..." />
+                </div>
+                <div class="form-group" style="flex:0.4">
+                    <label><input type="checkbox" @bind="form.AuraPresent" /> Aura</label>
+                </div>
+                <div class="form-group" style="flex:0.5">
+                    <label><input type="checkbox" @bind="form.ConsciousnessImpaired" /> Bewusstseinsverlust</label>
+                </div>
+            </div>
+            @if (form.AuraPresent)
             {
-                <tr>
-                    <td>@entry.SeizureDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-                    <td>@entry.SeizureType</td>
-                    <td>@entry.DurationDisplay</td>
-                    <td>@(entry.AuraPresent ? "Ja" : "Nein")</td>
-                    <td>@(entry.ConsciousnessImpaired ? "Ja" : "Nein")</td>
-                    <td>@(entry.Trigger ?? "—")</td>
-                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
-                </tr>
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Aura-Beschreibung</label>
+                        <input class="form-control" @bind="form.AuraDescription" />
+                    </div>
+                </div>
             }
-        </tbody>
-    </table>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Postiktaler Zustand</label>
+                    <input class="form-control" @bind="form.PostictalState" placeholder="Verwirrtheit, Müdigkeit..." />
+                </div>
+                <div class="form-group">
+                    <label>Aktuelle Medikation</label>
+                    <input class="form-control" @bind="form.MedicationAtTime" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full">
+                    <label>Anmerkungen</label>
+                    <textarea class="form-control" @bind="form.Notes" rows="2"></textarea>
+                </div>
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                <button class="btn btn-primary btn-sm" @onclick="Save">Speichern</button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => showForm = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (entries is not null && entries.Count > 0)
+    {
+        <div class="summary-cards" style="display:flex;gap:1rem;margin:1rem 0;">
+            <div class="detail-card" style="flex:1;padding:1rem;">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--color-primary)">@entries.Count</div>
+                <div style="font-size:0.75rem;color:var(--color-text-secondary)">Anfälle gesamt</div>
+            </div>
+            <div class="detail-card" style="flex:1;padding:1rem;">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--color-primary)">@entries.Count(e => e.SeizureDate >= DateTime.UtcNow.AddDays(-30))</div>
+                <div style="font-size:0.75rem;color:var(--color-text-secondary)">Letzte 30 Tage</div>
+            </div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr><th>Datum</th><th>Typ</th><th>Dauer</th><th>Aura</th><th>Bewusstl.</th><th>Trigger</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in entries)
+                {
+                    <tr>
+                        <td>@entry.SeizureDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@entry.SeizureType</td>
+                        <td>@entry.DurationDisplay</td>
+                        <td>@(entry.AuraPresent ? "Ja" : "—")</td>
+                        <td>@(entry.ConsciousnessImpaired ? "Ja" : "—")</td>
+                        <td>@(entry.Trigger ?? "—")</td>
+                        <td><button class="btn btn-sm btn-link danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (entries is not null)
+    {
+        <div class="empty-encounters">Noch keine Anfälle dokumentiert.</div>
+    }
 }
 
 @code {
     [Parameter] public Guid PatientId { get; set; }
 
+    private PatientDto? patient;
     private IReadOnlyList<SeizureDiaryDto>? entries;
     private CreateSeizureDiaryDto form = new() { SeizureType = "Fokal" };
     private bool showForm;
 
     protected override async Task OnInitializedAsync()
     {
+        patient = await PatientService.GetByIdAsync(PatientId);
         form.PatientId = PatientId;
         form.SeizureDate = DateTime.Now;
         await LoadEntries();

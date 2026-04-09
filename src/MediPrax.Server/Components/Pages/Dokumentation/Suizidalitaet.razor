@@ -1,169 +1,141 @@
 @page "/patienten/{PatientId:guid}/suizidalitaet"
 @attribute [Authorize(Policy = "Klinisch")]
 @inject ISuicidalityAssessmentService SuicidalityService
+@inject IPatientService PatientService
 @rendermode InteractiveServer
 
-<PageTitle>Suizidalitätseinschätzung</PageTitle>
+<PageTitle>Suizidalität — @(patient?.FullName ?? "Laden...")</PageTitle>
 
-<div class="page-header">
-    <h1>Suizidalitätseinschätzung</h1>
-    <button class="btn btn-primary" @onclick="() => showForm = !showForm">+ Neue Einschätzung</button>
-</div>
-
-<SuicidalityAlert PatientId="PatientId" />
-
-@if (showForm)
-{
-    <div class="card form-card">
-        <h3>Risikoeinschätzung</h3>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Risikoeinschätzung *</label>
-                <select class="form-control" @bind="form.RiskLevel">
-                    <option value="@SuicidalityRiskLevel.None">Kein Risiko</option>
-                    <option value="@SuicidalityRiskLevel.Low">Gering</option>
-                    <option value="@SuicidalityRiskLevel.Moderate">Mittel</option>
-                    <option value="@SuicidalityRiskLevel.High">Hoch</option>
-                    <option value="@SuicidalityRiskLevel.Acute">Akut</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.SuicidalIdeation" /> Suizidgedanken</label>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.SuicidalPlans" /> Konkrete Pläne</label>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.SuicidalIntent" /> Handlungsabsicht</label>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" @bind="form.PriorAttempts" /> Frühere Versuche</label>
-            </div>
-        </div>
-
-        @if (form.PriorAttempts)
-        {
-            <div class="form-row">
-                <div class="form-group wide">
-                    <label>Details zu früheren Versuchen</label>
-                    <textarea class="form-control" @bind="form.PriorAttemptsDetails" rows="2"></textarea>
-                </div>
-            </div>
-        }
-
-        <h4>Risikofaktoren</h4>
-        <div class="checkbox-grid">
-            @foreach (var factor in SuicidalityFactorCatalog.RiskFactors)
-            {
-                <label class="checkbox-item">
-                    <input type="checkbox" checked="@form.RiskFactors.Contains(factor)"
-                           @onchange="(e) => ToggleFactor(form.RiskFactors, factor, (bool)e.Value!)" />
-                    @factor
-                </label>
-            }
-        </div>
-
-        <h4>Protektive Faktoren</h4>
-        <div class="checkbox-grid">
-            @foreach (var factor in SuicidalityFactorCatalog.ProtectiveFactors)
-            {
-                <label class="checkbox-item">
-                    <input type="checkbox" checked="@form.ProtectiveFactors.Contains(factor)"
-                           @onchange="(e) => ToggleFactor(form.ProtectiveFactors, factor, (bool)e.Value!)" />
-                    @factor
-                </label>
-            }
-        </div>
-
-        <h4>Sicherheitsplan</h4>
-        <div class="form-row">
-            <div class="form-group wide">
-                <textarea class="form-control" @bind="form.SafetyPlan" rows="4" placeholder="Warnsignale, Bewältigungsstrategien, Kontaktpersonen, professionelle Hilfe..."></textarea>
-            </div>
-        </div>
-
-        <h4>Maßnahmen</h4>
-        <div class="checkbox-grid">
-            @foreach (var action in SuicidalityFactorCatalog.CommonActions)
-            {
-                <label class="checkbox-item">
-                    <input type="checkbox" checked="@form.ActionsTaken.Contains(action)"
-                           @onchange="(e) => ToggleFactor(form.ActionsTaken, action, (bool)e.Value!)" />
-                    @action
-                </label>
-            }
-        </div>
-
-        <div class="form-row">
-            <div class="form-group wide">
-                <label>Anmerkungen</label>
-                <textarea class="form-control" @bind="form.Notes" rows="2"></textarea>
-            </div>
-        </div>
-
-        <div class="form-actions">
-            <button class="btn btn-primary" @onclick="Save">Speichern</button>
-            <button class="btn btn-secondary" @onclick="() => showForm = false">Abbrechen</button>
-        </div>
-    </div>
-}
-
-@if (entries is null)
+@if (patient is null)
 {
     <p>Laden...</p>
 }
-else if (entries.Count == 0)
-{
-    <p class="empty-state">Noch keine Suizidalitätseinschätzung dokumentiert.</p>
-}
 else
 {
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Datum</th>
-                <th>Risiko</th>
-                <th>Ideation</th>
-                <th>Pläne</th>
-                <th>Absicht</th>
-                <th>Risikofaktoren</th>
-                <th>Protektive</th>
-                <th>Maßnahmen</th>
-                <th>Aktionen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var entry in entries)
+    <SuicidalityAlert PatientId="PatientId" />
+
+    <div class="page-header">
+        <div>
+            <a href="/patienten/@PatientId" class="back-link">&larr; @patient.FullName</a>
+            <h1>Suizidalitätseinschätzung</h1>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="() => showForm = !showForm">+ Neue Einschätzung</button>
+    </div>
+
+    @if (showForm)
+    {
+        <div class="card form-card">
+            <h3>Risikoeinschätzung</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Risikolevel *</label>
+                    <select class="form-control" @bind="form.RiskLevel">
+                        <option value="@SuicidalityRiskLevel.None">Kein Risiko</option>
+                        <option value="@SuicidalityRiskLevel.Low">Gering</option>
+                        <option value="@SuicidalityRiskLevel.Moderate">Mittel</option>
+                        <option value="@SuicidalityRiskLevel.High">Hoch</option>
+                        <option value="@SuicidalityRiskLevel.Acute">Akut</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.SuicidalIdeation" /> Suizidgedanken</label></div>
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.SuicidalPlans" /> Konkrete Pläne</label></div>
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.SuicidalIntent" /> Handlungsabsicht</label></div>
+                <div class="form-group" style="flex:0.3"><label><input type="checkbox" @bind="form.PriorAttempts" /> Frühere Versuche</label></div>
+            </div>
+            @if (form.PriorAttempts)
             {
-                <tr>
-                    <td>@entry.AssessmentDate.ToString("dd.MM.yyyy")</td>
-                    <td><span class="badge badge-@entry.RiskLevelColor">@entry.RiskLevelDisplay</span></td>
-                    <td>@(entry.SuicidalIdeation ? "Ja" : "Nein")</td>
-                    <td>@(entry.SuicidalPlans ? "Ja" : "Nein")</td>
-                    <td>@(entry.SuicidalIntent ? "Ja" : "Nein")</td>
-                    <td>@entry.RiskFactors.Count</td>
-                    <td>@entry.ProtectiveFactors.Count</td>
-                    <td>@entry.ActionsTaken.Count</td>
-                    <td><button class="btn btn-sm btn-danger" @onclick="() => Delete(entry.Id)">Löschen</button></td>
-                </tr>
+                <div class="form-row">
+                    <div class="form-group full"><label>Details</label><textarea class="form-control" @bind="form.PriorAttemptsDetails" rows="2"></textarea></div>
+                </div>
             }
-        </tbody>
-    </table>
+
+            <h4 style="margin-top:1rem;font-size:0.85rem">Risikofaktoren</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.8rem">
+                @foreach (var factor in SuicidalityFactorCatalog.RiskFactors)
+                {
+                    <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;border:1px solid var(--color-border);border-radius:4px;cursor:pointer;@(form.RiskFactors.Contains(factor) ? "background:var(--color-primary-light);border-color:var(--color-primary)" : "")">
+                        <input type="checkbox" checked="@form.RiskFactors.Contains(factor)" @onchange="(e) => ToggleFactor(form.RiskFactors, factor, (bool)e.Value!)" style="width:auto;margin:0" /> @factor
+                    </label>
+                }
+            </div>
+
+            <h4 style="font-size:0.85rem">Protektive Faktoren</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.8rem">
+                @foreach (var factor in SuicidalityFactorCatalog.ProtectiveFactors)
+                {
+                    <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;border:1px solid var(--color-border);border-radius:4px;cursor:pointer;@(form.ProtectiveFactors.Contains(factor) ? "background:#ecfdf5;border-color:#10b981" : "")">
+                        <input type="checkbox" checked="@form.ProtectiveFactors.Contains(factor)" @onchange="(e) => ToggleFactor(form.ProtectiveFactors, factor, (bool)e.Value!)" style="width:auto;margin:0" /> @factor
+                    </label>
+                }
+            </div>
+
+            <h4 style="font-size:0.85rem">Sicherheitsplan</h4>
+            <div class="form-row">
+                <div class="form-group full"><textarea class="form-control" @bind="form.SafetyPlan" rows="3" placeholder="Warnsignale, Bewältigungsstrategien, Kontaktpersonen..."></textarea></div>
+            </div>
+
+            <h4 style="font-size:0.85rem">Maßnahmen</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.8rem">
+                @foreach (var action in SuicidalityFactorCatalog.CommonActions)
+                {
+                    <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.25rem;padding:0.2rem 0.5rem;border:1px solid var(--color-border);border-radius:4px;cursor:pointer;@(form.ActionsTaken.Contains(action) ? "background:var(--color-primary-light);border-color:var(--color-primary)" : "")">
+                        <input type="checkbox" checked="@form.ActionsTaken.Contains(action)" @onchange="(e) => ToggleFactor(form.ActionsTaken, action, (bool)e.Value!)" style="width:auto;margin:0" /> @action
+                    </label>
+                }
+            </div>
+
+            <div class="form-row">
+                <div class="form-group full"><label>Anmerkungen</label><textarea class="form-control" @bind="form.Notes" rows="2"></textarea></div>
+            </div>
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                <button class="btn btn-primary btn-sm" @onclick="Save">Speichern</button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => showForm = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (entries is not null && entries.Count > 0)
+    {
+        <table class="data-table">
+            <thead>
+                <tr><th>Datum</th><th>Risiko</th><th>Ideation</th><th>Pläne</th><th>Absicht</th><th>Risikof.</th><th>Protektive</th><th>Maßnahmen</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in entries)
+                {
+                    <tr>
+                        <td>@e.AssessmentDate.ToString("dd.MM.yyyy")</td>
+                        <td><span class="badge badge-@e.RiskLevelColor">@e.RiskLevelDisplay</span></td>
+                        <td>@(e.SuicidalIdeation ? "Ja" : "Nein")</td>
+                        <td>@(e.SuicidalPlans ? "Ja" : "Nein")</td>
+                        <td>@(e.SuicidalIntent ? "Ja" : "Nein")</td>
+                        <td>@e.RiskFactors.Count</td>
+                        <td>@e.ProtectiveFactors.Count</td>
+                        <td>@e.ActionsTaken.Count</td>
+                        <td><button class="btn btn-sm btn-link danger" @onclick="() => Delete(e.Id)">Löschen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (entries is not null)
+    {
+        <div class="empty-encounters">Noch keine Einschätzung dokumentiert.</div>
+    }
 }
 
 @code {
     [Parameter] public Guid PatientId { get; set; }
-
+    private PatientDto? patient;
     private IReadOnlyList<SuicidalityAssessmentDto>? entries;
     private CreateSuicidalityAssessmentDto form = new();
     private bool showForm;
 
     protected override async Task OnInitializedAsync()
     {
+        patient = await PatientService.GetByIdAsync(PatientId);
         form.PatientId = PatientId;
         await LoadEntries();
     }
@@ -174,22 +146,15 @@ else
     {
         form.PatientId = PatientId;
         await SuicidalityService.CreateAsync(form);
-        form = new() { PatientId = PatientId };
-        showForm = false;
+        form = new() { PatientId = PatientId }; showForm = false;
         await LoadEntries();
     }
 
-    private async Task Delete(Guid id)
-    {
-        await SuicidalityService.DeleteAsync(id);
-        await LoadEntries();
-    }
+    private async Task Delete(Guid id) { await SuicidalityService.DeleteAsync(id); await LoadEntries(); }
 
     private static void ToggleFactor(List<string> list, string factor, bool isChecked)
     {
-        if (isChecked && !list.Contains(factor))
-            list.Add(factor);
-        else if (!isChecked)
-            list.Remove(factor);
+        if (isChecked && !list.Contains(factor)) list.Add(factor);
+        else if (!isChecked) list.Remove(factor);
     }
 }
