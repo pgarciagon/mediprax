@@ -1,0 +1,217 @@
+@page "/verwaltung/sprechzeiten"
+@attribute [Authorize(Policy = "Admin")]
+@inject IAvailabilityService AvailabilityService
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<PageTitle>Sprechzeiten & Abwesenheiten</PageTitle>
+
+<div class="page-header">
+    <h1>Sprechzeiten & Abwesenheiten</h1>
+</div>
+
+<div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+    <select class="form-control" style="max-width:250px;" @bind="selectedDoctorId" @bind:after="LoadData">
+        <option value="">— Arzt wählen —</option>
+        @foreach (var doc in doctors)
+        {
+            <option value="@doc.Id">@doc.FullName</option>
+        }
+    </select>
+</div>
+
+@if (Guid.TryParse(selectedDoctorId, out _))
+{
+    <h2 style="font-size:1.1rem;">Wochenplan (Sprechzeiten)</h2>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-primary" @onclick="() => showAddBlock = true">+ Block hinzufügen</button>
+    </div>
+
+    @if (showAddBlock)
+    {
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+            <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:end;">
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Tag</label>
+                    <select class="form-control" @bind="newBlock.DayOfWeek">
+                        <option value="@DayOfWeek.Monday">Montag</option>
+                        <option value="@DayOfWeek.Tuesday">Dienstag</option>
+                        <option value="@DayOfWeek.Wednesday">Mittwoch</option>
+                        <option value="@DayOfWeek.Thursday">Donnerstag</option>
+                        <option value="@DayOfWeek.Friday">Freitag</option>
+                        <option value="@DayOfWeek.Saturday">Samstag</option>
+                    </select>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Von</label>
+                    <input class="form-control" @bind="blockStartStr" placeholder="08:00" style="width:80px;" />
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Bis</label>
+                    <input class="form-control" @bind="blockEndStr" placeholder="12:30" style="width:80px;" />
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Slot (Min.)</label>
+                    <input type="number" class="form-control" @bind="newBlock.SlotDurationMinutes" style="width:70px;" />
+                </div>
+                <button class="btn btn-sm btn-primary" @onclick="AddBlock">Hinzufügen</button>
+                <button class="btn btn-sm btn-secondary" @onclick="() => showAddBlock = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (scheduleBlocks.Count == 0)
+    {
+        <p style="color:var(--color-text-muted);font-size:0.85rem;">Keine Sprechzeiten konfiguriert.</p>
+    }
+    else
+    {
+        <table style="width:100%;border-collapse:collapse;background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;overflow:hidden;font-size:0.82rem;margin-bottom:1.5rem;">
+            <thead><tr style="background:var(--color-border-light);">
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Tag</th>
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Von</th>
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Bis</th>
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Slot</th>
+                <th></th>
+            </tr></thead>
+            <tbody>
+                @foreach (var b in scheduleBlocks)
+                {
+                    <tr style="border-top:1px solid var(--color-border-light);">
+                        <td style="padding:0.45rem 0.7rem;">@GetDayName(b.DayOfWeek)</td>
+                        <td style="padding:0.45rem 0.7rem;">@b.StartTime.ToString("HH:mm")</td>
+                        <td style="padding:0.45rem 0.7rem;">@b.EndTime.ToString("HH:mm")</td>
+                        <td style="padding:0.45rem 0.7rem;">@b.SlotDurationMinutes Min.</td>
+                        <td style="padding:0.45rem 0.7rem;"><button class="btn btn-sm btn-link" style="color:var(--color-danger);" @onclick="() => DeleteBlock(b.Id)">Löschen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 style="font-size:1.1rem;">Abwesenheiten</h2>
+    <button class="btn btn-sm btn-primary" style="margin-bottom:0.5rem;" @onclick="() => showAddAbsence = true">+ Abwesenheit eintragen</button>
+
+    @if (showAddAbsence)
+    {
+        <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+            <div style="display:flex;gap:0.8rem;flex-wrap:wrap;align-items:end;">
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Typ</label>
+                    <select class="form-control" @bind="newAbsence.AbsenceType">
+                        <option value="@AbsenceType.Urlaub">Urlaub</option>
+                        <option value="@AbsenceType.Fortbildung">Fortbildung</option>
+                        <option value="@AbsenceType.Krank">Krank</option>
+                        <option value="@AbsenceType.Sperrzeit">Sperrzeit</option>
+                    </select>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Von</label>
+                    <input class="form-control" @bind="absStartStr" placeholder="2026-04-28" style="width:120px;" />
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Bis</label>
+                    <input class="form-control" @bind="absEndStr" placeholder="2026-05-09" style="width:120px;" />
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                    <label style="font-size:0.78rem;font-weight:500;color:var(--color-text-secondary)">Grund</label>
+                    <input class="form-control" @bind="newAbsence.Reason" placeholder="optional" style="width:180px;" />
+                </div>
+                <button class="btn btn-sm btn-primary" @onclick="AddAbsence">Eintragen</button>
+                <button class="btn btn-sm btn-secondary" @onclick="() => showAddAbsence = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (absences.Count == 0)
+    {
+        <p style="color:var(--color-text-muted);font-size:0.85rem;">Keine Abwesenheiten eingetragen.</p>
+    }
+    else
+    {
+        <table style="width:100%;border-collapse:collapse;background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;overflow:hidden;font-size:0.82rem;">
+            <thead><tr style="background:var(--color-border-light);">
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Typ</th>
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Von</th>
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Bis</th>
+                <th style="padding:0.5rem 0.7rem;text-align:left;font-size:0.68rem;text-transform:uppercase;color:var(--color-text-secondary);">Grund</th>
+                <th></th>
+            </tr></thead>
+            <tbody>
+                @foreach (var a in absences)
+                {
+                    <tr style="border-top:1px solid var(--color-border-light);">
+                        <td style="padding:0.45rem 0.7rem;">@a.TypeDisplay</td>
+                        <td style="padding:0.45rem 0.7rem;">@a.StartDate.ToString("dd.MM.yyyy") @(a.StartTime.HasValue ? a.StartTime.Value.ToString("HH:mm") : "")</td>
+                        <td style="padding:0.45rem 0.7rem;">@a.EndDate.ToString("dd.MM.yyyy") @(a.EndTime.HasValue ? a.EndTime.Value.ToString("HH:mm") : "")</td>
+                        <td style="padding:0.45rem 0.7rem;">@(a.Reason ?? "—")</td>
+                        <td style="padding:0.45rem 0.7rem;"><button class="btn btn-sm btn-link" style="color:var(--color-danger);" @onclick="() => DeleteAbsence(a.Id)">Löschen</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private IReadOnlyList<DoctorListItemDto> doctors = [];
+    private string selectedDoctorId = string.Empty;
+    private IReadOnlyList<ScheduleBlockDto> scheduleBlocks = [];
+    private IReadOnlyList<AbsenceDto> absences = [];
+
+    private bool showAddBlock, showAddAbsence;
+    private CreateScheduleBlockDto newBlock = new() { SlotDurationMinutes = 25 };
+    private string blockStartStr = "08:00", blockEndStr = "12:30";
+    private CreateAbsenceDto newAbsence = new();
+    private string absStartStr = "", absEndStr = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        doctors = await UserService.GetDoctorsAsync();
+    }
+
+    private async Task LoadData()
+    {
+        if (!Guid.TryParse(selectedDoctorId, out var docId)) return;
+        scheduleBlocks = await AvailabilityService.GetScheduleAsync(docId);
+        absences = await AvailabilityService.GetAbsencesAsync(docId, DateOnly.FromDateTime(DateTime.Today.AddMonths(-1)), DateOnly.FromDateTime(DateTime.Today.AddYears(1)));
+    }
+
+    private async Task AddBlock()
+    {
+        if (!Guid.TryParse(selectedDoctorId, out var docId)) return;
+        if (!TimeOnly.TryParse(blockStartStr, out var start) || !TimeOnly.TryParse(blockEndStr, out var end)) return;
+        newBlock.DoctorId = docId;
+        newBlock.StartTime = start;
+        newBlock.EndTime = end;
+        await AvailabilityService.CreateScheduleBlockAsync(newBlock);
+        newBlock = new() { SlotDurationMinutes = 25 };
+        showAddBlock = false;
+        await LoadData();
+    }
+
+    private async Task DeleteBlock(Guid id) { await AvailabilityService.DeleteScheduleBlockAsync(id); await LoadData(); }
+
+    private async Task AddAbsence()
+    {
+        if (!Guid.TryParse(selectedDoctorId, out var docId)) return;
+        if (!DateOnly.TryParse(absStartStr, out var start) || !DateOnly.TryParse(absEndStr, out var end)) return;
+        newAbsence.DoctorId = docId;
+        newAbsence.StartDate = start;
+        newAbsence.EndDate = end;
+        await AvailabilityService.CreateAbsenceAsync(newAbsence);
+        newAbsence = new();
+        absStartStr = ""; absEndStr = "";
+        showAddAbsence = false;
+        await LoadData();
+    }
+
+    private async Task DeleteAbsence(Guid id) { await AvailabilityService.DeleteAbsenceAsync(id); await LoadData(); }
+
+    private static string GetDayName(DayOfWeek d) => d switch
+    {
+        DayOfWeek.Monday => "Montag", DayOfWeek.Tuesday => "Dienstag", DayOfWeek.Wednesday => "Mittwoch",
+        DayOfWeek.Thursday => "Donnerstag", DayOfWeek.Friday => "Freitag", DayOfWeek.Saturday => "Samstag",
+        _ => d.ToString()
+    };
+}

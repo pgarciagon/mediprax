@@ -46,6 +46,10 @@ public class MediPraxDbContext : DbContext
     // M35: BtM Prescriptions
     public DbSet<BtmPrescription> BtmPrescriptions => Set<BtmPrescription>();
 
+    // M40: Availability
+    public DbSet<DoctorScheduleTemplate> DoctorScheduleTemplates => Set<DoctorScheduleTemplate>();
+    public DbSet<DoctorAbsence> DoctorAbsences => Set<DoctorAbsence>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MediPraxDbContext).Assembly);
@@ -71,6 +75,8 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<MsDocumentation>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<ParkinsonDocumentation>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<SuicidalityAssessment>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<DoctorScheduleTemplate>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<DoctorAbsence>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

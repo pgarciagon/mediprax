@@ -24,6 +24,30 @@ public static class DemoSeedService
         var drFrank = EnsureUser(db, "Dr. Jan", "Frank", "frank@neuropsych-bremen.de", UserRole.Arzt);
         var drVogt = EnsureUser(db, "Dr. Sabine", "Vogt", "vogt@neuropsych-bremen.de", UserRole.Arzt);
 
+        // --- Sprechzeiten (M40) ---
+        if (!db.DoctorScheduleTemplates.Any())
+        {
+            var allDocs = new[] { drMeier, drSchmidt, drBauer, drWagner, drKrause, drLehmann, drFrank, drVogt };
+            foreach (var doc in allDocs)
+            {
+                // Mo-Do: 08:00-12:30 + 14:00-17:00
+                for (var d = DayOfWeek.Monday; d <= DayOfWeek.Thursday; d++)
+                {
+                    db.DoctorScheduleTemplates.Add(new DoctorScheduleTemplate { DoctorId = doc.Id, DayOfWeek = d, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(12, 30), SlotDurationMinutes = 25 });
+                    db.DoctorScheduleTemplates.Add(new DoctorScheduleTemplate { DoctorId = doc.Id, DayOfWeek = d, StartTime = new TimeOnly(14, 0), EndTime = new TimeOnly(17, 0), SlotDurationMinutes = 25 });
+                }
+                // Fr: 08:00-13:00 (nur vormittags)
+                db.DoctorScheduleTemplates.Add(new DoctorScheduleTemplate { DoctorId = doc.Id, DayOfWeek = DayOfWeek.Friday, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(13, 0), SlotDurationMinutes = 25 });
+            }
+
+            // Demo absences
+            db.DoctorAbsences.Add(new DoctorAbsence { DoctorId = drMeier.Id, StartDate = DateOnly.FromDateTime(DateTime.Today.AddDays(21)), EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(35)), AbsenceType = AbsenceType.Urlaub, Reason = "Sommerurlaub" });
+            db.DoctorAbsences.Add(new DoctorAbsence { DoctorId = drSchmidt.Id, StartDate = DateOnly.FromDateTime(DateTime.Today.AddDays(14)), EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(16)), AbsenceType = AbsenceType.Fortbildung, Reason = "DGN Kongress" });
+            db.DoctorAbsences.Add(new DoctorAbsence { DoctorId = drBauer.Id, StartDate = DateOnly.FromDateTime(DateTime.Today.AddDays(3)), EndDate = DateOnly.FromDateTime(DateTime.Today.AddDays(3)), StartTime = new TimeOnly(12, 0), EndTime = new TimeOnly(14, 0), AbsenceType = AbsenceType.Sperrzeit, Reason = "Teambesprechung" });
+
+            db.SaveChanges();
+        }
+
         // --- Bulk patients (stress test) ---
         if (db.Patients.Count() < 100)
             SeedBulkPatients(db);

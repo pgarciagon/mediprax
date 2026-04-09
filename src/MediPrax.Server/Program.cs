@@ -58,6 +58,8 @@ builder.Services.AddScoped<ITherapyCaseService, TherapyCaseService>();
 builder.Services.AddScoped<INeurologicalExamService, NeurologicalExamService>();
 builder.Services.AddScoped<IIcd10CodeService, Icd10CodeService>();
 builder.Services.AddScoped<ISuicidalityAssessmentService, SuicidalityAssessmentService>();
+builder.Services.AddScoped<IAvailabilityService, AvailabilityService>();
+builder.Services.AddScoped<ISlotSuggestionService, SlotSuggestionService>();
 builder.Services.AddScoped<IGdtService, GdtService>();
 builder.Services.Configure<MediPrax.Application.DTOs.GdtDevicesOptions>(
     builder.Configuration.GetSection(MediPrax.Application.DTOs.GdtDevicesOptions.SectionName));

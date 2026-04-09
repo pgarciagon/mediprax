@@ -248,7 +248,7 @@ else
 
     private void ScheduleEntry(WaitlistEntryDto entry)
     {
-        var url = $"/termine/neu?patientIdQuery={entry.PatientId}";
+        var url = $"/termine/neu?patientIdQuery={entry.PatientId}&returnUrl={Uri.EscapeDataString("/warteliste")}";
         if (entry.PreferredTherapistId.HasValue)
             url += $"&doctorIdQuery={entry.PreferredTherapistId.Value}";
         if (!string.IsNullOrEmpty(entry.Notes))
