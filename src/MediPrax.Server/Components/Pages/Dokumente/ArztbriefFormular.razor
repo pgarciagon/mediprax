@@ -175,6 +175,7 @@ else
             {
                 form.Diagnoses = selectedEncounter.Icd10Codes.Select(c => c.Code).ToList();
                 form.Subject = $"Arztbrief — {patient!.FullName}, Konsultation {selectedEncounter.EncounterDate:dd.MM.yyyy}";
+                StateHasChanged();
             }
         }
     }
