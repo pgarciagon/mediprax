@@ -553,10 +553,15 @@ public static class DemoSeedService
     private static void AddAppointment(MediPraxDbContext db, Patient patient, User doctor,
         DateTime start, int duration, string? notes)
     {
+        // Convert local time (CEST/CET) to UTC for storage
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        var localTime = DateTime.SpecifyKind(start, DateTimeKind.Unspecified);
+        var utcTime = TimeZoneInfo.ConvertTimeToUtc(localTime, tz);
+
         db.Appointments.Add(new Appointment
         {
             PatientId = patient.Id, DoctorId = doctor.Id,
-            StartTime = DateTime.SpecifyKind(start, DateTimeKind.Utc),
+            StartTime = utcTime,
             DurationMinutes = duration, Notes = notes
         });
     }
