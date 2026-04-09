@@ -138,6 +138,34 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// Serve /docs/ MkDocs user manual — must be before StatusCodePages to avoid Blazor 404 catch
+var docsPath = Path.Combine(app.Environment.WebRootPath, "docs");
+if (Directory.Exists(docsPath))
+{
+    var docsProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(docsPath);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        RequestPath = "/docs",
+        FileProvider = docsProvider
+    });
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value;
+        if (path != null && path.StartsWith("/docs", StringComparison.OrdinalIgnoreCase))
+        {
+            var relativePath = path["/docs".Length..].TrimStart('/');
+            var indexPath = Path.Combine(docsPath, relativePath, "index.html");
+            if (File.Exists(indexPath))
+            {
+                context.Response.ContentType = "text/html";
+                await context.Response.SendFileAsync(indexPath);
+                return;
+            }
+        }
+        await next();
+    });
+}
+
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseRateLimiter();
 app.UseHttpsRedirection();
