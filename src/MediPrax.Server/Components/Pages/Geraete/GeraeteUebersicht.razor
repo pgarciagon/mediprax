@@ -1,0 +1,158 @@
+@page "/geraete"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPatientService PatientService
+@inject IUserService UserService
+@inject IGdtService GdtService
+@rendermode InteractiveServer
+
+<PageTitle>Geräte & GDT</PageTitle>
+
+<div class="page-header">
+    <h1>Medizinische Geräte</h1>
+</div>
+
+<div class="device-grid">
+    @foreach (var device in deviceTypes)
+    {
+        <div class="card device-card">
+            <h3>@device.Name</h3>
+            <p>@device.Description</p>
+            <div class="device-actions">
+                <button class="btn btn-primary btn-sm" @onclick="() => StartRequest(device.Type)">Untersuchung anfordern</button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (showRequestForm)
+{
+    <div class="card form-card">
+        <h3>GDT-Anforderung: @activeDeviceType</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Patient suchen</label>
+                <input class="form-control" @bind="patientSearch" @bind:event="oninput" @bind:after="SearchPatients" placeholder="Name eingeben..." />
+                @if (searchResults.Count > 0)
+                {
+                    <div class="dropdown-list">
+                        @foreach (var p in searchResults)
+                        {
+                            <div class="dropdown-item" @onclick="() => SelectPatient(p)">@p.FullName (@p.DateOfBirth.ToString("dd.MM.yyyy"))</div>
+                        }
+                    </div>
+                }
+                @if (selectedPatient is not null)
+                {
+                    <small class="text-muted">Gewählt: @selectedPatient.FullName</small>
+                }
+            </div>
+            <div class="form-group wide">
+                <label>Anmerkungen</label>
+                <input class="form-control" @bind="requestNotes" />
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" @onclick="SendRequest" disabled="@(selectedPatient is null)">GDT-Datei erzeugen</button>
+            <button class="btn btn-secondary" @onclick="() => showRequestForm = false">Abbrechen</button>
+        </div>
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+    </div>
+}
+
+<h2>Geräte-Ergebnisse importieren</h2>
+<div class="card form-card">
+    <div class="form-row">
+        <div class="form-group">
+            <label>Gerätetyp</label>
+            <select class="form-control" @bind="importDeviceType">
+                <option value="EEG">EEG</option>
+                <option value="EMG">EMG</option>
+                <option value="NLG">NLG</option>
+                <option value="Doppler">Doppler</option>
+                <option value="EP">Evozierte Potentiale</option>
+            </select>
+        </div>
+        <div class="form-group wide">
+            <label>GDT-Inhalt einfügen</label>
+            <textarea class="form-control" @bind="importContent" rows="5" placeholder="GDT-Dateiinhalt hier einfügen..."></textarea>
+        </div>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary" @onclick="ImportResult" disabled="@string.IsNullOrWhiteSpace(importContent)">Importieren</button>
+    </div>
+    @if (!string.IsNullOrEmpty(importMessage))
+    {
+        <div class="alert alert-info">@importMessage</div>
+    }
+</div>
+
+@code {
+    private record DeviceInfo(string Name, string Type, string Description);
+
+    private static readonly DeviceInfo[] deviceTypes =
+    [
+        new("EEG", "EEG", "Elektroenzephalografie — Hirnströme"),
+        new("EMG", "EMG", "Elektromyografie — Muskelaktivität"),
+        new("NLG", "NLG", "Nervenleitgeschwindigkeit"),
+        new("Doppler", "Doppler", "Doppler-/Duplexsonografie — Hirnversorgende Gefäße"),
+        new("Evozierte Potentiale", "EP", "VEP / SEP / AEP / MEP"),
+    ];
+
+    private bool showRequestForm;
+    private string activeDeviceType = string.Empty;
+    private string patientSearch = string.Empty;
+    private IReadOnlyList<PatientListItemDto> searchResults = [];
+    private PatientListItemDto? selectedPatient;
+    private string? requestNotes;
+    private string? successMessage;
+
+    private string importDeviceType = "EEG";
+    private string importContent = string.Empty;
+    private string? importMessage;
+
+    private void StartRequest(string deviceType)
+    {
+        activeDeviceType = deviceType;
+        showRequestForm = true;
+        successMessage = null;
+    }
+
+    private async Task SearchPatients()
+    {
+        if (patientSearch.Length < 2) { searchResults = []; return; }
+        var result = await PatientService.SearchAsync(new PatientSearchDto { SearchTerm = patientSearch, Page = 1, PageSize = 8 });
+        searchResults = result.Items.Take(8).ToList();
+    }
+
+    private void SelectPatient(PatientListItemDto patient)
+    {
+        selectedPatient = patient;
+        patientSearch = patient.FullName;
+        searchResults = [];
+    }
+
+    private void SendRequest()
+    {
+        if (selectedPatient is null) return;
+        var gdtContent = GdtService.GenerateRequest(new GdtRequestDto
+        {
+            PatientId = selectedPatient.Id,
+            PatientName = selectedPatient.FullName,
+            PatientDob = selectedPatient.DateOfBirth,
+            DeviceType = activeDeviceType,
+            RequestNotes = requestNotes
+        });
+        successMessage = $"GDT-Anforderung für {activeDeviceType} erzeugt ({gdtContent.Length} Zeichen).";
+    }
+
+    private async Task ImportResult()
+    {
+        importMessage = null;
+        var result = await GdtService.ImportResultAsync(importContent, importDeviceType);
+        importMessage = $"Import erfolgreich: {result.ResultLines.Count} Ergebniszeilen, Patient: {result.PatientName}";
+        importContent = string.Empty;
+    }
+}

@@ -58,6 +58,10 @@ builder.Services.AddScoped<ITherapyCaseService, TherapyCaseService>();
 builder.Services.AddScoped<INeurologicalExamService, NeurologicalExamService>();
 builder.Services.AddScoped<IIcd10CodeService, Icd10CodeService>();
 builder.Services.AddScoped<ISuicidalityAssessmentService, SuicidalityAssessmentService>();
+builder.Services.AddScoped<IGdtService, GdtService>();
+builder.Services.Configure<MediPrax.Application.DTOs.GdtDevicesOptions>(
+    builder.Configuration.GetSection(MediPrax.Application.DTOs.GdtDevicesOptions.SectionName));
+builder.Services.AddHostedService<MediPrax.Server.Services.GdtFileWatcherService>();
 builder.Services.AddScoped<ISeizureDiaryService, SeizureDiaryService>();
 builder.Services.AddScoped<IHeadacheDiaryService, HeadacheDiaryService>();
 builder.Services.AddScoped<IMsDocumentationService, MsDocumentationService>();
