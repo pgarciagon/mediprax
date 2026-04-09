@@ -3,29 +3,29 @@
 @inject IArztbriefService ArztbriefService
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService
+@inject IMedicationService MedicationService
 @inject IUserService UserService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>Neuer Arztbrief</PageTitle>
+<PageTitle>Neuer Arztbrief — @(patient?.FullName ?? "Laden...")</PageTitle>
 
-<div class="page-header">
-    <h1>Neuer Arztbrief</h1>
-    @if (patientName is not null)
-    {
-        <span class="patient-context">@patientName</span>
-    }
-</div>
-
-@if (loading)
+@if (patient is null)
 {
     <p>Laden...</p>
 }
 else
 {
+    <div class="page-header">
+        <div>
+            <a href="/patienten/@PatientId" class="patient-context">&larr; @patient.FullName</a>
+            <h1>Neuer Arztbrief</h1>
+        </div>
+    </div>
+
     <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="arztbriefForm">
         <fieldset>
-            <legend>Arzt & Encounter</legend>
+            <legend>Arzt & Konsultation</legend>
             <div class="form-row">
                 <div class="form-group">
                     <label>Arzt *</label>
@@ -38,7 +38,7 @@ else
                     </InputSelect>
                 </div>
                 <div class="form-group">
-                    <label>Encounter (optional)</label>
+                    <label>Konsultation (optional)</label>
                     <InputSelect @bind-Value="form.EncounterId" @bind:after="OnEncounterSelected" class="form-control">
                         <option value="">— Ohne Bezug —</option>
                         @foreach (var enc in encounters)
@@ -57,9 +57,7 @@ else
                     <label>Name / Praxis *</label>
                     <InputText @bind-Value="form.RecipientName" class="form-control" placeholder="Dr. med. ..." />
                 </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group full">
+                <div class="form-group">
                     <label>Adresse</label>
                     <InputText @bind-Value="form.RecipientAddress" class="form-control" placeholder="Straße, PLZ Ort" />
                 </div>
@@ -116,8 +114,15 @@ else
                     <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("ueberweisung")'>Überweisung</button>
                     <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("befund")'>Befundbericht</button>
                     <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("verlauf")'>Verlaufsbericht</button>
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("entlassung")'>Entlassungsbericht</button>
                 </div>
-                <InputTextArea @bind-Value="form.Body" class="form-control notes-area" rows="14" />
+                @if (selectedEncounter is not null)
+                {
+                    <div style="font-size:0.75rem;color:var(--color-text-secondary);margin:0.3rem 0;">
+                        Vorlage wird mit Daten der Konsultation vom @selectedEncounter.EncounterDate.ToString("dd.MM.yyyy") befüllt.
+                    </div>
+                }
+                <InputTextArea @bind-Value="form.Body" class="form-control notes-area" rows="18" />
             </div>
         </fieldset>
 
@@ -138,36 +143,38 @@ else
 @code {
     [Parameter] public Guid PatientId { get; set; }
 
+    private PatientDto? patient;
     private ArztbriefFormModel form = new();
     private IReadOnlyList<DoctorListItemDto> doctors = [];
     private IReadOnlyList<EncounterListItemDto> encounters = [];
+    private IReadOnlyList<MedicationDto> medications = [];
     private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
+    private EncounterDto? selectedEncounter;
     private string icdSearchTerm = string.Empty;
-    private string? patientName;
-    private bool loading = true;
     private bool saving;
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        var patient = await PatientService.GetByIdAsync(PatientId);
+        patient = await PatientService.GetByIdAsync(PatientId);
         if (patient is null) { Navigation.NavigateTo("/patienten"); return; }
 
-        patientName = patient.FullName;
         doctors = await UserService.GetDoctorsAsync();
         encounters = await EncounterService.GetByPatientAsync(PatientId);
+        medications = await MedicationService.GetByPatientAsync(PatientId);
         form.Subject = $"Arztbrief — {patient.FullName}";
-        loading = false;
     }
 
-    private void OnEncounterSelected()
+    private async Task OnEncounterSelected()
     {
+        selectedEncounter = null;
         if (Guid.TryParse(form.EncounterId, out var encId))
         {
-            var enc = encounters.FirstOrDefault(e => e.Id == encId);
-            if (enc is not null)
+            selectedEncounter = await EncounterService.GetByIdAsync(encId);
+            if (selectedEncounter is not null)
             {
-                form.Diagnoses = enc.Icd10Codes.ToList();
+                form.Diagnoses = selectedEncounter.Icd10Codes.Select(c => c.Code).ToList();
+                form.Subject = $"Arztbrief — {patient!.FullName}, Konsultation {selectedEncounter.EncounterDate:dd.MM.yyyy}";
             }
         }
     }
@@ -185,58 +192,149 @@ else
         icdResults = [];
     }
 
+    // --- Smart template generation using patient + encounter + medication data ---
+
+    private string BuildDiagnosenBlock()
+    {
+        if (form.Diagnoses.Count == 0) return "  (keine Diagnosen ausgewählt)";
+        return string.Join("\n", form.Diagnoses.Select(icd =>
+        {
+            var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(icd);
+            return $"  {icd} — {desc}";
+        }));
+    }
+
+    private string BuildMedikationBlock()
+    {
+        if (medications.Count == 0) return "  Keine aktive Medikation.";
+        return string.Join("\n", medications.Select(m =>
+            $"  - {m.Name} {m.Staerke} {m.Dosierung}{(!string.IsNullOrEmpty(m.Hinweis) ? $" ({m.Hinweis})" : "")}"));
+    }
+
+    private string BuildBefundBlock()
+    {
+        if (selectedEncounter is null) return "[Befund hier einfügen]";
+        return selectedEncounter.Notes ?? "[Befund hier einfügen]";
+    }
+
+    private string GetAnrede() => patient!.Gender switch
+    {
+        "M" => "unseren gemeinsamen Patienten",
+        "W" => "unsere gemeinsame Patientin",
+        _ => "unseren gemeinsamen Patienten/unsere gemeinsame Patientin"
+    };
+
+    private string GetPronomen() => patient!.Gender switch
+    {
+        "M" => "der sich",
+        "W" => "die sich",
+        _ => "der/die sich"
+    };
+
+    private string GetDatumBlock()
+    {
+        if (selectedEncounter is not null)
+            return $"am {selectedEncounter.EncounterDate:dd.MM.yyyy}";
+        return $"am {DateTime.Today:dd.MM.yyyy}";
+    }
+
     private void ApplyTemplate(string template)
     {
+        var diagnosen = BuildDiagnosenBlock();
+        var medikation = BuildMedikationBlock();
+        var befund = BuildBefundBlock();
+        var anrede = GetAnrede();
+        var pronomen = GetPronomen();
+        var datum = GetDatumBlock();
+        var gebDatum = patient!.DateOfBirth.ToString("dd.MM.yyyy");
+
         form.Body = template switch
         {
             "ueberweisung" => $"""
-                Sehr geehrte Kollegin, sehr geehrter Kollege,
+Sehr geehrte Kollegin, sehr geehrter Kollege,
 
-                wir überweisen Ihnen o.g. Patienten mit der Bitte um Mitbeurteilung / Weiterbehandlung.
+wir überweisen Ihnen {anrede} {patient.FullName}, geb. {gebDatum}, mit der Bitte um Mitbeurteilung / Weiterbehandlung.
 
-                Anamnese:
+Diagnosen:
+{diagnosen}
 
-                Aktueller Befund:
+Anamnese:
+{befund}
 
-                Bisherige Therapie:
+Aktuelle Medikation:
+{medikation}
 
-                Fragestellung:
+Fragestellung:
+[Bitte ergänzen]
 
-                Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
-                """,
+Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
+
+Mit freundlichen kollegialen Grüßen
+""",
             "befund" => $"""
-                Sehr geehrte Kollegin, sehr geehrter Kollege,
+Sehr geehrte Kollegin, sehr geehrter Kollege,
 
-                wir berichten über o.g. Patienten, der/die sich am {DateTime.Today:dd.MM.yyyy} in unserer Praxis vorstellte.
+wir berichten über {anrede} {patient.FullName}, geb. {gebDatum}, {pronomen} {datum} in unserer Praxis vorstellte.
 
-                Anamnese:
+Diagnosen:
+{diagnosen}
 
-                Psychischer Befund:
+Anamnese und Befund:
+{befund}
 
-                Neurologischer Befund:
+Aktuelle Medikation:
+{medikation}
 
-                Diagnosen:
-                (siehe oben)
+Beurteilung und Procedere:
+[Bitte ergänzen]
 
-                Therapieempfehlung:
+Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
 
-                Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
-                """,
+Mit freundlichen kollegialen Grüßen
+""",
             "verlauf" => $"""
-                Sehr geehrte Kollegin, sehr geehrter Kollege,
+Sehr geehrte Kollegin, sehr geehrter Kollege,
 
-                wir berichten über den aktuellen Behandlungsverlauf von o.g. Patient/in.
+wir berichten über den aktuellen Behandlungsverlauf {(patient.Gender == "W" ? "unserer Patientin" : "unseres Patienten")} {patient.FullName}, geb. {gebDatum}.
 
-                Vorgeschichte:
+Diagnosen:
+{diagnosen}
 
-                Aktueller Verlauf:
+Aktueller Verlauf:
+{befund}
 
-                Aktuelle Medikation:
+Aktuelle Medikation:
+{medikation}
 
-                Weiteres Procedere:
+Weiteres Procedere:
+[Bitte ergänzen]
 
-                Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
-                """,
+Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
+
+Mit freundlichen kollegialen Grüßen
+""",
+            "entlassung" => $"""
+Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+wir berichten über {anrede} {patient.FullName}, geb. {gebDatum}, {pronomen} vom [Datum] bis {datum} in unserer Behandlung befand.
+
+Diagnosen:
+{diagnosen}
+
+Aufnahmebefund:
+[Bitte ergänzen]
+
+Verlauf und Therapie:
+{befund}
+
+Entlassungsmedikation:
+{medikation}
+
+Empfehlungen:
+[Bitte ergänzen]
+
+Mit freundlichen kollegialen Grüßen
+""",
             _ => form.Body
         };
     }
