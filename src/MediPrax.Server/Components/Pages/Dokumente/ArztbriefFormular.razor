@@ -175,13 +175,50 @@ else
             selectedEncounter = await EncounterService.GetByIdAsync(encId);
             if (selectedEncounter is not null)
             {
+                // Transfer diagnoses
                 form.Diagnoses = selectedEncounter.Icd10Codes.Select(c => c.Code).ToList();
+
+                // Transfer doctor
+                form.DoctorId = selectedEncounter.DoctorId.ToString();
+
+                // Transfer subject with date
                 form.Subject = $"Arztbrief — {patient!.FullName}, Konsultation {selectedEncounter.EncounterDate:dd.MM.yyyy}";
+
+                // Auto-generate body text with encounter data
+                var diagnosen = BuildDiagnosenBlock();
+                var medikation = BuildMedikationBlock();
+                var befund = selectedEncounter.Notes ?? "[Befund hier einfügen]";
+                var anrede = GetAnrede();
+                var pronomen = GetPronomen();
+                var gebDatum = patient!.DateOfBirth.ToString("dd.MM.yyyy");
+
+                form.Body = $"""
+Sehr geehrte Kollegin, sehr geehrter Kollege,
+
+wir berichten über {anrede} {patient.FullName}, geb. {gebDatum}, {pronomen} am {selectedEncounter.EncounterDate:dd.MM.yyyy} in unserer Praxis vorstellte.
+
+Diagnosen:
+{diagnosen}
+
+Befund:
+{befund}
+
+Aktuelle Medikation:
+{medikation}
+
+Beurteilung und Procedere:
+[Bitte ergänzen]
+
+Für Rückfragen stehen wir jederzeit gerne zur Verfügung.
+
+Mit freundlichen kollegialen Grüßen
+""";
             }
         }
         else
         {
             form.Diagnoses.Clear();
+            form.Body = string.Empty;
         }
     }
 
