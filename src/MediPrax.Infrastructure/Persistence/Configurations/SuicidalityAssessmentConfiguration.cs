@@ -16,8 +16,8 @@ public class SuicidalityAssessmentConfiguration : IEntityTypeConfiguration<Suici
         builder.Property(a => a.ActionsTaken).HasColumnType("jsonb");
 
         builder.HasOne(a => a.Patient).WithMany().HasForeignKey(a => a.PatientId);
-        builder.HasOne(a => a.Encounter).WithMany().HasForeignKey(a => a.EncounterId);
-        builder.HasOne(a => a.AssessedBy).WithMany().HasForeignKey(a => a.AssessedById);
+        builder.HasOne(a => a.Encounter).WithMany().HasForeignKey(a => a.EncounterId).IsRequired(false);
+        builder.HasOne(a => a.AssessedBy).WithMany().HasForeignKey(a => a.AssessedById).IsRequired(false);
 
         builder.HasIndex(a => a.PatientId);
         builder.HasIndex(a => a.EncounterId);

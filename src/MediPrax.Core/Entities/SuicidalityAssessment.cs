@@ -7,11 +7,11 @@ public class SuicidalityAssessment : BaseEntity
     public Guid PatientId { get; set; }
     public Patient Patient { get; set; } = null!;
 
-    public Guid EncounterId { get; set; }
-    public Encounter Encounter { get; set; } = null!;
+    public Guid? EncounterId { get; set; }
+    public Encounter? Encounter { get; set; }
 
-    public Guid AssessedById { get; set; }
-    public User AssessedBy { get; set; } = null!;
+    public Guid? AssessedById { get; set; }
+    public User? AssessedBy { get; set; }
 
     public DateOnly AssessmentDate { get; set; }
     public SuicidalityRiskLevel RiskLevel { get; set; }

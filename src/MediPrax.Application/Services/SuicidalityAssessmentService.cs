@@ -38,8 +38,8 @@ public class SuicidalityAssessmentService(DbContext context, IAuditService audit
         var assessment = new SuicidalityAssessment
         {
             PatientId = dto.PatientId,
-            EncounterId = dto.EncounterId,
-            AssessedById = Guid.Empty, // Set by caller or current user context
+            EncounterId = dto.EncounterId != Guid.Empty ? dto.EncounterId : null,
+            AssessedById = null,
             AssessmentDate = DateOnly.FromDateTime(DateTime.Today),
             RiskLevel = dto.RiskLevel,
             SuicidalIdeation = dto.SuicidalIdeation,
@@ -95,7 +95,7 @@ public class SuicidalityAssessmentService(DbContext context, IAuditService audit
         Id = a.Id,
         PatientId = a.PatientId,
         PatientName = a.Patient?.LastName + ", " + a.Patient?.FirstName ?? string.Empty,
-        EncounterId = a.EncounterId,
+        EncounterId = a.EncounterId ?? Guid.Empty,
         AssessedByName = a.AssessedBy != null ? a.AssessedBy.FirstName + " " + a.AssessedBy.LastName : string.Empty,
         AssessmentDate = a.AssessmentDate,
         RiskLevel = a.RiskLevel,
