@@ -7,9 +7,10 @@
 @inject IMedicationService MedicationService
 @inject IUserService UserService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<PageTitle>Neuer Arztbrief — @(patient?.FullName ?? "Laden...")</PageTitle>
+<PageTitle>@(isEdit ? "Arztbrief bearbeiten" : "Neuer Arztbrief") — @(patient?.FullName ?? "Laden...")</PageTitle>
 
 @if (patient is null)
 {
@@ -20,10 +21,16 @@ else
     <div class="page-header">
         <div>
             <a href="/patienten/@PatientId" class="patient-context">&larr; @patient.FullName</a>
-            <h1>Neuer Arztbrief</h1>
+            <h1>@(isEdit ? "Arztbrief bearbeiten" : "Neuer Arztbrief")</h1>
         </div>
+        @if (isEdit && arztbriefStatus != ArztbriefStatus.Entwurf)
+        {
+            <span class="badge badge-@(arztbriefStatus == ArztbriefStatus.Freigegeben ? "success" : "info")">@arztbriefStatus</span>
+        }
     </div>
 
+    <div class="arztbrief-layout" style="display:flex;gap:1rem;">
+    <div class="arztbrief-editor" style="flex:@(showPreview ? "0 0 45%" : "1");transition:flex 0.3s;overflow-y:auto;">
     <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="arztbriefForm">
         <fieldset>
             <legend>Arzt & Konsultation</legend>
@@ -165,13 +172,37 @@ else
                     </button>
                 }
             }
+            @if (isEdit)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="TogglePreview" disabled="@generatingPreview">
+                    @(showPreview ? "Vorschau schließen" : generatingPreview ? "Generiere..." : "PDF Vorschau")
+                </button>
+            }
             @if (isEdit && hasPdf)
             {
-                <a href="/dokumente/@EditId/pdf" target="_blank" class="btn btn-secondary">PDF anzeigen</a>
+                <a href="/dokumente/@EditId/pdf" target="_blank" class="btn btn-secondary">PDF herunterladen</a>
             }
             <a href="/patienten/@PatientId" class="btn btn-secondary">Zurück</a>
         </div>
     </EditForm>
+    </div>
+
+    @if (showPreview)
+    {
+        <div class="arztbrief-preview" style="flex:0 0 55%;border-left:1px solid var(--color-border);position:sticky;top:0;height:calc(100vh - 2rem);display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.8rem;background:var(--color-surface);border-bottom:1px solid var(--color-border);">
+                <span style="font-size:0.8rem;font-weight:600;color:var(--color-text-secondary)">PDF-VORSCHAU</span>
+                <div style="display:flex;gap:0.3rem;">
+                    <button class="btn btn-sm btn-secondary" @onclick="RefreshPreview" disabled="@generatingPreview">
+                        @(generatingPreview ? "Aktualisiere..." : "Aktualisieren")
+                    </button>
+                    <button class="btn btn-sm btn-secondary" @onclick="() => showPreview = false">Schließen</button>
+                </div>
+            </div>
+            <iframe id="pdf-preview-frame" src="@previewUrl" style="flex:1;width:100%;border:none;background:#f1f5f9;"></iframe>
+        </div>
+    }
+    </div>
 }
 
 @code {
@@ -189,6 +220,9 @@ else
     private string icdSearchTerm = string.Empty;
     private bool saving;
     private bool hasPdf;
+    private bool showPreview;
+    private bool generatingPreview;
+    private string previewUrl = "about:blank";
     private ArztbriefStatus arztbriefStatus;
     private string? errorMessage;
     private string? successMessage;
@@ -556,6 +590,35 @@ Mit freundlichen kollegialen Grüßen
         }
         catch (Exception ex) { errorMessage = ex.Message; }
         saving = false;
+    }
+
+    private async Task TogglePreview()
+    {
+        if (showPreview)
+        {
+            showPreview = false;
+            return;
+        }
+        await RefreshPreview();
+    }
+
+    private async Task RefreshPreview()
+    {
+        if (!isEdit) return;
+        generatingPreview = true;
+        errorMessage = null;
+        try
+        {
+            // Save current content first, then generate PDF
+            await ArztbriefService.UpdateAsync(EditId!.Value, BuildDto());
+            await ArztbriefService.GeneratePdfAsync(EditId!.Value);
+            hasPdf = true;
+            // Cache-bust with timestamp
+            previewUrl = $"/api/arztbrief/{EditId}/preview?t={DateTime.UtcNow.Ticks}";
+            showPreview = true;
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+        generatingPreview = false;
     }
 
     private async Task HandleSubmit() => await SaveDraft();

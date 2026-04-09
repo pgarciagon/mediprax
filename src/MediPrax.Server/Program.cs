@@ -254,6 +254,14 @@ app.MapGet("/dokumente/{id:guid}/pdf", async (Guid id, IArztbriefService arztbri
     return Results.File(pdf, "application/pdf", $"Arztbrief-{id:N}.pdf");
 });
 
+// PDF inline preview (no download header)
+app.MapGet("/api/arztbrief/{id:guid}/preview", async (Guid id, IArztbriefService arztbriefService) =>
+{
+    var pdf = await arztbriefService.GetPdfAsync(id);
+    if (pdf is null) return Results.NotFound();
+    return Results.File(pdf, "application/pdf");
+}).RequireAuthorization("Klinisch");
+
 // Formulare PDF endpoints
 app.MapGet("/api/formulare/rezept", async (Guid patientId, string medikament, string? dosierung, string? pzn, int menge, bool privat, IPatientService patientService) =>
 {
