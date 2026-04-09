@@ -47,6 +47,7 @@ builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IMedicationService, MedicationService>();
 builder.Services.AddScoped<IRecallService, RecallService>();
 builder.Services.AddScoped<IPsychopathFindingService, PsychopathFindingService>();
+builder.Services.AddScoped<ILabResultService, LabResultService>();
 builder.Services.AddScoped<IKvdtExportService, KvdtExportService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IReportService, ReportService>();

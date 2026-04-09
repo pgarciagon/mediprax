@@ -1,0 +1,382 @@
+@page "/labor/{PatientId:guid}"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject ILabResultService LabResultService
+@inject IPatientService PatientService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Laborergebnisse — @(patientName ?? "Laden...")</PageTitle>
+
+@if (patientName is null)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="page-header">
+        <h1>Laborergebnisse — @patientName</h1>
+        <div class="header-actions">
+            <a href="/patienten/@PatientId" class="btn btn-secondary">Zurück zum Patient</a>
+            <button class="btn btn-primary" @onclick="() => showOrderForm = true">Neues Labor anfordern</button>
+        </div>
+    </div>
+
+    @if (showOrderForm)
+    {
+        <div class="inline-form" style="margin-bottom:1.5rem">
+            <h3>Laboranforderung</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Labor *</label>
+                    <InputText @bind-Value="newOrder.LabName" class="form-control" placeholder="z.B. MVZ Labor Bremen" />
+                </div>
+                <div class="form-group" style="flex:0.5">
+                    <label>Datum *</label>
+                    <InputDate @bind-Value="newOrder.OrderDate" class="form-control" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Notizen</label>
+                    <InputText @bind-Value="newOrder.Notes" class="form-control" placeholder="z.B. Lithiumspiegel, Schilddrüse" />
+                </div>
+            </div>
+            <div style="display:flex;gap:.5rem">
+                <button class="btn btn-primary btn-sm" @onclick="CreateOrder">Anforderung erstellen</button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => showOrderForm = false">Abbrechen</button>
+            </div>
+        </div>
+    }
+
+    @if (results is null)
+    {
+        <p>Laden...</p>
+    }
+    else if (results.Count == 0)
+    {
+        <div class="empty-encounters">Noch keine Laborergebnisse vorhanden.</div>
+    }
+    else
+    {
+        <table class="data-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Anforderung</th>
+                    <th>Ergebnis</th>
+                    <th>Labor</th>
+                    <th>Status</th>
+                    <th>Werte</th>
+                    <th>Auffällig</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in results)
+                {
+                    <tr style="cursor:pointer" @onclick="() => ToggleExpand(r.Id)">
+                        <td>@r.OrderDate.ToString("dd.MM.yyyy")</td>
+                        <td>@(r.ResultDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                        <td>@r.LabName</td>
+                        <td>
+                            <span class="status-badge status-@r.Status.ToString().ToLower()">@r.StatusDisplay</span>
+                        </td>
+                        <td>@r.ValueCount</td>
+                        <td>
+                            @if (r.HasCriticalValues)
+                            {
+                                <span style="color:var(--color-danger, #dc3545);font-weight:bold">Kritisch</span>
+                            }
+                            else if (r.HasAbnormalValues)
+                            {
+                                <span style="color:var(--color-warning, #ffc107);font-weight:bold">Auffällig</span>
+                            }
+                            else if (r.ValueCount > 0)
+                            {
+                                <span style="color:var(--color-success, #28a745)">Normal</span>
+                            }
+                        </td>
+                        <td>
+                            @if (r.Status == LabResultStatus.Ordered)
+                            {
+                                <button class="btn btn-sm btn-primary" @onclick:stopPropagation @onclick="() => StartAddValues(r.Id)">Ergebnisse eintragen</button>
+                            }
+                            else if (r.Status == LabResultStatus.Received)
+                            {
+                                <button class="btn btn-sm btn-primary" @onclick:stopPropagation @onclick="() => MarkReviewed(r.Id)">Zur Kenntnis genommen</button>
+                            }
+                        </td>
+                    </tr>
+                    @if (expandedId == r.Id && expandedDetail is not null)
+                    {
+                        <tr>
+                            <td colspan="7" style="padding:0.5rem 1rem;background:var(--bg-secondary, #f8f9fa)">
+                                @if (expandedDetail.Values.Count == 0)
+                                {
+                                    <p style="margin:0.5rem 0">Noch keine Werte eingetragen.</p>
+                                }
+                                else
+                                {
+                                    <table class="data-table" style="width:100%;margin:0.5rem 0">
+                                        <thead>
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Wert</th>
+                                                <th>Einheit</th>
+                                                <th>Referenz</th>
+                                                <th>Kategorie</th>
+                                                <th>Bewertung</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var v in expandedDetail.Values)
+                                            {
+                                                var rowColor = v.IsCritical ? "color:var(--color-danger, #dc3545);font-weight:bold"
+                                                    : v.IsAbnormal ? "color:var(--color-warning, #ffc107);font-weight:bold"
+                                                    : "color:var(--color-success, #28a745)";
+                                                <tr style="@rowColor">
+                                                    <td>@v.ParameterName</td>
+                                                    <td>@v.Value</td>
+                                                    <td>@v.Unit</td>
+                                                    <td>
+                                                        @if (v.ReferenceRangeLow.HasValue && v.ReferenceRangeHigh.HasValue)
+                                                        {
+                                                            @($"{v.ReferenceRangeLow} – {v.ReferenceRangeHigh}")
+                                                        }
+                                                        else if (v.ReferenceRangeLow.HasValue)
+                                                        {
+                                                            @($"> {v.ReferenceRangeLow}")
+                                                        }
+                                                        else if (v.ReferenceRangeHigh.HasValue)
+                                                        {
+                                                            @($"< {v.ReferenceRangeHigh}")
+                                                        }
+                                                    </td>
+                                                    <td>@(v.Category ?? "—")</td>
+                                                    <td>
+                                                        @if (v.IsCritical) { <text>Kritisch</text> }
+                                                        else if (v.IsAbnormal) { <text>Auffällig</text> }
+                                                        else { <text>Normal</text> }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                @if (!string.IsNullOrEmpty(expandedDetail.Notes))
+                                {
+                                    <p style="margin:0.5rem 0"><strong>Notizen:</strong> @expandedDetail.Notes</p>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (showValueForm)
+    {
+        <div class="inline-form" style="margin-top:1.5rem">
+            <h3>Ergebnisse eintragen</h3>
+            <div class="form-row">
+                <div class="form-group" style="flex:0.5">
+                    <label>Ergebnisdatum *</label>
+                    <InputDate @bind-Value="valuesDto.ResultDate" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Panel laden</label>
+                    <select class="form-control" @onchange="LoadPanel">
+                        <option value="">— Manuell eingeben —</option>
+                        @foreach (var panel in MediPrax.Application.Catalogs.LabMonitoringCatalog.AllPanels)
+                        {
+                            <option value="@panel.Name">@panel.Name-Panel laden</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            @for (int i = 0; i < valueRows.Count; i++)
+            {
+                var idx = i;
+                <div class="form-row" style="align-items:end">
+                    <div class="form-group">
+                        <label>Parameter</label>
+                        <InputText @bind-Value="valueRows[idx].ParameterName" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.5">
+                        <label>Wert</label>
+                        <InputText @bind-Value="valueRows[idx].Value" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>Einheit</label>
+                        <InputText @bind-Value="valueRows[idx].Unit" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>Ref. Min</label>
+                        <InputNumber @bind-Value="valueRows[idx].ReferenceRangeLow" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>Ref. Max</label>
+                        <InputNumber @bind-Value="valueRows[idx].ReferenceRangeHigh" class="form-control" />
+                    </div>
+                    <div class="form-group" style="flex:0.4">
+                        <label>Kategorie</label>
+                        <InputText @bind-Value="valueRows[idx].Category" class="form-control" />
+                    </div>
+                    <button class="btn btn-sm btn-danger" style="margin-bottom:1rem" @onclick="() => valueRows.RemoveAt(idx)">×</button>
+                </div>
+            }
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                <button class="btn btn-secondary btn-sm" @onclick="AddValueRow">+ Zeile hinzufügen</button>
+                <button class="btn btn-primary btn-sm" @onclick="SubmitValues">Ergebnisse speichern</button>
+                <button class="btn btn-secondary btn-sm" @onclick="() => { showValueForm = false; valueRows.Clear(); }">Abbrechen</button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string? patientName;
+    private IReadOnlyList<LabResultListItemDto>? results;
+    private LabResultDto? expandedDetail;
+    private Guid? expandedId;
+    private bool showOrderForm;
+    private bool showValueForm;
+    private OrderForm newOrder = new();
+    private AddLabValuesDto valuesDto = new();
+    private List<ValueRow> valueRows = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patient = await PatientService.GetByIdAsync(PatientId);
+        if (patient is null)
+        {
+            Navigation.NavigateTo("/patienten");
+            return;
+        }
+        patientName = patient.FullName;
+        results = await LabResultService.GetByPatientAsync(PatientId);
+    }
+
+    private async Task<Guid> GetCurrentUserId()
+    {
+        var auth = await AuthState!;
+        return Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    }
+
+    private async Task CreateOrder()
+    {
+        var userId = await GetCurrentUserId();
+        await LabResultService.CreateAsync(new CreateLabResultDto
+        {
+            PatientId = PatientId,
+            OrderedById = userId,
+            LabName = newOrder.LabName,
+            OrderDate = newOrder.OrderDate,
+            Notes = newOrder.Notes
+        });
+        results = await LabResultService.GetByPatientAsync(PatientId);
+        newOrder = new();
+        showOrderForm = false;
+    }
+
+    private void StartAddValues(Guid labResultId)
+    {
+        valuesDto = new AddLabValuesDto
+        {
+            LabResultId = labResultId,
+            ResultDate = DateOnly.FromDateTime(DateTime.Today)
+        };
+        valueRows = [new()];
+        showValueForm = true;
+    }
+
+    private void AddValueRow()
+    {
+        valueRows.Add(new());
+    }
+
+    private void LoadPanel(ChangeEventArgs e)
+    {
+        var panelName = e.Value?.ToString();
+        if (string.IsNullOrEmpty(panelName)) return;
+
+        var panel = MediPrax.Application.Catalogs.LabMonitoringCatalog.GetPanel(panelName);
+        if (panel is null) return;
+
+        valueRows.Clear();
+        foreach (var p in panel.Parameters)
+        {
+            valueRows.Add(new ValueRow
+            {
+                ParameterName = p.Name,
+                Unit = p.Unit,
+                ReferenceRangeLow = p.RefLow,
+                ReferenceRangeHigh = p.RefHigh
+            });
+        }
+    }
+
+    private async Task SubmitValues()
+    {
+        valuesDto.Values = valueRows
+            .Where(r => !string.IsNullOrWhiteSpace(r.ParameterName) && !string.IsNullOrWhiteSpace(r.Value))
+            .Select(r => new MediPrax.Core.ValueObjects.LabValue
+            {
+                ParameterName = r.ParameterName,
+                Value = r.Value,
+                Unit = r.Unit,
+                ReferenceRangeLow = r.ReferenceRangeLow,
+                ReferenceRangeHigh = r.ReferenceRangeHigh,
+                Category = r.Category
+            }).ToList();
+
+        await LabResultService.AddValuesAsync(valuesDto);
+        results = await LabResultService.GetByPatientAsync(PatientId);
+        showValueForm = false;
+        valueRows.Clear();
+    }
+
+    private async Task MarkReviewed(Guid id)
+    {
+        var userId = await GetCurrentUserId();
+        await LabResultService.MarkReviewedAsync(id, userId);
+        results = await LabResultService.GetByPatientAsync(PatientId);
+        if (expandedId == id) expandedDetail = await LabResultService.GetByIdAsync(id);
+    }
+
+    private async Task ToggleExpand(Guid id)
+    {
+        if (expandedId == id)
+        {
+            expandedId = null;
+            expandedDetail = null;
+        }
+        else
+        {
+            expandedId = id;
+            expandedDetail = await LabResultService.GetByIdAsync(id);
+        }
+    }
+
+    private class OrderForm
+    {
+        public string LabName { get; set; } = "";
+        public DateOnly OrderDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        public string? Notes { get; set; }
+    }
+
+    private class ValueRow
+    {
+        public string ParameterName { get; set; } = "";
+        public string Value { get; set; } = "";
+        public string Unit { get; set; } = "";
+        public decimal? ReferenceRangeLow { get; set; }
+        public decimal? ReferenceRangeHigh { get; set; }
+        public string? Category { get; set; }
+    }
+}
