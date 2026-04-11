@@ -10,6 +10,7 @@
 @inject INeurologicalExamService NeuroExamService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
+@using System.Security.Claims
 
 <PageTitle>@(isEdit ? "Konsultation bearbeiten" : "Neue Konsultation")</PageTitle>
 
@@ -287,6 +288,7 @@ else
     [SupplyParameterFromQuery] public Guid? DoctorIdQuery { get; set; }
     [SupplyParameterFromQuery] public int? DurationQuery { get; set; }
     [SupplyParameterFromQuery] public Guid? AppointmentIdQuery { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private EncounterFormModel form = new();
     private IReadOnlyList<DoctorListItemDto> doctors = [];
@@ -362,6 +364,18 @@ else
                 form.DoctorId = DoctorIdQuery.Value.ToString();
             if (DurationQuery.HasValue)
                 form.DurationMinutes = DurationQuery.Value;
+
+            // Pre-select logged-in doctor if no doctor set yet
+            if (string.IsNullOrEmpty(form.DoctorId) && AuthState is not null)
+            {
+                var auth = await AuthState;
+                var role = auth.User.FindFirst(ClaimTypes.Role)?.Value;
+                if (role == "Arzt")
+                {
+                    var userId = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (userId is not null) form.DoctorId = userId;
+                }
+            }
         }
 
         loading = false;

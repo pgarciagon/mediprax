@@ -10,6 +10,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @rendermode InteractiveServer
+@using System.Security.Claims
 
 <PageTitle>@(isEdit ? "Arztbrief bearbeiten" : "Neuer Arztbrief") — @(patient?.FullName ?? "Laden...")</PageTitle>
 
@@ -272,6 +273,7 @@ else
 @code {
     [Parameter] public Guid PatientId { get; set; }
     [Parameter] public Guid? EditId { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private bool isEdit => EditId.HasValue;
     private PatientDto? patient;
@@ -320,7 +322,21 @@ else
         therapyCases = await TherapyCaseService.GetByPatientAsync(PatientId);
 
         if (!isEdit)
+        {
             form.Subject = $"Arztbrief — {patient.FullName}";
+
+            // Pre-select logged-in doctor
+            if (string.IsNullOrEmpty(form.DoctorId) && AuthState is not null)
+            {
+                var auth = await AuthState;
+                var role = auth.User.FindFirst(ClaimTypes.Role)?.Value;
+                if (role == "Arzt")
+                {
+                    var userId = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (userId is not null) form.DoctorId = userId;
+                }
+            }
+        }
     }
 
     private async Task OnEncounterChanged(ChangeEventArgs e)

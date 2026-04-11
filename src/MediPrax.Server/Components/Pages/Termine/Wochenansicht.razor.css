@@ -291,14 +291,14 @@
     position: absolute;
     border-radius: 4px;
     border-left: 3px solid #2563eb;
-    padding: 2px 4px;
+    padding: 2px 6px;
     margin-left: 2px;
     cursor: pointer;
     overflow: hidden;
     z-index: 1;
     transition: box-shadow 150ms;
-    font-size: 0.7rem;
-    line-height: 1.2;
+    font-size: 0.72rem;
+    line-height: 1.35;
 }
 
 .timeline-appt:hover {
@@ -308,36 +308,56 @@
 }
 
 .appt-time {
-    display: block;
-    font-size: 0.62rem;
+    font-size: 0.65rem;
     font-weight: 600;
     color: var(--color-text-secondary, #64748b);
+    margin-right: 0.3em;
 }
 
 .appt-patient {
-    display: block;
     font-weight: 600;
     color: var(--color-text, #1e293b);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-right: 0.4em;
 }
 
 .appt-doctor {
-    display: block;
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     color: var(--color-text-muted, #94a3b8);
+    margin-right: 0.4em;
 }
 
 .appt-notes {
-    display: block;
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     color: var(--color-text-secondary, #64748b);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
 }
+
+/* Separator dot between inline fields */
+.appt-doctor::before,
+.appt-notes::before {
+    content: "·";
+    margin-right: 0.3em;
+    color: var(--color-text-muted, #94a3b8);
+}
+
+/* Status badge inside appointment block */
+.appt-status-badge {
+    display: inline-block;
+    border-radius: 3px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+    padding: 1px 4px;
+    margin-right: 0.3em;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.status-badge-checkedin  { background: #eab308; }
+.status-badge-inprogress { background: #10b981; }
+.status-badge-completed  { background: #94a3b8; }
+.status-badge-cancelled  { background: #ef4444; }
+.status-badge-noshow     { background: #f97316; }
 
 /* Click area for creating appointments */
 .timeline-click-area {

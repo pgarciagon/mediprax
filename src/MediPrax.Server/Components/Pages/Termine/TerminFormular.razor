@@ -5,6 +5,7 @@
 @inject IPatientService PatientService
 @inject IUserService UserService
 @inject ISlotSuggestionService SlotSuggestionService
+@inject IAvailabilityService AvailabilityService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -190,6 +191,7 @@ else
     private bool patientSelected;
     private bool saving;
     private string? errorMessage;
+    private static readonly TimeZoneInfo berlinTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,8 +208,10 @@ else
 
             form.PatientId = appointment.PatientId;
             form.DoctorId = appointment.DoctorId.ToString();
-            form.Date = DateOnly.FromDateTime(appointment.StartTime);
-            form.Time = appointment.StartTime.ToString("HH:mm");
+            var localStart = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(appointment.StartTime, DateTimeKind.Utc), berlinTz);
+            form.Date = DateOnly.FromDateTime(localStart);
+            form.Time = localStart.ToString("HH:mm");
             form.DurationMinutes = appointment.DurationMinutes;
             form.Notes = appointment.Notes;
             selectedTemplate = appointment.AppointmentType ?? "";
@@ -283,7 +287,10 @@ else
 
         try
         {
-            var startTime = form.Date.ToDateTime(time, DateTimeKind.Utc);
+            var localDateTime = new DateTime(form.Date.Year, form.Date.Month, form.Date.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
+            var startTime = TimeZoneInfo.ConvertTimeToUtc(localDateTime, berlinTz);
+
+            Guid appointmentId;
 
             if (IsEdit)
             {
@@ -296,6 +303,7 @@ else
                     AppointmentType = string.IsNullOrEmpty(selectedTemplate) ? null : selectedTemplate,
                     Notes = form.Notes
                 });
+                appointmentId = Id!.Value;
             }
             else
             {
@@ -308,15 +316,15 @@ else
                     AppointmentType = string.IsNullOrEmpty(selectedTemplate) ? null : selectedTemplate,
                     Notes = form.Notes
                 });
-
-                // Navigate to calendar filtered by doctor, with highlight
-                var targetDate = form.Date;
-                var monday = targetDate.AddDays(-(((int)targetDate.DayOfWeek + 6) % 7));
-                Navigation.NavigateTo($"/termine?arzt={doctorId}&highlight={created.Id}&woche={monday:yyyy-MM-dd}");
-                return;
+                appointmentId = created.Id;
             }
 
-            Navigation.NavigateTo(backUrl);
+            // Navigate to calendar filtered by doctor, week of the appointment, highlighted
+            // Preserve the view mode from the original return URL
+            var targetDate = form.Date;
+            var monday = targetDate.AddDays(-(((int)targetDate.DayOfWeek + 6) % 7));
+            var ansicht = ExtractQueryParam(ReturnUrl, "ansicht") ?? "kalender";
+            Navigation.NavigateTo($"/termine?arzt={doctorId}&highlight={appointmentId}&woche={monday:yyyy-MM-dd}&ansicht={ansicht}&datum={targetDate:yyyy-MM-dd}", forceLoad: true);
         }
         catch (Exception ex)
         {
@@ -353,6 +361,15 @@ else
         searchingSlots = true;
         try
         {
+            // Check if doctor has any schedule configured
+            var schedule = await AvailabilityService.GetScheduleAsync(doctorId);
+            if (schedule.Count == 0)
+            {
+                slotError = "Dieser Arzt hat keine Sprechzeiten konfiguriert. Bitte unter Verwaltung → Sprechzeiten einrichten.";
+                searchingSlots = false;
+                return;
+            }
+
             DayOfWeek? prefDay = !string.IsNullOrEmpty(preferredDay) ? (DayOfWeek)int.Parse(preferredDay) : null;
             TimeOnly? prefTime = TimeOnly.TryParse(preferredTimeStr, out var t) ? t : null;
 
@@ -374,10 +391,27 @@ else
 
     private void ApplySlot(FreeSlotDto slot)
     {
-        form.Date = DateOnly.FromDateTime(slot.Start.ToLocalTime());
-        form.Time = slot.Start.ToLocalTime().ToString("HH:mm");
+        var local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(slot.Start, DateTimeKind.Utc), berlinTz);
+        form.Date = DateOnly.FromDateTime(local);
+        form.Time = local.ToString("HH:mm");
         form.DurationMinutes = slot.DurationMinutes;
         suggestedSlots = null;
+    }
+
+    private static string? ExtractQueryParam(string? url, string key)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+        var decoded = Uri.UnescapeDataString(url);
+        var qIndex = decoded.IndexOf('?');
+        if (qIndex < 0) return null;
+        var query = decoded[(qIndex + 1)..];
+        foreach (var part in query.Split('&'))
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && kv[0].Equals(key, StringComparison.OrdinalIgnoreCase))
+                return kv[1];
+        }
+        return null;
     }
 
     private class AppointmentFormModel

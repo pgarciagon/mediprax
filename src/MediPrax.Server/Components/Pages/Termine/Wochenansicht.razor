@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using System.Security.Claims
+@using MediPrax.Core.Enums
 
 <PageTitle>Terminplanung</PageTitle>
 <style>.main-content:has(.week-grid), .main-content:has(.timeline-grid), .main-content:has(.timeline-container) { max-width: none !important; padding: 1rem !important; }</style>
@@ -100,7 +101,11 @@ else if (viewMode == "tag")
                     <div class="timeline-appt status-@appt.Status.ToString().ToLower() @HighlightClass(appt.Id)"
                          style="top:@(item.Top)px;height:@(item.Height)px;left:@(F(leftPct))%;width:calc(@(F(widthPct))% - 4px);border-left-color:@color;background:@(color)12;"
                          @onclick="() => ViewAppointment(appt.Id)"
-                         title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
+                         title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @GetStatusLabel(appt.Status)">
+                        @if (appt.Status != AppointmentStatus.Scheduled)
+                        {
+                            <span class="appt-status-badge status-badge-@appt.Status.ToString().ToLower()">@GetStatusIcon(appt.Status)</span>
+                        }
                         <span class="appt-patient">@appt.PatientName</span>
                         @if (!string.IsNullOrEmpty(appt.DoctorName))
                         {
@@ -207,9 +212,12 @@ else
                                  @onclick="() => ViewAppointment(appt.Id)"
                                  title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
                                 @{ var allDocs = string.IsNullOrEmpty(selectedDoctorId); }
+                                @if (appt.Status != AppointmentStatus.Scheduled)
+                                {
+                                    <span class="appt-status-badge status-badge-@appt.Status.ToString().ToLower()" title="@GetStatusLabel(appt.Status)">@GetStatusIcon(appt.Status)</span>
+                                }
                                 @if (cols <= 2)
                                 {
-                                    @* Full detail — no time (visible from position) *@
                                     <span class="appt-patient">@appt.PatientName</span>
                                     @if (!string.IsNullOrEmpty(appt.DoctorName) && allDocs)
                                     {
@@ -222,7 +230,6 @@ else
                                 }
                                 else if (cols <= 4)
                                 {
-                                    @* Medium: name + doctor + notes if space *@
                                     <span class="appt-patient">@appt.PatientName</span>
                                     @if (!string.IsNullOrEmpty(appt.DoctorName) && allDocs)
                                     {
@@ -235,7 +242,6 @@ else
                                 }
                                 else if (cols <= 6)
                                 {
-                                    @* Compact: short name + doctor initials *@
                                     <span class="appt-patient">@GetShortName(appt.PatientName)</span>
                                     @if (allDocs && !string.IsNullOrEmpty(appt.DoctorName))
                                     {
@@ -244,7 +250,6 @@ else
                                 }
                                 else
                                 {
-                                    @* Minimal: doctor initials or patient initials *@
                                     <span class="appt-patient" style="font-size:0.65rem;">@(allDocs ? GetInitials(appt.DoctorName) : GetInitials(appt.PatientName))</span>
                                 }
                             </div>
@@ -264,6 +269,7 @@ else
     [SupplyParameterFromQuery] public string? Ansicht { get; set; }
     [SupplyParameterFromQuery] public string? Highlight { get; set; }
     [SupplyParameterFromQuery] public string? Woche { get; set; }
+    [SupplyParameterFromQuery] public string? Datum { get; set; }
 
     private WeekScheduleDto? schedule;
     private IReadOnlyList<DoctorListItemDto> doctors = [];
@@ -287,18 +293,22 @@ else
         if (!string.IsNullOrEmpty(Arzt)) selectedDoctorId = Arzt;
         if (!string.IsNullOrEmpty(Ansicht)) viewMode = Ansicht;
         if (Guid.TryParse(Highlight, out var hId)) highlightId = hId;
-        if (DateOnly.TryParse(Woche, out var w)) { weekStart = w; selectedDate = w; }
+        if (DateOnly.TryParse(Woche, out var w)) weekStart = w;
+        if (DateOnly.TryParse(Datum, out var d)) selectedDate = d;
+        else if (weekStart != default) selectedDate = weekStart;
 
-        // Default: Arzt sees own schedule, Tag view
-        if (string.IsNullOrEmpty(selectedDoctorId) && AuthState is not null)
+        // Default: Arzt sees own schedule, Tag view (only when no explicit query params)
+        if (string.IsNullOrEmpty(Arzt) && AuthState is not null)
         {
             var auth = await AuthState;
             var roleClaim = auth.User.FindFirst(ClaimTypes.Role)?.Value;
             if (roleClaim == "Arzt")
             {
                 var idClaim = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (idClaim is not null) selectedDoctorId = idClaim;
-                if (string.IsNullOrEmpty(Ansicht)) viewMode = "tag";
+                if (idClaim is not null && string.IsNullOrEmpty(selectedDoctorId))
+                    selectedDoctorId = idClaim;
+                if (string.IsNullOrEmpty(Ansicht) && highlightId is null)
+                    viewMode = "tag";
             }
         }
 
@@ -313,6 +323,8 @@ else
         var parms = new List<string>();
         if (!string.IsNullOrEmpty(selectedDoctorId)) parms.Add($"arzt={selectedDoctorId}");
         if (viewMode != "kalender") parms.Add($"ansicht={viewMode}");
+        parms.Add($"woche={weekStart:yyyy-MM-dd}");
+        if (viewMode == "tag") parms.Add($"datum={selectedDate:yyyy-MM-dd}");
         if (parms.Count > 0) url += "?" + string.Join("&", parms);
         return url;
     }
@@ -480,6 +492,27 @@ else
     }
 
     private string HighlightClass(Guid apptId) => highlightId == apptId ? "highlighted" : "";
+
+    private static string GetStatusIcon(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.CheckedIn => "Wartezimmer",
+        AppointmentStatus.InProgress => "In Behandlung",
+        AppointmentStatus.Completed => "Fertig",
+        AppointmentStatus.Cancelled => "Abgesagt",
+        AppointmentStatus.NoShow => "Nicht erschienen",
+        _ => ""
+    };
+
+    private static string GetStatusLabel(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Scheduled => "Geplant",
+        AppointmentStatus.CheckedIn => "Im Wartezimmer",
+        AppointmentStatus.InProgress => "In Behandlung",
+        AppointmentStatus.Completed => "Abgeschlossen",
+        AppointmentStatus.Cancelled => "Abgesagt",
+        AppointmentStatus.NoShow => "Nicht erschienen",
+        _ => status.ToString()
+    };
 
     private static string GetDoctorColor(string? doctorName)
     {
