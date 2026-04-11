@@ -4,14 +4,15 @@ using MediPrax.Server.Services;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class AuthServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
     private readonly AuthService _sut;
 
-    public AuthServiceTests()
+    public AuthServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new AuthService(_factory.Context);
 
         _factory.Context.Set<User>().Add(new User

@@ -3,14 +3,15 @@ using MediPrax.Application.Services;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class ImportServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
     private readonly ImportService _sut;
 
-    public ImportServiceTests()
+    public ImportServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new ImportService(_factory.Context);
     }
 

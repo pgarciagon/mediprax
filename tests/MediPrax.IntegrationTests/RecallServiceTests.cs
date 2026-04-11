@@ -5,6 +5,7 @@ using MediPrax.Core.Enums;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class RecallServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
@@ -12,9 +13,9 @@ public class RecallServiceTests : IDisposable
     private readonly Guid _patientId;
     private readonly Guid _userId;
 
-    public RecallServiceTests()
+    public RecallServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new RecallService(_factory.Context);
 
         var patient = new Patient { FirstName = "Recall", LastName = "Test", DateOfBirth = new DateOnly(1985, 1, 1) };

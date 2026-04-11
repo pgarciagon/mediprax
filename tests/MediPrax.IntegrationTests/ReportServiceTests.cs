@@ -4,14 +4,15 @@ using MediPrax.Core.Enums;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class ReportServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
     private readonly ReportService _sut;
 
-    public ReportServiceTests()
+    public ReportServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new ReportService(_factory.Context);
 
         var patient = new Patient { FirstName = "Report", LastName = "Test", DateOfBirth = new DateOnly(1975, 6, 1) };

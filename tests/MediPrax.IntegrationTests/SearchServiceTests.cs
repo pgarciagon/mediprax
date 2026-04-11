@@ -3,14 +3,15 @@ using MediPrax.Core.Entities;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class SearchServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
     private readonly SearchService _sut;
 
-    public SearchServiceTests()
+    public SearchServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new SearchService(_factory.Context);
 
         // Seed test data

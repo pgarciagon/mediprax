@@ -11,14 +11,15 @@ namespace MediPrax.IntegrationTests;
 /// Each test creates the schema from the EF model, inserts a minimal entity,
 /// then reads it back — ensuring columns, types, and relationships are valid.
 /// </summary>
+[Collection("Postgres")]
 public class SchemaValidationTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
     private readonly MediPrax.Infrastructure.Persistence.MediPraxDbContext _db;
 
-    public SchemaValidationTests()
+    public SchemaValidationTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _db = _factory.Context;
     }
 
