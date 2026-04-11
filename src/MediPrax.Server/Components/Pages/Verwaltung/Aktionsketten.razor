@@ -1,0 +1,543 @@
+@page "/verwaltung/aktionsketten"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IActionChainService ChainService
+@inject IUserService UserService
+@rendermode InteractiveServer
+@using System.Text.Json
+@using System.Security.Claims
+
+<PageTitle>Aktionsketten — MediPrax</PageTitle>
+
+<div class="page-header">
+    <h1>Aktionsketten</h1>
+    <button class="btn btn-primary" @onclick="ShowCreate">+ Neue Aktionskette</button>
+</div>
+
+<div class="filter-bar">
+    <select class="form-control" style="max-width:200px;" @bind="selectedCategory" @bind:after="LoadChains">
+        <option value="">Alle Kategorien</option>
+        @foreach (var cat in categories)
+        {
+            <option value="@cat">@cat</option>
+        }
+    </select>
+    <span class="filter-count">@chains.Count Aktionsketten</span>
+</div>
+
+@if (chains.Count == 0)
+{
+    <div class="empty-state">Keine Aktionsketten vorhanden.</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Kürzel</th>
+                <th>Titel</th>
+                <th>Kategorie</th>
+                <th>Schritte</th>
+                <th>Global</th>
+                <th>Aktiv</th>
+                <th style="width:150px;">Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var chain in chains)
+            {
+                <tr class="@(!chain.IsActive ? "inactive-row" : "")">
+                    <td><code class="shortcut-code">#@chain.Shortcut</code></td>
+                    <td>
+                        <strong>@chain.Title</strong>
+                        @if (!string.IsNullOrEmpty(chain.Description))
+                        {
+                            <div class="chain-desc">@chain.Description</div>
+                        }
+                    </td>
+                    <td><span class="category-badge">@chain.Category</span></td>
+                    <td>
+                        <span class="step-count">@chain.StepCount</span>
+                        <div class="step-icons">
+                            @foreach (var step in chain.Steps.Take(5))
+                            {
+                                <span class="step-icon" title="@step.StepTypeDisplay">@GetStepIcon(step.StepType)</span>
+                            }
+                            @if (chain.StepCount > 5)
+                            {
+                                <span class="step-icon">+@(chain.StepCount - 5)</span>
+                            }
+                        </div>
+                    </td>
+                    <td>@(chain.IsGlobal ? "✓" : "—")</td>
+                    <td>
+                        @if (chain.IsActive)
+                        {
+                            <span class="status-badge active">Aktiv</span>
+                        }
+                        else
+                        {
+                            <span class="status-badge inactive">Inaktiv</span>
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => ShowEdit(chain)">Bearbeiten</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => deleteTarget = chain">Löschen</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* === Create/Edit Modal === *@
+@if (showForm)
+{
+    <div class="modal-overlay" @onclick="HideForm">
+        <div class="modal-card modal-wide" @onclick:stopPropagation="true">
+            <h2>@(editingId.HasValue ? "Aktionskette bearbeiten" : "Neue Aktionskette")</h2>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <div class="form-row">
+                <div class="form-group" style="flex:0 0 150px;">
+                    <label>Kürzel *</label>
+                    <div style="display:flex;align-items:center;">
+                        <span style="font-weight:700;margin-right:2px;">#</span>
+                        <input class="form-control" @bind="form.Shortcut" placeholder="dep" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Titel *</label>
+                    <input class="form-control" @bind="form.Title" placeholder="Depression Erstgespräch" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Beschreibung</label>
+                    <input class="form-control" @bind="form.Description" placeholder="Was diese Kette tut..." />
+                </div>
+                <div class="form-group" style="flex:0 0 180px;">
+                    <label>Kategorie</label>
+                    <select class="form-control" @bind="form.Category">
+                        <option value="Psychiatrie">Psychiatrie</option>
+                        <option value="Neurologie">Neurologie</option>
+                        <option value="Allgemein">Allgemein</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:0 0 auto;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="form.IsGlobal" /> Für alle Benutzer sichtbar
+                    </label>
+                </div>
+                <div class="form-group" style="flex:0 0 auto;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" @bind="form.IsActive" /> Aktiv
+                    </label>
+                </div>
+            </div>
+
+            <hr />
+            <div class="steps-header">
+                <h3>Schritte</h3>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick="AddStep">+ Schritt hinzufügen</button>
+            </div>
+
+            @if (formSteps.Count == 0)
+            {
+                <div class="empty-steps">Noch keine Schritte definiert.</div>
+            }
+            else
+            {
+                @for (var i = 0; i < formSteps.Count; i++)
+                {
+                    var idx = i;
+                    var step = formSteps[idx];
+                    <div class="step-row">
+                        <div class="step-num">@(idx + 1)</div>
+                        <div class="step-content">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:0 0 220px;">
+                                    <label>Typ</label>
+                                    <select class="form-control" @bind="step.StepType" @bind:after="() => OnStepTypeChanged(idx)">
+                                        @foreach (var t in Enum.GetValues<ActionStepType>())
+                                        {
+                                            <option value="@t">@GetStepTypeLabel(t)</option>
+                                        }
+                                    </select>
+                                </div>
+                                @switch (step.StepType)
+                                {
+                                    case ActionStepType.AddDiagnosis:
+                                        <div class="form-group" style="flex:0 0 120px;">
+                                            <label>ICD-10 *</label>
+                                            <input class="form-control" @bind="step.Param1" placeholder="F32.1" />
+                                        </div>
+                                        <div class="form-group" style="flex:0 0 80px;">
+                                            <label>Sicherheit</label>
+                                            <select class="form-control" @bind="step.Param2">
+                                                <option value="G">G</option>
+                                                <option value="V">V</option>
+                                                <option value="Z">Z</option>
+                                                <option value="A">A</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="flex:0 0 150px;">
+                                            <label>Typ</label>
+                                            <select class="form-control" @bind="step.Param3">
+                                                <option value="Encounterdiagnose">Encounter</option>
+                                                <option value="Dauerdiagnose">Dauer</option>
+                                            </select>
+                                        </div>
+                                        break;
+
+                                    case ActionStepType.AddBillingCode:
+                                        <div class="form-group" style="flex:0 0 120px;">
+                                            <label>GOP *</label>
+                                            <input class="form-control" @bind="step.Param1" placeholder="21220" />
+                                        </div>
+                                        <div class="form-group" style="flex:0 0 80px;">
+                                            <label>Menge</label>
+                                            <input type="number" class="form-control" @bind="step.NumParam" min="1" />
+                                        </div>
+                                        break;
+
+                                    case ActionStepType.SetNoteTemplate:
+                                        <div class="form-group" style="flex:0 0 200px;">
+                                            <label>Vorlage *</label>
+                                            <select class="form-control" @bind="step.Param1">
+                                                <option value="psych">Psychiatrisch</option>
+                                                <option value="neuro">Neurologisch</option>
+                                                <option value="kurz">Kurzkonsultation</option>
+                                            </select>
+                                        </div>
+                                        break;
+
+                                    case ActionStepType.CreatePrescription:
+                                        <div class="form-group">
+                                            <label>Medikament *</label>
+                                            <input class="form-control" @bind="step.Param1" placeholder="Sertralin 50mg" />
+                                        </div>
+                                        <div class="form-group" style="flex:0 0 150px;">
+                                            <label>Dosierung</label>
+                                            <input class="form-control" @bind="step.Param2" placeholder="1-0-0" />
+                                        </div>
+                                        break;
+
+                                    case ActionStepType.SetDuration:
+                                        <div class="form-group" style="flex:0 0 120px;">
+                                            <label>Minuten *</label>
+                                            <input type="number" class="form-control" @bind="step.NumParam" min="5" step="5" />
+                                        </div>
+                                        break;
+
+                                    case ActionStepType.CreateRecall:
+                                        <div class="form-group">
+                                            <label>Grund *</label>
+                                            <input class="form-control" @bind="step.Param1" placeholder="Therapiekontrolle" />
+                                        </div>
+                                        <div class="form-group" style="flex:0 0 120px;">
+                                            <label>Tage</label>
+                                            <input type="number" class="form-control" @bind="step.NumParam" min="1" />
+                                        </div>
+                                        break;
+
+                                    default:
+                                        <div class="form-group">
+                                            <span class="help-text">Wird in einer zukünftigen Version unterstützt.</span>
+                                        </div>
+                                        break;
+                                }
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-danger step-remove" @onclick="() => formSteps.RemoveAt(idx)">✕</button>
+                    </div>
+                }
+            }
+
+            <div class="form-actions">
+                <button class="btn btn-primary" @onclick="SaveChain" disabled="@isSaving">
+                    @(isSaving ? "Speichern..." : "Speichern")
+                </button>
+                <button class="btn btn-secondary" @onclick="HideForm">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* === Delete Confirmation === *@
+@if (deleteTarget is not null)
+{
+    <div class="modal-overlay" @onclick="() => deleteTarget = null">
+        <div class="modal-card" style="max-width:400px;" @onclick:stopPropagation="true">
+            <h2>Aktionskette löschen?</h2>
+            <p>Möchten Sie die Aktionskette <strong>#@deleteTarget.Shortcut</strong> — „@deleteTarget.Title" wirklich löschen?</p>
+            <div class="form-actions">
+                <button class="btn btn-danger" @onclick="DeleteChain">Löschen</button>
+                <button class="btn btn-secondary" @onclick="() => deleteTarget = null">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private IReadOnlyList<ActionChainDto> chains = [];
+    private List<string> categories = [];
+    private string selectedCategory = "";
+
+    // Form state
+    private bool showForm;
+    private Guid? editingId;
+    private ActionChainFormModel form = new();
+    private List<StepFormModel> formSteps = [];
+    private string? errorMessage;
+    private bool isSaving;
+    private ActionChainDto? deleteTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadChains();
+    }
+
+    private async Task LoadChains()
+    {
+        var all = await ChainService.GetAllAsync(
+            string.IsNullOrEmpty(selectedCategory) ? null : selectedCategory);
+        chains = all;
+
+        var allChains = await ChainService.GetAllAsync();
+        categories = allChains.Select(c => c.Category).Where(c => !string.IsNullOrEmpty(c)).Distinct().OrderBy(c => c).ToList();
+    }
+
+    private void ShowCreate()
+    {
+        editingId = null;
+        form = new ActionChainFormModel { Category = "Psychiatrie", IsGlobal = true, IsActive = true };
+        formSteps = [];
+        errorMessage = null;
+        showForm = true;
+    }
+
+    private void ShowEdit(ActionChainDto chain)
+    {
+        editingId = chain.Id;
+        form = new ActionChainFormModel
+        {
+            Shortcut = chain.Shortcut,
+            Title = chain.Title,
+            Description = chain.Description ?? "",
+            Category = chain.Category,
+            IsGlobal = chain.IsGlobal,
+            IsActive = chain.IsActive
+        };
+        formSteps = chain.Steps.Select(s => StepFormModel.FromDto(s)).ToList();
+        errorMessage = null;
+        showForm = true;
+    }
+
+    private void HideForm()
+    {
+        showForm = false;
+        errorMessage = null;
+    }
+
+    private void AddStep()
+    {
+        formSteps.Add(new StepFormModel { StepType = ActionStepType.AddBillingCode, NumParam = 1 });
+    }
+
+    private void OnStepTypeChanged(int idx)
+    {
+        var step = formSteps[idx];
+        step.Param1 = "";
+        step.Param2 = step.StepType == ActionStepType.AddDiagnosis ? "G" : "";
+        step.Param3 = step.StepType == ActionStepType.AddDiagnosis ? "Encounterdiagnose" : "";
+        step.NumParam = step.StepType switch
+        {
+            ActionStepType.AddBillingCode => 1,
+            ActionStepType.SetDuration => 25,
+            ActionStepType.CreateRecall => 90,
+            _ => 0
+        };
+    }
+
+    private async Task SaveChain()
+    {
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(form.Shortcut))
+        { errorMessage = "Kürzel ist erforderlich."; return; }
+        if (string.IsNullOrWhiteSpace(form.Title))
+        { errorMessage = "Titel ist erforderlich."; return; }
+
+        isSaving = true;
+        try
+        {
+            Guid createdById = Guid.Empty;
+            if (AuthState is not null)
+            {
+                var auth = await AuthState;
+                var userId = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId is not null) Guid.TryParse(userId, out createdById);
+            }
+
+            var steps = formSteps.Select((s, i) => new CreateActionChainStepDto
+            {
+                StepType = s.StepType,
+                SortOrder = i,
+                Configuration = s.ToJson()
+            }).ToList();
+
+            if (editingId.HasValue)
+            {
+                await ChainService.UpdateAsync(new UpdateActionChainDto
+                {
+                    Id = editingId.Value,
+                    Shortcut = form.Shortcut,
+                    Title = form.Title,
+                    Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description,
+                    Category = form.Category,
+                    CreatedById = createdById,
+                    IsGlobal = form.IsGlobal,
+                    IsActive = form.IsActive,
+                    Steps = steps
+                });
+            }
+            else
+            {
+                await ChainService.CreateAsync(new CreateActionChainDto
+                {
+                    Shortcut = form.Shortcut,
+                    Title = form.Title,
+                    Description = string.IsNullOrWhiteSpace(form.Description) ? null : form.Description,
+                    Category = form.Category,
+                    CreatedById = createdById,
+                    IsGlobal = form.IsGlobal,
+                    IsActive = form.IsActive,
+                    Steps = steps
+                });
+            }
+
+            showForm = false;
+            await LoadChains();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.InnerException?.Message ?? ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteChain()
+    {
+        if (deleteTarget is null) return;
+        await ChainService.DeleteAsync(deleteTarget.Id);
+        deleteTarget = null;
+        await LoadChains();
+    }
+
+    private static string GetStepTypeLabel(ActionStepType type) => type switch
+    {
+        ActionStepType.AddDiagnosis => "Diagnose hinzufügen",
+        ActionStepType.AddBillingCode => "Abrechnungsziffer",
+        ActionStepType.SetNoteTemplate => "Befundvorlage",
+        ActionStepType.CreatePrescription => "Rezept erstellen",
+        ActionStepType.SetEncounterType => "Kontaktart setzen",
+        ActionStepType.SetDuration => "Dauer setzen",
+        ActionStepType.CreateReferral => "Überweisung",
+        ActionStepType.CreateRecall => "Wiedervorlage",
+        _ => type.ToString()
+    };
+
+    private static string GetStepIcon(ActionStepType type) => type switch
+    {
+        ActionStepType.AddDiagnosis => "🏥",
+        ActionStepType.AddBillingCode => "💶",
+        ActionStepType.SetNoteTemplate => "📝",
+        ActionStepType.CreatePrescription => "💊",
+        ActionStepType.SetDuration => "⏱",
+        ActionStepType.CreateRecall => "📅",
+        _ => "⚡"
+    };
+
+    // --- Form Models ---
+
+    private class ActionChainFormModel
+    {
+        public string Shortcut { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "Psychiatrie";
+        public bool IsGlobal { get; set; } = true;
+        public bool IsActive { get; set; } = true;
+    }
+
+    private class StepFormModel
+    {
+        public ActionStepType StepType { get; set; }
+        public string Param1 { get; set; } = "";  // icd10Code, gopCode, template, medicationName, reason
+        public string Param2 { get; set; } = "";  // certainty, dosage
+        public string Param3 { get; set; } = "";  // diagnosisType
+        public int NumParam { get; set; }          // quantity, durationMinutes, daysFromNow
+
+        public string ToJson() => StepType switch
+        {
+            ActionStepType.AddDiagnosis => JsonSerializer.Serialize(new { icd10Code = Param1, certainty = Param2, diagnosisType = Param3 }),
+            ActionStepType.AddBillingCode => JsonSerializer.Serialize(new { gopCode = Param1, quantity = NumParam > 0 ? NumParam : 1 }),
+            ActionStepType.SetNoteTemplate => JsonSerializer.Serialize(new { template = Param1 }),
+            ActionStepType.CreatePrescription => JsonSerializer.Serialize(new { medicationName = Param1, dosage = Param2 }),
+            ActionStepType.SetDuration => JsonSerializer.Serialize(new { durationMinutes = NumParam }),
+            ActionStepType.CreateRecall => JsonSerializer.Serialize(new { reason = Param1, daysFromNow = NumParam > 0 ? NumParam : 90 }),
+            _ => "{}"
+        };
+
+        public static StepFormModel FromDto(ActionChainStepDto dto)
+        {
+            var model = new StepFormModel { StepType = dto.StepType };
+            try
+            {
+                using var doc = JsonDocument.Parse(dto.Configuration);
+                var root = doc.RootElement;
+                switch (dto.StepType)
+                {
+                    case ActionStepType.AddDiagnosis:
+                        model.Param1 = root.TryGetProperty("icd10Code", out var icd) ? icd.GetString() ?? "" : "";
+                        model.Param2 = root.TryGetProperty("certainty", out var cert) ? cert.GetString() ?? "G" : "G";
+                        model.Param3 = root.TryGetProperty("diagnosisType", out var dt) ? dt.GetString() ?? "Encounterdiagnose" : "Encounterdiagnose";
+                        break;
+                    case ActionStepType.AddBillingCode:
+                        model.Param1 = root.TryGetProperty("gopCode", out var gop) ? gop.GetString() ?? "" : "";
+                        model.NumParam = root.TryGetProperty("quantity", out var qty) ? qty.GetInt32() : 1;
+                        break;
+                    case ActionStepType.SetNoteTemplate:
+                        model.Param1 = root.TryGetProperty("template", out var tmpl) ? tmpl.GetString() ?? "" : "";
+                        break;
+                    case ActionStepType.CreatePrescription:
+                        model.Param1 = root.TryGetProperty("medicationName", out var med) ? med.GetString() ?? "" : "";
+                        model.Param2 = root.TryGetProperty("dosage", out var dos) ? dos.GetString() ?? "" : "";
+                        break;
+                    case ActionStepType.SetDuration:
+                        model.NumParam = root.TryGetProperty("durationMinutes", out var dur) ? dur.GetInt32() : 25;
+                        break;
+                    case ActionStepType.CreateRecall:
+                        model.Param1 = root.TryGetProperty("reason", out var reason) ? reason.GetString() ?? "" : "";
+                        model.NumParam = root.TryGetProperty("daysFromNow", out var days) ? days.GetInt32() : 90;
+                        break;
+                }
+            }
+            catch { /* ignore parse errors, keep defaults */ }
+            return model;
+        }
+    }
+}

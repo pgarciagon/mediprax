@@ -10,6 +10,8 @@
 @inject IIcd10CodeService Icd10Service
 @inject IPsychopathFindingService PsychopathFindingService
 @inject INeurologicalExamService NeuroExamService
+@inject IActionChainService ActionChainService
+@inject IActionChainExecutor ActionChainExecutor
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using System.Security.Claims
@@ -234,6 +236,53 @@ else
             </InputSelect>
         </fieldset>
 
+        @if (isEdit)
+        {
+            <fieldset>
+                <legend>⚡ Aktionskette</legend>
+                <div class="chain-search" style="position:relative;">
+                    <input type="text"
+                           @bind="chainSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchChains"
+                           @onkeydown="HandleChainKeydown"
+                           placeholder="# eingeben für Aktionsketten... (z.B. #dep)"
+                           class="form-control" />
+                    @if (showChainDropdown && chainResults.Count > 0)
+                    {
+                        <div class="search-dropdown">
+                            @foreach (var chain in chainResults)
+                            {
+                                <div class="search-item" @onclick="() => ExecuteChain(chain)">
+                                    <code class="icd-code">#@chain.Shortcut</code>
+                                    <span class="icd-desc"><strong>@chain.Title</strong> — @chain.StepCount Schritte</span>
+                                    <span class="gop-type">@chain.Category</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (chainResult is not null)
+                {
+                    <div class="chain-result @(chainResult.Success ? "chain-success" : "chain-warning")">
+                        <strong>@chainResult.StepsExecuted/@(chainResult.StepsExecuted + chainResult.StepsFailed) Schritte ausgeführt.</strong>
+                        @foreach (var r in chainResult.Results.Where(r => r.Success))
+                        {
+                            <div class="chain-detail">✓ @r.Detail</div>
+                        }
+                        @foreach (var w in chainResult.Warnings)
+                        {
+                            <div class="chain-warn-item">⚠ @w</div>
+                        }
+                    </div>
+                }
+                @if (executingChain)
+                {
+                    <p style="color:var(--color-text-secondary);font-size:0.85rem;">Aktionskette wird ausgeführt...</p>
+                }
+            </fieldset>
+        }
+
         <fieldset>
             <legend>Abrechnung</legend>
             @if (!isEdit)
@@ -352,6 +401,12 @@ else
     private bool showIcdDropdown;
     private string gopSearchTerm = string.Empty;
     private bool showGopDropdown;
+    // Action chains
+    private string chainSearchTerm = string.Empty;
+    private bool showChainDropdown;
+    private IReadOnlyList<ActionChainDto> chainResults = [];
+    private ActionChainResult? chainResult;
+    private bool executingChain;
     private string? patientName;
     private string? psychopathNarrative;
     private string? neuroNarrative;
@@ -518,6 +573,73 @@ else
     {
         form.Icd10Codes.Remove(code);
         icdDescriptions.Remove(code);
+    }
+
+    // --- Action Chain methods ---
+
+    private async Task SearchChains()
+    {
+        chainResult = null;
+        if (string.IsNullOrWhiteSpace(chainSearchTerm) || !chainSearchTerm.StartsWith('#'))
+        {
+            showChainDropdown = false;
+            chainResults = [];
+            return;
+        }
+
+        var term = chainSearchTerm.TrimStart('#');
+        if (term.Length < 1) { showChainDropdown = false; return; }
+
+        chainResults = await ActionChainService.SearchAsync(term);
+        showChainDropdown = chainResults.Count > 0;
+    }
+
+    private async Task HandleChainKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && chainResults.Count == 1)
+        {
+            await ExecuteChain(chainResults[0]);
+        }
+        else if (e.Key == "Escape")
+        {
+            showChainDropdown = false;
+            chainSearchTerm = "";
+        }
+    }
+
+    private async Task ExecuteChain(ActionChainDto chain)
+    {
+        showChainDropdown = false;
+        chainSearchTerm = "";
+        executingChain = true;
+        chainResult = null;
+
+        try
+        {
+            chainResult = await ActionChainExecutor.ExecuteAsync(chain.Id, Id!.Value);
+
+            // Refresh billing items, sections, and diagnoses
+            billingItems = (await BillingService.GetByEncounterAsync(Id!.Value)).ToList();
+
+            var sections = await SectionService.GetByEncounterAsync(Id!.Value);
+            foreach (var s in sections)
+                sectionContents[s.SectionType] = s.Content;
+
+            dauerdiagnosen = await DiagnosisService.GetDauerdiagnosenAsync(PatientId!.Value);
+
+            // Refresh encounter to get updated duration
+            var enc = await EncounterService.GetByIdAsync(Id!.Value);
+            if (enc is not null)
+                form.DurationMinutes = enc.DurationMinutes;
+        }
+        catch (Exception ex)
+        {
+            chainResult = new ActionChainResult(false, 0, 0, [], [ex.Message]);
+        }
+        finally
+        {
+            executingChain = false;
+        }
     }
 
     private void SearchGop()

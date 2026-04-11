@@ -122,10 +122,10 @@ Especificación completa en `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 | M43 | Structured Encounter Documentation (ABDTP-Felder) | P1 | ✅ |
 | M44 | Advanced Diagnosis Management (Dauerdiagnosen, Metadaten, Vererbung) | P1 | ✅ |
 | M45 | Encounter Types (Karteieintragstypen) | P2 | ⏳ |
-| M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ⏳ |
+| M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ✅ |
 | M47 | Enhanced Textbausteine with Inline Expansion | P2 | ⏳ |
 
-**Resumen Fase 2:** ~18/31 completados. Pendientes prioritarios: **M23**, **M24**, **M42**, **M46** (P1); **M28**, **M39**, **M45**, **M47** (P2).
+**Resumen Fase 2:** ~19/31 completados. Pendientes prioritarios: **M23**, **M24**, **M42** (P1); **M28**, **M39**, **M45**, **M47** (P2).
 
 ---
 
@@ -218,6 +218,7 @@ Aplicados en servidor (no en repo Git):
 - Configuración EF en `MediPrax.Infrastructure/Persistence/Configurations/`
 - Registro de DI en `src/MediPrax.Server/Program.cs`
 - Cada milestone nuevo requiere: entidad + servicio + DTO + configuración EF + migración + página Blazor + tests
+- **Seed data obligatorio:** toda nueva funcionalidad DEBE incluir datos de prueba (seed) en la migración EF Core. Migrar datos existentes afectados cuando sea necesario. Los seeds usan SQL directo en el `Up()` de la migración con GUIDs fijos para idempotencia.
 - Al completar un milestone, actualizar la documentación de usuario (`userdocs/`) describiendo la nueva funcionalidad para el usuario final
 
 ---

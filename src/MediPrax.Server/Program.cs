@@ -86,6 +86,10 @@ builder.Services.AddScoped<IPrivateInvoiceService, PrivateInvoiceService>();
 // M35: BtM Compliance
 builder.Services.AddScoped<IBtmComplianceService, BtmComplianceService>();
 
+// M46: Action Chains
+builder.Services.AddScoped<IActionChainService, ActionChainService>();
+builder.Services.AddScoped<IActionChainExecutor, ActionChainExecutor>();
+
 // Telematik — Mock services (replace with real implementations when TI access is available)
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEgkService, MediPrax.Server.Services.Telematik.MockEgkService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IERezeptService, MediPrax.Server.Services.Telematik.MockERezeptService>();

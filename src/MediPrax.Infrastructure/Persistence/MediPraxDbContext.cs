@@ -57,6 +57,10 @@ public class MediPraxDbContext : DbContext
     public DbSet<PatientDiagnosis> PatientDiagnoses => Set<PatientDiagnosis>();
     public DbSet<EncounterDiagnosis> EncounterDiagnoses => Set<EncounterDiagnosis>();
 
+    // M46: Action Chains
+    public DbSet<ActionChain> ActionChains => Set<ActionChain>();
+    public DbSet<ActionChainStep> ActionChainSteps => Set<ActionChainStep>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MediPraxDbContext).Assembly);
@@ -87,6 +91,8 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<EncounterSection>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<PatientDiagnosis>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<EncounterDiagnosis>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ActionChain>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<ActionChainStep>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
