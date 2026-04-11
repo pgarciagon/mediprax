@@ -11,15 +11,15 @@ public class SearchService(DbContext context) : ISearchService
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
             return new GlobalSearchResultDto();
 
-        var lower = query.ToLower();
+        var pattern = $"%{query}%";
         var results = new List<SearchResultItemDto>();
 
         // Patients
         var patients = await context.Set<Patient>()
-            .Where(p => (p.FirstName + " " + p.LastName).ToLower().Contains(lower)
-                     || (p.LastName + ", " + p.FirstName).ToLower().Contains(lower)
-                     || (p.Kvnr != null && p.Kvnr.ToLower().Contains(lower))
-                     || (p.Phone != null && p.Phone.Contains(query)))
+            .Where(p => EF.Functions.Like(p.FirstName + " " + p.LastName, pattern)
+                     || EF.Functions.Like(p.LastName + ", " + p.FirstName, pattern)
+                     || (p.Kvnr != null && EF.Functions.Like(p.Kvnr, pattern))
+                     || (p.Phone != null && EF.Functions.Like(p.Phone, pattern)))
             .Take(5)
             .Select(p => new SearchResultItemDto
             {
@@ -36,8 +36,8 @@ public class SearchService(DbContext context) : ISearchService
             .Include(a => a.Patient)
             .Include(a => a.Doctor)
             .Where(a => a.StartTime >= DateTime.UtcNow.Date)
-            .Where(a => (a.Patient.FirstName + " " + a.Patient.LastName).ToLower().Contains(lower)
-                     || (a.Patient.LastName + ", " + a.Patient.FirstName).ToLower().Contains(lower))
+            .Where(a => EF.Functions.Like(a.Patient.FirstName + " " + a.Patient.LastName, pattern)
+                     || EF.Functions.Like(a.Patient.LastName + ", " + a.Patient.FirstName, pattern))
             .OrderBy(a => a.StartTime)
             .Take(5)
             .Select(a => new SearchResultItemDto
@@ -50,12 +50,11 @@ public class SearchService(DbContext context) : ISearchService
             .ToListAsync(ct);
         results.AddRange(appointments);
 
-        // Encounters (by ICD code or patient name)
-        var encounters = await context.Set<Encounter>()
+        // Encounters (by patient name)
+        var encountersByName = await context.Set<Encounter>()
             .Include(e => e.Patient)
             .Include(e => e.Doctor)
-            .Where(e => (e.Patient.FirstName + " " + e.Patient.LastName).ToLower().Contains(lower)
-                     || e.Icd10Codes.Any(c => c.ToLower().Contains(lower)))
+            .Where(e => EF.Functions.Like(e.Patient.FirstName + " " + e.Patient.LastName, pattern))
             .OrderByDescending(e => e.EncounterDate)
             .Take(5)
             .Select(e => new SearchResultItemDto
@@ -66,7 +65,29 @@ public class SearchService(DbContext context) : ISearchService
                 Url = "/dokumentation/" + e.Id + "/bearbeiten"
             })
             .ToListAsync(ct);
-        results.AddRange(encounters);
+        results.AddRange(encountersByName);
+
+        // Encounters (by ICD code — evaluated client-side for JSON collection compatibility)
+        if (encountersByName.Count < 5)
+        {
+            var encountersByIcd = await context.Set<Encounter>()
+                .Include(e => e.Patient)
+                .Include(e => e.Doctor)
+                .OrderByDescending(e => e.EncounterDate)
+                .Take(50)
+                .ToListAsync(ct);
+            var icdResults = encountersByIcd
+                .Where(e => e.Icd10Codes.Any(c => c.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                .Take(5 - encountersByName.Count)
+                .Select(e => new SearchResultItemDto
+                {
+                    Category = "Dokumentation",
+                    Title = e.Patient.LastName + ", " + e.Patient.FirstName,
+                    Subtitle = e.EncounterDate.ToString("dd.MM.yyyy") + " · " + e.Doctor.LastName,
+                    Url = "/dokumentation/" + e.Id + "/bearbeiten"
+                });
+            results.AddRange(icdResults);
+        }
 
         return new GlobalSearchResultDto
         {
