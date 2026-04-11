@@ -10,7 +10,7 @@ COPY src/MediPrax.Infrastructure/MediPrax.Infrastructure.csproj src/MediPrax.Inf
 COPY src/MediPrax.Server/MediPrax.Server.csproj src/MediPrax.Server/
 COPY src/MediPrax.Reporting/MediPrax.Reporting.csproj src/MediPrax.Reporting/
 COPY src/MediPrax.UI/MediPrax.UI.csproj src/MediPrax.UI/
-RUN dotnet restore MediPrax.slnx
+RUN dotnet restore src/MediPrax.Server/MediPrax.Server.csproj
 
 # Copy everything and publish
 COPY . .

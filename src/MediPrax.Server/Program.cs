@@ -9,6 +9,7 @@ using MediPrax.Server.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using QuestPDF.Fluent;
@@ -28,6 +29,7 @@ var dataSource = dataSourceBuilder.Build();
 builder.Services.AddDbContext<MediPraxDbContext>((sp, options) =>
     options
         .UseNpgsql(dataSource)
+        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
         .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
 
 // Repositories
@@ -168,7 +170,7 @@ if (Directory.Exists(docsPath))
     });
 }
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -448,11 +450,11 @@ app.MapGet("/api/kvdt-export/{quarter}", async (string quarter, IKvdtExportServi
     return Results.File(result.Content, "text/plain", result.FileName);
 }).RequireAuthorization("Admin");
 
-// Seed: ensure admin user and hash placeholder passwords
-if (app.Environment.IsDevelopment())
+// Auto-migrate and seed
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<MediPraxDbContext>();
+    db.Database.EnsureCreated();
 
     // Hash placeholder passwords
     var usersToFix = db.Users.Where(u => u.PasswordHash == "placeholder").ToList();
