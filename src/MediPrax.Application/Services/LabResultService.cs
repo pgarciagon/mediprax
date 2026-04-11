@@ -24,6 +24,7 @@ public class LabResultService(DbContext context) : ILabResultService
     public async Task<IReadOnlyList<LabResultListItemDto>> GetByPatientAsync(Guid patientId, CancellationToken ct = default)
     {
         return await LabResults
+            .Include(l => l.Patient)
             .Where(l => l.PatientId == patientId)
             .OrderByDescending(l => l.OrderDate)
             .Select(l => MapToListItem(l))
@@ -33,8 +34,20 @@ public class LabResultService(DbContext context) : ILabResultService
     public async Task<IReadOnlyList<LabResultListItemDto>> GetPendingResultsAsync(CancellationToken ct = default)
     {
         return await LabResults
+            .Include(l => l.Patient)
             .Where(l => l.Status == LabResultStatus.Ordered)
             .OrderBy(l => l.OrderDate)
+            .Select(l => MapToListItem(l))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<LabResultListItemDto>> GetActionRequiredAsync(CancellationToken ct = default)
+    {
+        return await LabResults
+            .Include(l => l.Patient)
+            .Where(l => l.Status == LabResultStatus.Ordered || l.Status == LabResultStatus.Received)
+            .OrderBy(l => l.Status)
+            .ThenByDescending(l => l.OrderDate)
             .Select(l => MapToListItem(l))
             .ToListAsync(ct);
     }
@@ -175,6 +188,8 @@ public class LabResultService(DbContext context) : ILabResultService
     private static LabResultListItemDto MapToListItem(LabResult lr) => new()
     {
         Id = lr.Id,
+        PatientId = lr.PatientId,
+        PatientName = lr.Patient is not null ? lr.Patient.LastName + ", " + lr.Patient.FirstName : "",
         OrderDate = lr.OrderDate,
         ResultDate = lr.ResultDate,
         LabName = lr.LabName,

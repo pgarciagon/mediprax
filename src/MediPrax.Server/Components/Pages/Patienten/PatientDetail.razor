@@ -12,6 +12,7 @@
 @inject IMsDocumentationService MsDocService
 @inject IParkinsonDocumentationService ParkinsonService
 @inject ISuicidalityAssessmentService SuicidalityService
+@inject ILabResultService LabResultService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -346,6 +347,28 @@ else
                     <div class="module-empty">Kein Eintrag</div>
                 }
             </a>
+
+            @* Laborergebnisse *@
+            <a href="/labor/@Id" class="detail-card module-card">
+                <h3>Laborergebnisse</h3>
+                @if (labResults is not null && labResults.Count > 0)
+                {
+                    var pending = labResults.Count(l => l.Status == MediPrax.Core.Enums.LabResultStatus.Ordered);
+                    var unreviewed = labResults.Count(l => l.Status == MediPrax.Core.Enums.LabResultStatus.Received);
+                    var critical = labResults.Count(l => l.HasCriticalValues);
+                    <div class="module-value @(critical > 0 ? "danger" : "")">@labResults.Count</div>
+                    <div class="module-meta">
+                        @if (critical > 0) { <text>@critical kritisch · </text> }
+                        @if (unreviewed > 0) { <text>@unreviewed ungelesen · </text> }
+                        @if (pending > 0) { <text>@pending offen</text> }
+                        @if (critical == 0 && unreviewed == 0 && pending == 0) { <text>Alle geprüft</text> }
+                    </div>
+                }
+                else
+                {
+                    <div class="module-empty">Keine Laborergebnisse</div>
+                }
+            </a>
         </div>
     </div>
 
@@ -420,6 +443,7 @@ else
     private IReadOnlyList<MsDocumentationDto>? msEntries;
     private IReadOnlyList<ParkinsonDocumentationDto>? parkinsonEntries;
     private SuicidalityAssessmentDto? lastSuicidality;
+    private IReadOnlyList<LabResultListItemDto>? labResults;
     private bool showDeleteConfirm, showMedForm, showRecallForm;
     private MedForm newMed = new();
     private RecallForm newRecall = new();
@@ -444,6 +468,7 @@ else
         msEntries = await MsDocService.GetByPatientAsync(Id);
         parkinsonEntries = await ParkinsonService.GetByPatientAsync(Id);
         lastSuicidality = await SuicidalityService.GetLatestByPatientAsync(Id);
+        labResults = await LabResultService.GetByPatientAsync(Id);
         await AuditService.LogAsync(MediPrax.Core.Enums.AuditAction.Read, "Patient", Id, $"Patientenakte geöffnet: {patient.FullName}");
     }
 

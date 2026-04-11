@@ -26,6 +26,8 @@ public class LabResultDto
 public class LabResultListItemDto
 {
     public Guid Id { get; set; }
+    public Guid PatientId { get; set; }
+    public string PatientName { get; set; } = string.Empty;
     public DateOnly OrderDate { get; set; }
     public DateOnly? ResultDate { get; set; }
     public string LabName { get; set; } = string.Empty;

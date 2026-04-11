@@ -1,0 +1,96 @@
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.8rem;
+}
+
+.page-header h1 {
+    margin: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.empty-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+}
+
+.lab-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    padding: 1rem 1.2rem;
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.summary-card .summary-value {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--color-text, #1e293b);
+}
+
+.summary-card .summary-label {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #64748b);
+}
+
+.summary-card.warning .summary-value {
+    color: #d97706;
+}
+
+.summary-card.danger .summary-value {
+    color: var(--color-danger, #dc2626);
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-ordered {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.status-received {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-reviewed {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.flag-critical {
+    color: var(--color-danger, #dc2626);
+    font-weight: bold;
+}
+
+.flag-abnormal {
+    color: #d97706;
+    font-weight: bold;
+}
+
+.flag-normal {
+    color: #16a34a;
+}
