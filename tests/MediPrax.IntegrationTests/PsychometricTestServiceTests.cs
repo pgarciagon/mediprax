@@ -6,6 +6,7 @@ using MediPrax.Core.ValueObjects;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class PsychometricTestServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
@@ -13,9 +14,9 @@ public class PsychometricTestServiceTests : IDisposable
     private readonly Guid _patientId;
     private readonly Guid _userId;
 
-    public PsychometricTestServiceTests()
+    public PsychometricTestServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new PsychometricTestService(_factory.Context);
 
         var patient = new Patient { FirstName = "Test", LastName = "Patient", DateOfBirth = new DateOnly(1985, 3, 15) };

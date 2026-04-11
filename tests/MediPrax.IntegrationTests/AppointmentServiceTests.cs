@@ -5,6 +5,7 @@ using MediPrax.Core.Enums;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class AppointmentServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
@@ -12,9 +13,9 @@ public class AppointmentServiceTests : IDisposable
     private readonly Guid _patientId;
     private readonly Guid _doctorId;
 
-    public AppointmentServiceTests()
+    public AppointmentServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new AppointmentService(_factory.Context);
 
         // Seed patient and doctor

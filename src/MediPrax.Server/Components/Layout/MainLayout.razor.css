@@ -55,6 +55,48 @@
     letter-spacing: -0.02em;
 }
 
+/* Environment badge */
+.env-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.25rem 1.2rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.env-label {
+    text-transform: uppercase;
+}
+
+.env-version {
+    opacity: 0.7;
+    font-weight: 400;
+}
+
+.env-dev {
+    background: #1e3a5f;
+    color: #60a5fa;
+}
+
+.env-int {
+    background: #422006;
+    color: #fb923c;
+}
+
+.env-val {
+    background: #14532d;
+    color: #4ade80;
+}
+
+.env-prod {
+    background: #1e293b;
+    color: #64748b;
+}
+
 .sidebar-section {
     padding: 1rem 0;
     flex: 1;

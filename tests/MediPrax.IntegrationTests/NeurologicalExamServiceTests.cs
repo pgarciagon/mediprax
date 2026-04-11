@@ -6,6 +6,7 @@ using MediPrax.Core.ValueObjects;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class NeurologicalExamServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
@@ -14,9 +15,9 @@ public class NeurologicalExamServiceTests : IDisposable
     private readonly Guid _doctorId;
     private readonly Guid _encounterId;
 
-    public NeurologicalExamServiceTests()
+    public NeurologicalExamServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new NeurologicalExamService(_factory.Context);
 
         var patient = new Patient { FirstName = "Neuro", LastName = "Test", DateOfBirth = new DateOnly(1975, 3, 15) };

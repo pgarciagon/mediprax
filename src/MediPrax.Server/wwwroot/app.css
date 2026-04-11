@@ -326,7 +326,8 @@ select.form-control {
     .sidebar .section-label,
     .sidebar .nav-item span:not(.nav-icon),
     .sidebar .sidebar-footer,
-    .sidebar .global-search {
+    .sidebar .global-search,
+    .sidebar .env-badge {
         display: none !important;
     }
 

@@ -5,6 +5,7 @@ using MediPrax.Core.Enums;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class SlotSuggestionServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
@@ -14,9 +15,9 @@ public class SlotSuggestionServiceTests : IDisposable
     private readonly Patient _patient;
     private static readonly TimeZoneInfo Tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
 
-    public SlotSuggestionServiceTests()
+    public SlotSuggestionServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _availability = new AvailabilityService(_factory.Context);
         _sut = new SlotSuggestionService(_availability, _factory.Context);
 

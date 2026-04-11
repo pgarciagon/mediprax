@@ -174,6 +174,7 @@ docker compose up --build                     # Build + deploy completo
 - Configuración EF en `MediPrax.Infrastructure/Persistence/Configurations/`
 - Registro de DI en `src/MediPrax.Server/Program.cs`
 - Cada milestone nuevo requiere: entidad + servicio + DTO + configuración EF + migración + página Blazor + tests
+- Al completar un milestone, actualizar la documentación de usuario (`userdocs/`) describiendo la nueva funcionalidad para el usuario final
 
 ---
 
@@ -182,8 +183,8 @@ docker compose up --build                     # Build + deploy completo
 | Archivo | Contenido |
 |---------|-----------|
 | `CHANGELOG.md` | Release notes v1.0.0 |
-| `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md` | Especificación detallada M17–M42 |
-| `docs/06-entwicklungsplan.md` | Plan de fases y milestones M1–M16 |
+| `docs/06-entwicklungsplan.md` | Plan de fases y milestones (índice general M1–M42) |
+| `docs/milestones/` | Especificaciones detalladas por milestone (M17–M42) |
 | `docs/05-architektur.md` | Decisiones de arquitectura técnica |
 | `docs/04-regulatorik.md` | Marco regulatorio KBV, gematik, DSGVO |
 | `userdocs/` | Guía de usuario en alemán |

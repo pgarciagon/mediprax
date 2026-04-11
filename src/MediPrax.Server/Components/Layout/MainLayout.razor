@@ -1,5 +1,7 @@
+@using System.Reflection
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
+@inject IWebHostEnvironment Env
 
 <div class="app-layout">
     <nav class="sidebar">
@@ -9,6 +11,10 @@
                 <span class="brand-name"><span class="brand-medi">Medi</span>Prax</span>
                 <span class="brand-tagline">PRAXISVERWALTUNG</span>
             </div>
+        </div>
+        <div class="env-badge env-@EnvironmentLabel.ToLower()">
+            <span class="env-label">@EnvironmentLabel</span>
+            <span class="env-version">v@(AppVersion)</span>
         </div>
 
         <GlobalSearch />
@@ -195,6 +201,19 @@
 
 @code {
     private bool isDark;
+
+    private string EnvironmentLabel => Env.EnvironmentName switch
+    {
+        "Development" => "DEV",
+        "Staging" => "VAL",
+        "Production" => "PROD",
+        _ => Env.EnvironmentName.ToUpper()
+    };
+
+    private string AppVersion =>
+        typeof(Program).Assembly
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion?.Split('+')[0] ?? "?";
 
     private async Task ToggleTheme()
     {

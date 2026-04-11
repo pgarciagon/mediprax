@@ -5,6 +5,7 @@ using MediPrax.Core.Enums;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class AvailabilityServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
@@ -13,9 +14,9 @@ public class AvailabilityServiceTests : IDisposable
     private readonly Patient _patient;
     private static readonly TimeZoneInfo Tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
 
-    public AvailabilityServiceTests()
+    public AvailabilityServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new AvailabilityService(_factory.Context);
 
         _doctor = new User

@@ -4,14 +4,15 @@ using MediPrax.Core.Enums;
 
 namespace MediPrax.IntegrationTests;
 
+[Collection("Postgres")]
 public class DashboardServiceTests : IDisposable
 {
     private readonly TestDbContextFactory _factory;
     private readonly DashboardService _sut;
 
-    public DashboardServiceTests()
+    public DashboardServiceTests(PostgresFixture postgres)
     {
-        _factory = new TestDbContextFactory();
+        _factory = new TestDbContextFactory(postgres.ConnectionString);
         _sut = new DashboardService(_factory.Context);
 
         // Seed data
