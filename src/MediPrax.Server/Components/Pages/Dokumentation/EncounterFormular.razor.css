@@ -187,13 +187,111 @@ legend {
     font-weight: 500;
 }
 
-/* Notes area */
+/* Notes area (legacy) */
 .notes-area {
     font-family: 'SF Mono', 'Fira Code', monospace;
     font-size: 0.85rem;
     line-height: 1.6;
     resize: vertical;
-    min-height: 200px;
+    min-height: 100px;
+}
+
+/* ABDTP Sections */
+.abdtp-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.abdtp-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.abdtp-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-secondary, #64748b);
+    margin-bottom: 0.25rem;
+}
+
+.abdtp-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: var(--color-primary, #2563eb);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.abdtp-textarea {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+/* Dauerdiagnosen section */
+.dauer-section {
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px dashed var(--color-border, #e2e8f0);
+}
+.dauer-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary, #64748b);
+}
+.dauer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.dauer-chip input[type="checkbox"] { margin: 0; }
+.dauer-chip strong { font-family: monospace; }
+.dauer-unchecked { opacity: 0.4; text-decoration: line-through; }
+.certainty-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    font-size: 0.6rem; font-weight: 700; color: #fff;
+}
+.certainty-g { background: #16a34a; }
+.certainty-v { background: #f59e0b; }
+.certainty-z { background: #6366f1; }
+.certainty-a { background: #94a3b8; }
+
+/* Legacy migration banner */
+.legacy-notes-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.85rem;
+    color: #92400e;
 }
 
 /* Billing */

@@ -6,6 +6,7 @@ using MediPrax.Core.ValueObjects;
 using MediPrax.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -14,9 +15,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MediPrax.Infrastructure.Migrations
 {
     [DbContext(typeof(MediPraxDbContext))]
-    partial class MediPraxDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260411140004_AddEncounterSections")]
+    partial class AddEncounterSections
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -671,46 +674,6 @@ namespace MediPrax.Infrastructure.Migrations
                     b.ToTable("encounters", (string)null);
                 });
 
-            modelBuilder.Entity("MediPrax.Core.Entities.EncounterDiagnosis", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("EncounterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsNewInThisEncounter")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("PatientDiagnosisId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EncounterId");
-
-                    b.HasIndex("PatientDiagnosisId");
-
-                    b.HasIndex("EncounterId", "PatientDiagnosisId")
-                        .IsUnique();
-
-                    b.ToTable("encounter_diagnoses", (string)null);
-                });
-
             modelBuilder.Entity("MediPrax.Core.Entities.EncounterSection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1299,78 +1262,6 @@ namespace MediPrax.Infrastructure.Migrations
                     b.HasIndex("LastName", "FirstName");
 
                     b.ToTable("patients", (string)null);
-                });
-
-            modelBuilder.Entity("MediPrax.Core.Entities.PatientDiagnosis", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<int>("Certainty")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByDoctorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DiagnosisType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Icd10Code")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("Icd10Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("Laterality")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateOnly?>("OnsetDate")
-                        .HasColumnType("date");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly?>("ResolvedDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByDoctorId");
-
-                    b.HasIndex("DiagnosisType");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("PatientId", "Icd10Code");
-
-                    b.ToTable("patient_diagnoses", (string)null);
                 });
 
             modelBuilder.Entity("MediPrax.Core.Entities.Prescription", b =>
@@ -2363,25 +2254,6 @@ namespace MediPrax.Infrastructure.Migrations
                     b.Navigation("Patient");
                 });
 
-            modelBuilder.Entity("MediPrax.Core.Entities.EncounterDiagnosis", b =>
-                {
-                    b.HasOne("MediPrax.Core.Entities.Encounter", "Encounter")
-                        .WithMany("EncounterDiagnoses")
-                        .HasForeignKey("EncounterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MediPrax.Core.Entities.PatientDiagnosis", "PatientDiagnosis")
-                        .WithMany("EncounterDiagnoses")
-                        .HasForeignKey("PatientDiagnosisId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Encounter");
-
-                    b.Navigation("PatientDiagnosis");
-                });
-
             modelBuilder.Entity("MediPrax.Core.Entities.EncounterSection", b =>
                 {
                     b.HasOne("MediPrax.Core.Entities.User", "Author")
@@ -2844,25 +2716,6 @@ namespace MediPrax.Infrastructure.Migrations
                     b.Navigation("Patient");
                 });
 
-            modelBuilder.Entity("MediPrax.Core.Entities.PatientDiagnosis", b =>
-                {
-                    b.HasOne("MediPrax.Core.Entities.User", "CreatedByDoctor")
-                        .WithMany()
-                        .HasForeignKey("CreatedByDoctorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MediPrax.Core.Entities.Patient", "Patient")
-                        .WithMany("Diagnoses")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CreatedByDoctor");
-
-                    b.Navigation("Patient");
-                });
-
             modelBuilder.Entity("MediPrax.Core.Entities.Prescription", b =>
                 {
                     b.HasOne("MediPrax.Core.Entities.User", "Doctor")
@@ -3106,8 +2959,6 @@ namespace MediPrax.Infrastructure.Migrations
 
                     b.Navigation("Documents");
 
-                    b.Navigation("EncounterDiagnoses");
-
                     b.Navigation("Prescriptions");
 
                     b.Navigation("Sections");
@@ -3116,8 +2967,6 @@ namespace MediPrax.Infrastructure.Migrations
             modelBuilder.Entity("MediPrax.Core.Entities.Patient", b =>
                 {
                     b.Navigation("Appointments");
-
-                    b.Navigation("Diagnoses");
 
                     b.Navigation("Documents");
 
@@ -3132,11 +2981,6 @@ namespace MediPrax.Infrastructure.Migrations
                     b.Navigation("PsychometricTests");
 
                     b.Navigation("Recalls");
-                });
-
-            modelBuilder.Entity("MediPrax.Core.Entities.PatientDiagnosis", b =>
-                {
-                    b.Navigation("EncounterDiagnoses");
                 });
 
             modelBuilder.Entity("MediPrax.Core.Entities.TherapyCase", b =>

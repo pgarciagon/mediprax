@@ -13,8 +13,10 @@
 @inject IParkinsonDocumentationService ParkinsonService
 @inject ISuicidalityAssessmentService SuicidalityService
 @inject ILabResultService LabResultService
+@inject IPatientDiagnosisService DiagnosisService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
+@using MediPrax.Core.Enums
 
 <PageTitle>Patient — @(patient?.FullName ?? "Laden...")</PageTitle>
 
@@ -91,6 +93,30 @@ else
                 </dd>
             </dl>
         </section>
+    </div>
+
+    <div class="diagnoses-section" style="margin-bottom:1.2rem;">
+        <div class="section-header">
+            <h2>Diagnosen</h2>
+            <a href="/patienten/@Id/diagnosen" class="btn btn-sm btn-secondary">Alle verwalten</a>
+        </div>
+        @if (dauerdiagnosen is not null && dauerdiagnosen.Count > 0)
+        {
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+                @foreach (var d in dauerdiagnosen)
+                {
+                    <span class="diag-chip" title="@d.Icd10Description">
+                        <span class="diag-certainty certainty-@d.Certainty.ToString().ToLower()">@d.Certainty</span>
+                        <strong>@d.Icd10Code</strong>
+                        @d.Icd10Description
+                    </span>
+                }
+            </div>
+        }
+        else
+        {
+            <div style="color:var(--color-text-muted);font-size:0.85rem;font-style:italic;">Keine Dauerdiagnosen.</div>
+        }
     </div>
 
     <div class="encounters-section">
@@ -444,6 +470,7 @@ else
     private IReadOnlyList<ParkinsonDocumentationDto>? parkinsonEntries;
     private SuicidalityAssessmentDto? lastSuicidality;
     private IReadOnlyList<LabResultListItemDto>? labResults;
+    private IReadOnlyList<PatientDiagnosisDto>? dauerdiagnosen;
     private bool showDeleteConfirm, showMedForm, showRecallForm;
     private MedForm newMed = new();
     private RecallForm newRecall = new();
@@ -469,6 +496,7 @@ else
         parkinsonEntries = await ParkinsonService.GetByPatientAsync(Id);
         lastSuicidality = await SuicidalityService.GetLatestByPatientAsync(Id);
         labResults = await LabResultService.GetByPatientAsync(Id);
+        dauerdiagnosen = await DiagnosisService.GetDauerdiagnosenAsync(Id);
         await AuditService.LogAsync(MediPrax.Core.Enums.AuditAction.Read, "Patient", Id, $"Patientenakte geöffnet: {patient.FullName}");
     }
 

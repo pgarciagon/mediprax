@@ -58,6 +58,7 @@ nav:
     - Patientenübersicht: patienten/uebersicht.md
     - Patient anlegen & bearbeiten: patienten/anlegen.md
     - Patientenakte: patienten/akte.md
+    - Diagnosenverwaltung: patienten/diagnosen.md
   - Terminplanung:
     - Wochenansicht: termine/wochenansicht.md
     - Termin anlegen: termine/anlegen.md
@@ -71,6 +72,7 @@ nav:
     - Neurologischer Befund: dokumentation/neuro-befund.md
     - Psychometrische Tests: dokumentation/psychometrie.md
     - Suizidalitätseinschätzung: dokumentation/suizidalitaet.md
+    - ABDTP-Sektionen: dokumentation/abdtp-sektionen.md
     - Textbausteine: dokumentation/textbausteine.md
   - Krankheitsspezifische Module:
     - Anfallskalender (Epilepsie): krankheiten/epilepsie.md

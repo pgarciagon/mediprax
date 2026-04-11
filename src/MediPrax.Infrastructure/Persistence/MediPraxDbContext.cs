@@ -50,6 +50,13 @@ public class MediPraxDbContext : DbContext
     public DbSet<DoctorScheduleTemplate> DoctorScheduleTemplates => Set<DoctorScheduleTemplate>();
     public DbSet<DoctorAbsence> DoctorAbsences => Set<DoctorAbsence>();
 
+    // M43: Encounter Sections (ABDTP)
+    public DbSet<EncounterSection> EncounterSections => Set<EncounterSection>();
+
+    // M44: Advanced Diagnosis Management
+    public DbSet<PatientDiagnosis> PatientDiagnoses => Set<PatientDiagnosis>();
+    public DbSet<EncounterDiagnosis> EncounterDiagnoses => Set<EncounterDiagnosis>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MediPraxDbContext).Assembly);
@@ -77,6 +84,9 @@ public class MediPraxDbContext : DbContext
         modelBuilder.Entity<SuicidalityAssessment>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<DoctorScheduleTemplate>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<DoctorAbsence>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<EncounterSection>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<PatientDiagnosis>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<EncounterDiagnosis>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

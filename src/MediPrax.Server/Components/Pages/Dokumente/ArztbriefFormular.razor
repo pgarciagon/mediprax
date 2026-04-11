@@ -4,6 +4,8 @@
 @inject IArztbriefService ArztbriefService
 @inject IPatientService PatientService
 @inject IEncounterService EncounterService
+@inject IEncounterSectionService SectionService
+@inject IPatientDiagnosisService DiagnosisService2
 @inject IMedicationService MedicationService
 @inject ITherapyCaseService TherapyCaseService
 @inject IUserService UserService
@@ -284,6 +286,7 @@ else
     private IReadOnlyList<TherapyCaseListItemDto> therapyCases = [];
     private IReadOnlyList<MediPrax.Application.Data.Icd10Catalog.Icd10Entry> icdResults = [];
     private EncounterDto? selectedEncounter;
+    private IReadOnlyList<PatientDiagnosisDto>? patientDiagnoses;
     private string icdSearchTerm = string.Empty;
     private bool saving;
     private bool hasPdf;
@@ -320,10 +323,20 @@ else
         encounters = await EncounterService.GetByPatientAsync(PatientId);
         medications = await MedicationService.GetByPatientAsync(PatientId);
         therapyCases = await TherapyCaseService.GetByPatientAsync(PatientId);
+        patientDiagnoses = await DiagnosisService2.GetByPatientAsync(PatientId);
 
         if (!isEdit)
         {
             form.Subject = $"Arztbrief — {patient.FullName}";
+
+            // Pre-load active Dauerdiagnosen into Diagnoses list
+            var dauerdiagnosen = patientDiagnoses?
+                .Where(d => d.DiagnosisType == DiagnosisType.Dauerdiagnose && d.Status == DiagnosisStatus.Active)
+                .ToList();
+            if (dauerdiagnosen?.Count > 0)
+            {
+                form.Diagnoses = dauerdiagnosen.Select(d => d.Icd10Code).ToList();
+            }
 
             // Pre-select logged-in doctor
             if (string.IsNullOrEmpty(form.DoctorId) && AuthState is not null)
@@ -358,10 +371,10 @@ else
                 // Transfer subject with date
                 form.Subject = $"Arztbrief — {patient!.FullName}, Konsultation {selectedEncounter.EncounterDate:dd.MM.yyyy}";
 
-                // Auto-generate body text with encounter data
+                // Auto-generate body text — pull from sections first, fall back to Notes
                 var diagnosen = BuildDiagnosenBlock();
                 var medikation = BuildMedikationBlock();
-                var befund = selectedEncounter.Notes ?? "[Befund hier einfügen]";
+                var befund = await BuildBefundFromEncounterAsync(encId);
                 var anrede = GetAnrede();
                 var pronomen = GetPronomen();
                 var gebDatum = patient!.DateOfBirth.ToString("dd.MM.yyyy");
@@ -414,10 +427,15 @@ Mit freundlichen kollegialen Grüßen
     private string BuildDiagnosenBlock()
     {
         if (form.Diagnoses.Count == 0) return "  (keine Diagnosen ausgewählt)";
+
+        // Try to enrich with certainty from structured diagnoses
         return string.Join("\n", form.Diagnoses.Select(icd =>
         {
             var desc = MediPrax.Application.Data.Icd10Catalog.GetDescription(icd);
-            return $"  {icd} — {desc}";
+            var pd = patientDiagnoses?.FirstOrDefault(d => d.Icd10Code == icd);
+            var certaintyStr = pd != null ? $" ({pd.Certainty})" : " (G)";
+            var lateralityStr = pd?.Laterality != null ? $" {pd.Laterality}" : "";
+            return $"  {icd}{certaintyStr}{lateralityStr} — {desc}";
         }));
     }
 
@@ -426,6 +444,22 @@ Mit freundlichen kollegialen Grüßen
         if (medications.Count == 0) return "  Keine aktive Medikation.";
         return string.Join("\n", medications.Select(m =>
             $"  - {m.Name} {m.Staerke} {m.Dosierung}{(!string.IsNullOrEmpty(m.Hinweis) ? $" ({m.Hinweis})" : "")}"));
+    }
+
+    private async Task<string> BuildBefundFromEncounterAsync(Guid encounterId)
+    {
+        // Try structured sections first
+        var sections = await SectionService.GetByEncounterAsync(encounterId);
+        if (sections.Count > 0)
+        {
+            var parts = sections
+                .Where(s => !string.IsNullOrWhiteSpace(s.Content))
+                .Select(s => $"{s.SectionType}:\n{s.Content}");
+            return string.Join("\n\n", parts);
+        }
+
+        // Fall back to Notes
+        return selectedEncounter?.Notes ?? "[Befund hier einfügen]";
     }
 
     private string BuildBefundBlock()

@@ -17,6 +17,7 @@ public class KvdtExportService(DbContext context) : IKvdtExportService
         var items = await context.Set<BillingItem>()
             .Include(b => b.Patient)
             .Include(b => b.Encounter).ThenInclude(e => e.Doctor)
+            .Include(b => b.Encounter).ThenInclude(e => e!.EncounterDiagnoses).ThenInclude(ed => ed.PatientDiagnosis)
             .Where(b => b.Quarter == quarter && b.BillingType == BillingType.EBM && !b.KvdtExported)
             .OrderBy(b => b.Patient.LastName)
             .ThenBy(b => b.CreatedAt)
@@ -66,7 +67,19 @@ public class KvdtExportService(DbContext context) : IKvdtExportService
                 if (item.Encounter?.Icd10Codes?.Count > 0)
                 {
                     foreach (var icd in item.Encounter.Icd10Codes)
+                    {
                         sb.AppendLine($"6001{icd}");
+
+                        // Look up certainty and laterality from EncounterDiagnoses (M44)
+                        var encDiag = item.Encounter.EncounterDiagnoses?
+                            .FirstOrDefault(ed => ed.PatientDiagnosis?.Icd10Code == icd);
+
+                        var certainty = encDiag?.PatientDiagnosis?.Certainty.ToString() ?? "G";
+                        sb.AppendLine($"6003{certainty}");
+
+                        if (encDiag?.PatientDiagnosis?.Laterality != null)
+                            sb.AppendLine($"6004{encDiag.PatientDiagnosis.Laterality}");
+                    }
                 }
             }
         }

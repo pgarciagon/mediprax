@@ -1,0 +1,303 @@
+@page "/patienten/{PatientId:guid}/diagnosen"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject IPatientDiagnosisService DiagnosisService
+@inject IPatientService PatientService
+@inject IIcd10CodeService Icd10Service
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@using MediPrax.Core.Enums
+@using System.Security.Claims
+
+<PageTitle>Diagnosen — @(patient?.FullName ?? "Laden...")</PageTitle>
+
+<div class="page-header">
+    <div>
+        <a href="/patienten/@PatientId" class="back-link">&larr; Zurück zur Akte</a>
+        <h1>Diagnosenverwaltung</h1>
+    </div>
+    @if (patient is not null)
+    {
+        <span class="patient-context">@patient.FullName</span>
+    }
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <div class="filter-bar">
+        <button type="button" class="btn btn-sm @(filter == "active" ? "btn-primary" : "btn-secondary")" @onclick='() => SetFilter("active")'>Aktive</button>
+        <button type="button" class="btn btn-sm @(filter == "dauer" ? "btn-primary" : "btn-secondary")" @onclick='() => SetFilter("dauer")'>Dauerdiagnosen</button>
+        <button type="button" class="btn btn-sm @(filter == "all" ? "btn-primary" : "btn-secondary")" @onclick='() => SetFilter("all")'>Alle</button>
+        <div style="margin-left:auto;">
+            <button type="button" class="btn btn-sm btn-primary" @onclick="ToggleAddForm">+ Neue Diagnose</button>
+        </div>
+    </div>
+
+    @if (showAddForm)
+    {
+        <div class="add-form">
+            <div class="form-row">
+                <div class="form-group" style="flex:2;position:relative;">
+                    <label>ICD-10 Code *</label>
+                    <input type="text"
+                           @bind="icdSearchTerm"
+                           @bind:event="oninput"
+                           @bind:after="SearchIcd"
+                           placeholder="ICD-10 Code oder Beschreibung suchen..."
+                           class="form-control" />
+                    @if (icdResults.Count > 0)
+                    {
+                        <div class="search-dropdown">
+                            @foreach (var entry in icdResults)
+                            {
+                                <div class="search-item" @onclick="() => SelectIcd(entry)">
+                                    <span class="icd-code">@entry.Code</span>
+                                    <span class="icd-desc">@entry.Description</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="form-group">
+                    <label>Sicherheit</label>
+                    <select @bind="newDiag.Certainty" class="form-control">
+                        <option value="G">G — Gesichert</option>
+                        <option value="V">V — Verdacht</option>
+                        <option value="Z">Z — Zustand nach</option>
+                        <option value="A">A — Ausschluss</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Seitenlokalisation</label>
+                    <select @bind="newDiag.LateralityStr" class="form-control">
+                        <option value="">—</option>
+                        <option value="R">R — Rechts</option>
+                        <option value="L">L — Links</option>
+                        <option value="B">B — Beidseitig</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Typ</label>
+                    <select @bind="newDiag.DiagnosisTypeStr" class="form-control">
+                        <option value="Dauerdiagnose">Dauerdiagnose</option>
+                        <option value="Encounterdiagnose">Encounterdiagnose</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Seit</label>
+                    <InputDate @bind-Value="newDiag.OnsetDate" class="form-control" />
+                </div>
+                <div class="form-group" style="flex:2">
+                    <label>Anmerkung</label>
+                    <input type="text" @bind="newDiag.Notes" class="form-control" placeholder="Optional..." />
+                </div>
+            </div>
+            <div class="form-actions-inline">
+                <button type="button" class="btn btn-sm btn-primary" @onclick="AddDiagnosis" disabled="@(string.IsNullOrEmpty(newDiag.Code))">Hinzufügen</button>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick="ToggleAddForm">Abbrechen</button>
+            </div>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-message" style="margin-top:0.5rem;">@errorMessage</div>
+            }
+        </div>
+    }
+
+    @if (diagnoses.Count == 0)
+    {
+        <div class="empty-state">Keine Diagnosen vorhanden.</div>
+    }
+    else
+    {
+        <table class="diag-table">
+            <thead>
+                <tr>
+                    <th>ICD-10</th>
+                    <th>Beschreibung</th>
+                    <th>Sicherheit</th>
+                    <th>Seite</th>
+                    <th>Typ</th>
+                    <th>Status</th>
+                    <th>Seit</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in filteredDiagnoses)
+                {
+                    <tr class="@(d.Status == DiagnosisStatus.Inactive ? "row-inactive" : "")">
+                        <td class="icd-code">@d.Icd10Code</td>
+                        <td>@d.Icd10Description</td>
+                        <td><span class="certainty-badge certainty-@d.Certainty.ToString().ToLower()">@d.Certainty</span></td>
+                        <td>@(d.Laterality?.ToString() ?? "—")</td>
+                        <td><span class="type-badge @(d.DiagnosisType == DiagnosisType.Dauerdiagnose ? "type-dauer" : "type-encounter")">@(d.DiagnosisType == DiagnosisType.Dauerdiagnose ? "Dauer" : "Encounter")</span></td>
+                        <td><span class="status-badge status-@d.Status.ToString().ToLower()">@GetStatusLabel(d.Status)</span></td>
+                        <td>@(d.OnsetDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                        <td class="actions">
+                            @if (d.Status == DiagnosisStatus.Active && d.DiagnosisType == DiagnosisType.Encounterdiagnose)
+                            {
+                                <button type="button" class="btn-link" title="Zu Dauerdiagnose hochstufen" @onclick="() => PromoteToDauerdiagnose(d)">⬆</button>
+                            }
+                            @if (d.Status == DiagnosisStatus.Active)
+                            {
+                                <button type="button" class="btn-link danger" title="Deaktivieren" @onclick="() => Deactivate(d.Id)">✕</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [Parameter] public Guid PatientId { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private PatientDto? patient;
+    private IReadOnlyList<PatientDiagnosisDto> diagnoses = [];
+    private IReadOnlyList<Icd10CodeDto> icdResults = [];
+    private string icdSearchTerm = string.Empty;
+    private string filter = "active";
+    private bool loading = true;
+    private bool showAddForm;
+    private string? errorMessage;
+    private NewDiagnosisModel newDiag = new();
+    private Guid currentDoctorId;
+
+    private IEnumerable<PatientDiagnosisDto> filteredDiagnoses => filter switch
+    {
+        "dauer" => diagnoses.Where(d => d.DiagnosisType == DiagnosisType.Dauerdiagnose && d.Status == DiagnosisStatus.Active),
+        "all" => diagnoses,
+        _ => diagnoses.Where(d => d.Status != DiagnosisStatus.Inactive)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        patient = await PatientService.GetByIdAsync(PatientId);
+        if (patient is null) { Navigation.NavigateTo("/patienten"); return; }
+
+        if (AuthState is not null)
+        {
+            var auth = await AuthState;
+            var userId = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId is not null) Guid.TryParse(userId, out currentDoctorId);
+        }
+
+        await LoadDiagnoses();
+        loading = false;
+    }
+
+    private async Task LoadDiagnoses()
+    {
+        diagnoses = await DiagnosisService.GetByPatientAsync(PatientId, includeInactive: true);
+    }
+
+    private void SetFilter(string f) => filter = f;
+    private void ToggleAddForm()
+    {
+        showAddForm = !showAddForm;
+        if (showAddForm)
+        {
+            newDiag = new();
+            errorMessage = null;
+        }
+    }
+
+    private async Task SearchIcd()
+    {
+        if (string.IsNullOrWhiteSpace(icdSearchTerm) || icdSearchTerm.Length < 2)
+        {
+            icdResults = [];
+            return;
+        }
+        icdResults = await Icd10Service.SearchAsync(icdSearchTerm);
+    }
+
+    private void SelectIcd(Icd10CodeDto entry)
+    {
+        newDiag.Code = entry.Code;
+        icdSearchTerm = $"{entry.Code} — {entry.Description}";
+        icdResults = [];
+    }
+
+    private async Task AddDiagnosis()
+    {
+        if (string.IsNullOrWhiteSpace(newDiag.Code))
+        {
+            errorMessage = "Bitte wählen Sie einen ICD-10 Code.";
+            return;
+        }
+
+        Enum.TryParse<DiagnosisCertainty>(newDiag.Certainty, out var certainty);
+        DiagnosisLaterality? laterality = string.IsNullOrEmpty(newDiag.LateralityStr)
+            ? null
+            : Enum.Parse<DiagnosisLaterality>(newDiag.LateralityStr);
+        Enum.TryParse<DiagnosisType>(newDiag.DiagnosisTypeStr, out var diagType);
+
+        try
+        {
+            await DiagnosisService.CreateAsync(new CreatePatientDiagnosisDto
+            {
+                PatientId = PatientId,
+                Icd10Code = newDiag.Code,
+                Certainty = certainty,
+                Laterality = laterality,
+                DiagnosisType = diagType,
+                OnsetDate = newDiag.OnsetDate,
+                Notes = newDiag.Notes,
+                CreatedByDoctorId = currentDoctorId
+            });
+
+            showAddForm = false;
+            await LoadDiagnoses();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task PromoteToDauerdiagnose(PatientDiagnosisDto d)
+    {
+        await DiagnosisService.UpdateAsync(new UpdatePatientDiagnosisDto
+        {
+            Id = d.Id,
+            Certainty = d.Certainty,
+            Laterality = d.Laterality,
+            DiagnosisType = DiagnosisType.Dauerdiagnose,
+            Status = d.Status,
+            Notes = d.Notes
+        });
+        await LoadDiagnoses();
+    }
+
+    private async Task Deactivate(Guid id)
+    {
+        await DiagnosisService.DeactivateAsync(id);
+        await LoadDiagnoses();
+    }
+
+    private static string GetStatusLabel(DiagnosisStatus s) => s switch
+    {
+        DiagnosisStatus.Active => "Aktiv",
+        DiagnosisStatus.Anamnestisch => "Anamnestisch",
+        DiagnosisStatus.Inactive => "Inaktiv",
+        _ => s.ToString()
+    };
+
+    private class NewDiagnosisModel
+    {
+        public string Code { get; set; } = string.Empty;
+        public string Certainty { get; set; } = "G";
+        public string LateralityStr { get; set; } = string.Empty;
+        public string DiagnosisTypeStr { get; set; } = "Dauerdiagnose";
+        public DateOnly? OnsetDate { get; set; }
+        public string? Notes { get; set; }
+    }
+}

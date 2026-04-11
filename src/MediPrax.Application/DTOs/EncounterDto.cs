@@ -16,6 +16,7 @@ public class EncounterDto
     public int? DurationMinutes { get; set; }
     public EncounterStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<EncounterSectionDto> Sections { get; set; } = [];
 }
 
 public class Icd10EntryDto
@@ -33,6 +34,7 @@ public class CreateEncounterDto
     public string? Notes { get; set; }
     public List<string> Icd10Codes { get; set; } = [];
     public int? DurationMinutes { get; set; }
+    public List<CreateEncounterSectionDto>? Sections { get; set; }
 }
 
 public class UpdateEncounterDto : CreateEncounterDto

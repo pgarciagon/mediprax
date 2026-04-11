@@ -37,4 +37,5 @@ public class Patient : BaseEntity
     public ICollection<Recall> Recalls { get; set; } = [];
     public ICollection<PsychometricTest> PsychometricTests { get; set; } = [];
     public ICollection<LabResult> LabResults { get; set; } = [];
+    public ICollection<PatientDiagnosis> Diagnoses { get; set; } = [];
 }

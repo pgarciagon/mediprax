@@ -1,5 +1,6 @@
 using MediPrax.Application.Interfaces;
 using MediPrax.Core.Entities;
+using MediPrax.Core.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediPrax.Application.Services;
@@ -89,10 +90,63 @@ public class SearchService(DbContext context) : ISearchService
             results.AddRange(icdResults);
         }
 
+        // Encounter sections (content search + optional in:section filter)
+        var (sectionQuery, sectionTypeFilter) = ParseSectionFilter(query);
+        if (!string.IsNullOrWhiteSpace(sectionQuery))
+        {
+            var sectionPattern = $"%{sectionQuery}%";
+            var sectionSearch = context.Set<EncounterSection>()
+                .Include(s => s.Encounter).ThenInclude(e => e.Patient)
+                .Include(s => s.Encounter).ThenInclude(e => e.Doctor)
+                .Where(s => EF.Functions.Like(s.Content, sectionPattern));
+
+            if (sectionTypeFilter.HasValue)
+                sectionSearch = sectionSearch.Where(s => s.SectionType == sectionTypeFilter.Value);
+
+            var sectionResults = await sectionSearch
+                .OrderByDescending(s => s.Encounter.EncounterDate)
+                .Take(5)
+                .Select(s => new SearchResultItemDto
+                {
+                    Category = "Dokumentation",
+                    Title = s.Encounter.Patient.LastName + ", " + s.Encounter.Patient.FirstName,
+                    Subtitle = s.Encounter.EncounterDate.ToString("dd.MM.yyyy") + " · " + s.SectionType.ToString() + " · " + s.Encounter.Doctor.LastName,
+                    Url = "/dokumentation/" + s.EncounterId + "/bearbeiten"
+                })
+                .ToListAsync(ct);
+            results.AddRange(sectionResults);
+        }
+
         return new GlobalSearchResultDto
         {
             Results = results,
             TotalCount = results.Count
         };
+    }
+
+    public static (string query, EncounterSectionType? filter) ParseSectionFilter(string input)
+    {
+        var sectionMap = new Dictionary<string, EncounterSectionType>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["anamnese"] = EncounterSectionType.Anamnese,
+            ["befund"] = EncounterSectionType.Befund,
+            ["diagnose"] = EncounterSectionType.Diagnose,
+            ["therapie"] = EncounterSectionType.Therapie,
+            ["procedere"] = EncounterSectionType.Procedere,
+            ["sonstiges"] = EncounterSectionType.Sonstiges,
+        };
+
+        var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string? filterPart = parts.FirstOrDefault(p => p.StartsWith("in:", StringComparison.OrdinalIgnoreCase));
+
+        if (filterPart is not null)
+        {
+            var key = filterPart[3..];
+            var remaining = string.Join(" ", parts.Where(p => p != filterPart));
+            if (sectionMap.TryGetValue(key, out var sType))
+                return (remaining, sType);
+        }
+
+        return (input, null);
     }
 }

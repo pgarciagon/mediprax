@@ -22,4 +22,6 @@ public class Encounter : BaseEntity
     public ICollection<Prescription> Prescriptions { get; set; } = [];
     public ICollection<Document> Documents { get; set; } = [];
     public ICollection<BillingItem> BillingItems { get; set; } = [];
+    public ICollection<EncounterSection> Sections { get; set; } = [];
+    public ICollection<EncounterDiagnosis> EncounterDiagnoses { get; set; } = [];
 }

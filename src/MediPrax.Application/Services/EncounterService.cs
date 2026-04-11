@@ -15,6 +15,7 @@ public class EncounterService(DbContext context) : IEncounterService
         var e = await Encounters
             .Include(x => x.Patient)
             .Include(x => x.Doctor)
+            .Include(x => x.Sections.Where(s => !s.IsDeleted).OrderBy(s => s.SortOrder))
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
         return e is null ? null : MapToDto(e);
@@ -67,6 +68,7 @@ public class EncounterService(DbContext context) : IEncounterService
         var created = await Encounters
             .Include(x => x.Patient)
             .Include(x => x.Doctor)
+            .Include(x => x.Sections.Where(s => !s.IsDeleted).OrderBy(s => s.SortOrder))
             .FirstAsync(x => x.Id == encounter.Id, ct);
 
         return MapToDto(created);
@@ -77,6 +79,7 @@ public class EncounterService(DbContext context) : IEncounterService
         var encounter = await Encounters
             .Include(x => x.Patient)
             .Include(x => x.Doctor)
+            .Include(x => x.Sections.Where(s => !s.IsDeleted).OrderBy(s => s.SortOrder))
             .FirstOrDefaultAsync(x => x.Id == dto.Id, ct)
             ?? throw new KeyNotFoundException($"Encounter {dto.Id} not found");
 
@@ -110,6 +113,20 @@ public class EncounterService(DbContext context) : IEncounterService
         Icd10Codes = e.Icd10Codes.Select(c => new Icd10EntryDto { Code = c }).ToList(),
         DurationMinutes = e.DurationMinutes,
         Status = e.Status,
-        CreatedAt = e.CreatedAt
+        CreatedAt = e.CreatedAt,
+        Sections = e.Sections
+            .OrderBy(s => s.SortOrder)
+            .Select(s => new EncounterSectionDto
+            {
+                Id = s.Id,
+                EncounterId = s.EncounterId,
+                SectionType = s.SectionType,
+                Content = s.Content,
+                SortOrder = s.SortOrder,
+                AuthorId = s.AuthorId,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt
+            })
+            .ToList()
     };
 }

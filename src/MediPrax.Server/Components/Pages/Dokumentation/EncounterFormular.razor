@@ -5,12 +5,15 @@
 @inject IPatientService PatientService
 @inject IUserService UserService
 @inject IBillingService BillingService
+@inject IEncounterSectionService SectionService
+@inject IPatientDiagnosisService DiagnosisService
 @inject IIcd10CodeService Icd10Service
 @inject IPsychopathFindingService PsychopathFindingService
 @inject INeurologicalExamService NeuroExamService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using System.Security.Claims
+@using MediPrax.Core.Enums
 
 <PageTitle>@(isEdit ? "Konsultation bearbeiten" : "Neue Konsultation")</PageTitle>
 
@@ -56,6 +59,26 @@ else
 
         <fieldset>
             <legend>ICD-10-GM Diagnosen</legend>
+
+            @if (dauerdiagnosen.Count > 0)
+            {
+                <div class="dauer-section">
+                    <span class="dauer-label">Dauerdiagnosen (geerbt):</span>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;">
+                        @foreach (var d in dauerdiagnosen)
+                        {
+                            var isChecked = selectedDauerdiagnosen.Contains(d.Id);
+                            <label class="dauer-chip @(isChecked ? "" : "dauer-unchecked")" title="@d.Icd10Description">
+                                <input type="checkbox" checked="@isChecked"
+                                       @onchange="e => ToggleDauerdiagnose(d.Id, (bool)(e.Value ?? false))" />
+                                <span class="certainty-mini certainty-@d.Certainty.ToString().ToLower()">@d.Certainty</span>
+                                <strong>@d.Icd10Code</strong>
+                                @d.Icd10Description
+                            </label>
+                        }
+                    </div>
+                </div>
+            }
 
             <div class="icd-search" style="position:relative;">
                 <div style="display:flex;gap:0;">
@@ -139,7 +162,7 @@ else
         </fieldset>
 
         <fieldset>
-            <legend>Befund / Notizen</legend>
+            <legend>Dokumentation (ABDTP)</legend>
 
             @if (!string.IsNullOrEmpty(psychopathNarrative))
             {
@@ -163,14 +186,43 @@ else
                 </div>
             }
 
+            @if (hasLegacyNotes)
+            {
+                <div class="legacy-notes-banner">
+                    <span>Diese Konsultation enthält unstrukturierte Notizen.</span>
+                    <button type="button" class="btn btn-sm btn-accent" @onclick="MigrateNotes" disabled="@migrating">
+                        @(migrating ? "Migriere..." : "Zu Sektionen migrieren")
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label>Notizen (alt)</label>
+                    <InputTextArea @bind-Value="form.Notes" class="form-control notes-area" rows="6" />
+                </div>
+            }
+
             <div class="template-bar">
                 <span class="template-label">Vorlage:</span>
-                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("psych")'>Psychiatrisch</button>
-                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("neuro")'>Neurologisch</button>
-                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplyTemplate("kurz")'>Kurzkonsultation</button>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplySectionTemplate("psych")'>Psychiatrisch</button>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplySectionTemplate("neuro")'>Neurologisch</button>
+                <button type="button" class="btn btn-sm btn-secondary" @onclick='() => ApplySectionTemplate("kurz")'>Kurzkonsultation</button>
             </div>
 
-            <InputTextArea @bind-Value="form.Notes" class="form-control notes-area" rows="12" />
+            <div class="abdtp-sections">
+                @foreach (var sectionType in abdtpOrder)
+                {
+                    <div class="abdtp-section">
+                        <label class="abdtp-label">
+                            <span class="abdtp-key">@GetSectionKey(sectionType)</span>
+                            @GetSectionLabel(sectionType)
+                        </label>
+                        <textarea class="form-control abdtp-textarea"
+                                  rows="@GetSectionRows(sectionType)"
+                                  value="@sectionContents[sectionType]"
+                                  @onchange="e => sectionContents[sectionType] = e.Value?.ToString() ?? string.Empty"
+                                  placeholder="@GetSectionPlaceholder(sectionType)" />
+                    </div>
+                }
+            </div>
         </fieldset>
 
         <fieldset>
@@ -309,7 +361,25 @@ else
     private bool isEdit => Id.HasValue;
     private bool loading = true;
     private bool saving;
+    private bool migrating;
+    private bool hasLegacyNotes;
     private string? errorMessage;
+
+    // ABDTP section fields
+    private static readonly EncounterSectionType[] abdtpOrder =
+    [
+        EncounterSectionType.Anamnese,
+        EncounterSectionType.Befund,
+        EncounterSectionType.Diagnose,
+        EncounterSectionType.Therapie,
+        EncounterSectionType.Procedere,
+        EncounterSectionType.Sonstiges
+    ];
+    private Dictionary<EncounterSectionType, string> sectionContents = abdtpOrder.ToDictionary(t => t, _ => string.Empty);
+
+    // M44: Inherited Dauerdiagnosen
+    private IReadOnlyList<PatientDiagnosisDto> dauerdiagnosen = [];
+    private HashSet<Guid> selectedDauerdiagnosen = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -340,6 +410,19 @@ else
                 if (desc is not null) icdDescriptions[c] = desc;
             }
 
+            // Load ABDTP sections
+            var sections = await SectionService.GetByEncounterAsync(Id!.Value);
+            if (sections.Count > 0)
+            {
+                foreach (var s in sections)
+                    sectionContents[s.SectionType] = s.Content;
+                hasLegacyNotes = false;
+            }
+            else
+            {
+                hasLegacyNotes = !string.IsNullOrWhiteSpace(encounter.Notes);
+            }
+
             // Load structured finding narratives
             var psychFinding = await PsychopathFindingService.GetByEncounterAsync(Id!.Value);
             if (psychFinding is not null)
@@ -364,6 +447,10 @@ else
                 form.DoctorId = DoctorIdQuery.Value.ToString();
             if (DurationQuery.HasValue)
                 form.DurationMinutes = DurationQuery.Value;
+
+            // Load Dauerdiagnosen for inheritance
+            dauerdiagnosen = await DiagnosisService.GetDauerdiagnosenAsync(PatientId.Value);
+            selectedDauerdiagnosen = new HashSet<Guid>(dauerdiagnosen.Select(d => d.Id));
 
             // Pre-select logged-in doctor if no doctor set yet
             if (string.IsNullOrEmpty(form.DoctorId) && AuthState is not null)
@@ -489,54 +576,125 @@ else
         billingItems.RemoveAll(b => b.Id == billingItemId);
     }
 
-    private void ApplyTemplate(string template)
+    private void ApplySectionTemplate(string template)
     {
-        form.Notes = template switch
+        switch (template)
         {
-            "psych" => """
-                PSYCHISCHER BEFUND:
-                Bewusstsein: klar / getrübt
-                Orientierung: zeitlich / örtlich / situativ / zur Person — orientiert / desorientiert
-                Antrieb: normal / gesteigert / vermindert
-                Stimmung: euthym / depressiv / gehoben / gereizt
-                Affekt: moduliert / eingeengt / flach / inadäquat
-                Formales Denken: geordnet / verlangsamt / beschleunigt / umständlich
-                Inhaltliches Denken: unauffällig / Wahn / Zwangsgedanken
-                Wahrnehmung: unauffällig / Halluzinationen (akustisch / optisch)
-                Ich-Störungen: keine / Gedankeneingebung / -entzug / -ausbreitung
-                Suizidalität: keine / Gedanken / Absichten / Pläne
-
-                BEURTEILUNG:
-
-                PROCEDERE:
-                """,
-            "neuro" => """
-                NEUROLOGISCHER BEFUND:
-                Hirnnerven: unauffällig / Auffälligkeiten:
-                Motorik: Tonus normal / erhöht / schlaff; Kraft seitengleich / Paresen:
-                Reflexe: seitengleich / Seitendifferenz; Pathologische Reflexe:
-                Sensibilität: unauffällig / Hypästhesie / Parästhesien:
-                Koordination: Finger-Nase-Versuch / Knie-Hacke-Versuch — unauffällig / Dysmetrie
-                Gang: sicher / unsicher / Ataxie / Spastik
-                Sprache: unauffällig / Dysarthrie / Aphasie
-
-                BEURTEILUNG:
-
-                PROCEDERE:
-                """,
-            "kurz" => """
-                Konsultation am @(DateTime.Today.ToString("dd.MM.yyyy"))
-
-                Aktueller Zustand:
-
-                Medikation: unverändert / Anpassung:
-
-                Weiteres Vorgehen:
-                Nächster Termin:
-                """,
-            _ => form.Notes
-        };
+            case "psych":
+                sectionContents[EncounterSectionType.Befund] =
+                    "Bewusstsein: klar / getrübt\nOrientierung: zeitlich / örtlich / situativ / zur Person — orientiert / desorientiert\nAntrieb: normal / gesteigert / vermindert\nStimmung: euthym / depressiv / gehoben / gereizt\nAffekt: moduliert / eingeengt / flach / inadäquat\nFormales Denken: geordnet / verlangsamt / beschleunigt / umständlich\nInhaltliches Denken: unauffällig / Wahn / Zwangsgedanken\nWahrnehmung: unauffällig / Halluzinationen (akustisch / optisch)\nIch-Störungen: keine / Gedankeneingebung / -entzug / -ausbreitung\nSuizidalität: keine / Gedanken / Absichten / Pläne";
+                break;
+            case "neuro":
+                sectionContents[EncounterSectionType.Befund] =
+                    "Hirnnerven: unauffällig / Auffälligkeiten:\nMotorik: Tonus normal / erhöht / schlaff; Kraft seitengleich / Paresen:\nReflexe: seitengleich / Seitendifferenz; Pathologische Reflexe:\nSensibilität: unauffällig / Hypästhesie / Parästhesien:\nKoordination: Finger-Nase-Versuch / Knie-Hacke-Versuch — unauffällig / Dysmetrie\nGang: sicher / unsicher / Ataxie / Spastik\nSprache: unauffällig / Dysarthrie / Aphasie";
+                break;
+            case "kurz":
+                sectionContents[EncounterSectionType.Anamnese] = "Aktueller Zustand:";
+                sectionContents[EncounterSectionType.Therapie] = "Medikation: unverändert / Anpassung:";
+                sectionContents[EncounterSectionType.Procedere] = $"Nächster Termin:";
+                break;
+        }
     }
+
+    private async Task MigrateNotes()
+    {
+        if (!isEdit || !hasLegacyNotes) return;
+        migrating = true;
+
+        try
+        {
+            Guid.TryParse(form.DoctorId, out var authorId);
+            await SectionService.MigrateNotesToSectionsAsync(Id!.Value, authorId != Guid.Empty ? authorId : null);
+
+            var sections = await SectionService.GetByEncounterAsync(Id!.Value);
+            sectionContents = abdtpOrder.ToDictionary(t => t, _ => string.Empty);
+            foreach (var s in sections)
+                sectionContents[s.SectionType] = s.Content;
+
+            hasLegacyNotes = false;
+            form.Notes = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            migrating = false;
+        }
+    }
+
+    private List<CreateEncounterSectionDto> BuildSectionDtos(Guid authorId)
+    {
+        return sectionContents
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
+            .Select(kv => new CreateEncounterSectionDto
+            {
+                SectionType = kv.Key,
+                Content = kv.Value,
+                AuthorId = authorId
+            })
+            .ToList();
+    }
+
+    private static string GetSectionKey(EncounterSectionType type) => type switch
+    {
+        EncounterSectionType.Anamnese => "A",
+        EncounterSectionType.Befund => "B",
+        EncounterSectionType.Diagnose => "D",
+        EncounterSectionType.Therapie => "T",
+        EncounterSectionType.Procedere => "P",
+        EncounterSectionType.Sonstiges => "S",
+        _ => "?"
+    };
+
+    private static string GetSectionLabel(EncounterSectionType type) => type switch
+    {
+        EncounterSectionType.Anamnese => "Anamnese",
+        EncounterSectionType.Befund => "Befund",
+        EncounterSectionType.Diagnose => "Diagnose",
+        EncounterSectionType.Therapie => "Therapie",
+        EncounterSectionType.Procedere => "Procedere",
+        EncounterSectionType.Sonstiges => "Sonstiges",
+        _ => type.ToString()
+    };
+
+    private static int GetSectionRows(EncounterSectionType type) => type switch
+    {
+        EncounterSectionType.Befund => 6,
+        EncounterSectionType.Anamnese => 4,
+        EncounterSectionType.Therapie => 4,
+        _ => 3
+    };
+
+    private void ToggleDauerdiagnose(Guid id, bool isChecked)
+    {
+        if (isChecked) selectedDauerdiagnosen.Add(id);
+        else selectedDauerdiagnosen.Remove(id);
+    }
+
+    private List<string> BuildAllIcd10Codes()
+    {
+        var codes = new List<string>();
+        // Add selected Dauerdiagnosen codes
+        foreach (var d in dauerdiagnosen.Where(d => selectedDauerdiagnosen.Contains(d.Id)))
+            if (!codes.Contains(d.Icd10Code)) codes.Add(d.Icd10Code);
+        // Add manually added codes
+        foreach (var c in form.Icd10Codes)
+            if (!codes.Contains(c)) codes.Add(c);
+        return codes;
+    }
+
+    private static string GetSectionPlaceholder(EncounterSectionType type) => type switch
+    {
+        EncounterSectionType.Anamnese => "Beschwerden, Symptome, Vorgeschichte...",
+        EncounterSectionType.Befund => "Klinischer Befund, Untersuchungsergebnisse...",
+        EncounterSectionType.Diagnose => "Diagnosen, Differentialdiagnosen...",
+        EncounterSectionType.Therapie => "Medikation, Therapieplan, Maßnahmen...",
+        EncounterSectionType.Procedere => "Weiteres Vorgehen, Wiedervorstellung, Überweisungen...",
+        EncounterSectionType.Sonstiges => "Weitere Anmerkungen...",
+        _ => ""
+    };
 
     private async Task SaveAndNavigate(string befundType)
     {
@@ -554,10 +712,13 @@ else
                 DoctorId = doctorId,
                 AppointmentId = AppointmentIdQuery,
                 EncounterDate = form.EncounterDate,
-                Notes = form.Notes,
+                Notes = null,
                 Icd10Codes = form.Icd10Codes,
                 DurationMinutes = form.DurationMinutes
             });
+            var sectionDtos = BuildSectionDtos(doctorId);
+            if (sectionDtos.Count > 0)
+                await SectionService.SaveAllAsync(created.Id, sectionDtos);
             Navigation.NavigateTo($"/dokumentation/{befundType}/{created.Id}");
         }
         catch (Exception ex)
@@ -580,33 +741,41 @@ else
 
         try
         {
+            var sectionDtos = BuildSectionDtos(doctorId);
+
             if (isEdit)
             {
                 Enum.TryParse<EncounterStatus>(form.Status, out var status);
+                var allCodes = BuildAllIcd10Codes();
                 await EncounterService.UpdateAsync(new UpdateEncounterDto
                 {
                     Id = Id!.Value,
                     PatientId = PatientId!.Value,
                     DoctorId = doctorId,
                     EncounterDate = form.EncounterDate,
-                    Notes = form.Notes,
-                    Icd10Codes = form.Icd10Codes,
+                    Notes = hasLegacyNotes ? form.Notes : null,
+                    Icd10Codes = allCodes,
                     DurationMinutes = form.DurationMinutes,
                     Status = status
                 });
+                await SectionService.SaveAllAsync(Id!.Value, sectionDtos);
             }
             else
             {
-                await EncounterService.CreateAsync(new CreateEncounterDto
+                var allCodes = BuildAllIcd10Codes();
+                var created = await EncounterService.CreateAsync(new CreateEncounterDto
                 {
                     PatientId = PatientId!.Value,
                     DoctorId = doctorId,
                     AppointmentId = AppointmentIdQuery,
                     EncounterDate = form.EncounterDate,
-                    Notes = form.Notes,
-                    Icd10Codes = form.Icd10Codes,
+                    Notes = null,
+                    Icd10Codes = allCodes,
                     DurationMinutes = form.DurationMinutes
                 });
+                await SectionService.SaveAllAsync(created.Id, sectionDtos);
+                // Inherit Dauerdiagnosen to encounter (create EncounterDiagnosis links)
+                await DiagnosisService.InheritDauerdiagnosenForEncounterAsync(created.Id);
             }
 
             Navigation.NavigateTo(backUrl);

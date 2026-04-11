@@ -42,6 +42,8 @@ builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEncounterService, EncounterService>();
+builder.Services.AddScoped<IEncounterSectionService, EncounterSectionService>();
+builder.Services.AddScoped<IPatientDiagnosisService, PatientDiagnosisService>();
 builder.Services.AddScoped<IArztbriefService, MediPrax.Server.Services.ArztbriefService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IBillingService, BillingService>();

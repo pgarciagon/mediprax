@@ -119,13 +119,13 @@ Especificación completa en `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 | M40 | Sprechzeiten & Verfügbarkeit (horarios y ausencias de médicos) | P1 | ✅ |
 | M41 | Intelligente Terminvergabe (sugerencia automática de slots) | P1 | ✅ |
 | M42 | Automatische Diagnosevorschläge aus strukturierten Befunden | P1 | ⏳ |
-| M43 | Structured Encounter Documentation (ABDTP-Felder) | P1 | ⏳ |
-| M44 | Advanced Diagnosis Management (Dauerdiagnosen, Metadaten, Vererbung) | P1 | ⏳ |
+| M43 | Structured Encounter Documentation (ABDTP-Felder) | P1 | ✅ |
+| M44 | Advanced Diagnosis Management (Dauerdiagnosen, Metadaten, Vererbung) | P1 | ✅ |
 | M45 | Encounter Types (Karteieintragstypen) | P2 | ⏳ |
 | M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ⏳ |
 | M47 | Enhanced Textbausteine with Inline Expansion | P2 | ⏳ |
 
-**Resumen Fase 2:** ~16/31 completados. Pendientes prioritarios: **M23**, **M24**, **M42**, **M43**, **M44**, **M46** (P1); **M28**, **M39**, **M45**, **M47** (P2).
+**Resumen Fase 2:** ~18/31 completados. Pendientes prioritarios: **M23**, **M24**, **M42**, **M46** (P1); **M28**, **M39**, **M45**, **M47** (P2).
 
 ---
 

@@ -299,3 +299,30 @@
     margin-top: 0.5rem;
     font-style: italic;
 }
+
+/* Diagnosis chips */
+.diag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.82rem;
+}
+.diag-chip strong { font-family: monospace; }
+.diag-certainty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #fff;
+}
+.certainty-g { background: #16a34a; }
+.certainty-v { background: #f59e0b; }
+.certainty-z { background: #6366f1; }
+.certainty-a { background: #94a3b8; }
