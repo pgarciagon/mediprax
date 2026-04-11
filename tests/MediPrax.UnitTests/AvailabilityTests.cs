@@ -119,4 +119,58 @@ public class AvailabilityTests
         var dto = new CreateScheduleBlockDto();
         Assert.Equal(25, dto.SlotDurationMinutes);
     }
+
+    [Fact]
+    public void FreeSlotDto_DateDisplay_FormatsGerman()
+    {
+        var slot = new FreeSlotDto
+        {
+            Start = new DateTime(2026, 4, 13, 6, 0, 0, DateTimeKind.Utc), // Monday 08:00 CEST
+            End = new DateTime(2026, 4, 13, 6, 50, 0, DateTimeKind.Utc),
+            DurationMinutes = 50,
+            DoctorId = Guid.NewGuid(),
+            DoctorName = "Dr. Test"
+        };
+
+        // DateDisplay and TimeDisplay should not be empty
+        Assert.False(string.IsNullOrWhiteSpace(slot.DateDisplay));
+        Assert.False(string.IsNullOrWhiteSpace(slot.TimeDisplay));
+        Assert.Contains("–", slot.TimeDisplay); // Contains time range separator
+    }
+
+    [Fact]
+    public void FreeSlotDto_DurationMatchesStartEnd()
+    {
+        var start = new DateTime(2026, 4, 14, 8, 0, 0, DateTimeKind.Utc);
+        var slot = new FreeSlotDto
+        {
+            Start = start,
+            End = start.AddMinutes(25),
+            DurationMinutes = 25,
+            DoctorId = Guid.NewGuid(),
+            DoctorName = "Dr. Schmidt"
+        };
+
+        Assert.Equal(25, (slot.End - slot.Start).TotalMinutes);
+        Assert.Equal(slot.DurationMinutes, (int)(slot.End - slot.Start).TotalMinutes);
+    }
+
+    [Fact]
+    public void CreateAbsenceDto_PartialAbsence_HasTimes()
+    {
+        var dto = new CreateAbsenceDto
+        {
+            DoctorId = Guid.NewGuid(),
+            StartDate = new DateOnly(2026, 4, 15),
+            EndDate = new DateOnly(2026, 4, 15),
+            StartTime = new TimeOnly(12, 0),
+            EndTime = new TimeOnly(14, 0),
+            AbsenceType = AbsenceType.Sperrzeit,
+            Reason = "Teambesprechung"
+        };
+
+        Assert.True(dto.StartTime.HasValue);
+        Assert.True(dto.EndTime.HasValue);
+        Assert.Equal(dto.StartDate, dto.EndDate); // Same day
+    }
 }

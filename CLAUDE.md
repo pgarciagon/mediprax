@@ -119,8 +119,13 @@ Especificación completa en `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 | M40 | Sprechzeiten & Verfügbarkeit (horarios y ausencias de médicos) | P1 | ✅ |
 | M41 | Intelligente Terminvergabe (sugerencia automática de slots) | P1 | ✅ |
 | M42 | Automatische Diagnosevorschläge aus strukturierten Befunden | P1 | ⏳ |
+| M43 | Structured Encounter Documentation (ABDTP-Felder) | P1 | ⏳ |
+| M44 | Advanced Diagnosis Management (Dauerdiagnosen, Metadaten, Vererbung) | P1 | ⏳ |
+| M45 | Encounter Types (Karteieintragstypen) | P2 | ⏳ |
+| M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ⏳ |
+| M47 | Enhanced Textbausteine with Inline Expansion | P2 | ⏳ |
 
-**Resumen Fase 2:** ~16/26 completados. Pendientes prioritarios: **M23**, **M24**, **M42** (P1); **M28**, **M39** (P2).
+**Resumen Fase 2:** ~16/31 completados. Pendientes prioritarios: **M23**, **M24**, **M42**, **M43**, **M44**, **M46** (P1); **M28**, **M39**, **M45**, **M47** (P2).
 
 ---
 
@@ -164,17 +169,75 @@ docker compose up --build                     # Build + deploy completo
 
 ---
 
+## Entornos de deployment
+
+Estrategia de 3 entornos para software médico. Documentación completa en `docs/10-deployment.md`.
+
+### Hetzner cloud (46.225.170.6)
+
+| Entorno | URL | Directorio | Docker project | BD | Branch |
+|---------|-----|-----------|----------------|-----|--------|
+| **INT** | `http://46.225.170.6:8081` | `~/mediprax-int/` | `mediprax-int` | `mediprax_int` | `main` / feature |
+| **VAL** | `http://46.225.170.6:8082` | `~/mediprax-val/` | `mediprax-val` | `mediprax_val` | tags release |
+
+- SSH: `deployer@46.225.170.6` (grupo `docker`, sin sudo)
+- Login demo: `meier@neuropsych-bremen.de` / `mediprax2026`
+- Sin datos reales, sin TI
+
+```bash
+# Actualizar INT
+ssh 46.225.170.6 "cd ~/mediprax-int && git pull && docker compose -p mediprax-int up --build -d"
+
+# Desplegar release en VAL
+ssh 46.225.170.6 "cd ~/mediprax-val && git fetch --tags && git checkout v1.1.0 && docker compose -p mediprax-val up --build -d"
+```
+
+### Producción (futuro) — Servidor local en consulta
+
+- **OS:** Windows Server 2022 con Docker Desktop
+- **Konnektor TI** en la misma LAN
+- Datos reales, DSGVO, backups cifrados
+- Misma configuración Docker, sin seed demo, migraciones explícitas
+
+### Fixes necesarios para Docker deploy
+
+Aplicados en servidor (no en repo Git):
+1. Dockerfile: `dotnet restore` apunta al server project (no al `.slnx`)
+2. Program.cs: eliminado `createScopeForStatusCodePages`, añadido `PendingModelChangesWarning` ignore
+3. Program.cs: `EnsureCreated()` + seed en todos los entornos
+
+---
+
 ## Convenciones de código
 
-- **Idioma código:** inglés (clases, métodos, variables, comentarios)
-- **Idioma UI:** alemán (labels, mensajes, navegación)
-- **Dominio médico:** términos alemanes (`Encounter`, `Arztbrief`, `Sprechzeiten`, `Wiedervorlage`…)
+- **Idioma código:** TODO el código fuente en inglés — clases, métodos, variables, propiedades, comentarios, nombres de archivos, mensajes de log, documentación técnica, commit messages, PR descriptions, CLAUDE.md, docs/
+- **Idioma UI:** TODO lo visible para el usuario final en alemán — labels, botones, mensajes de error/éxito, navegación, títulos de página, placeholders, tooltips, contenido de `userdocs/`
+- **Dominio médico:** términos alemanes del dominio se mantienen como nombres propios en el código (`Encounter`, `Arztbrief`, `Sprechzeiten`, `Wiedervorlage`, `Termin`…) cuando no hay equivalente inglés claro o cuando es un concepto regulatorio alemán (KBV, GOP, EBM, KVDT)
 - Nuevas entidades siempre en `MediPrax.Core/Entities/`, heredan `BaseEntity`
 - Nuevos servicios: interfaz en `MediPrax.Application/Interfaces/`, implementación en `MediPrax.Application/Services/`
 - Configuración EF en `MediPrax.Infrastructure/Persistence/Configurations/`
 - Registro de DI en `src/MediPrax.Server/Program.cs`
 - Cada milestone nuevo requiere: entidad + servicio + DTO + configuración EF + migración + página Blazor + tests
 - Al completar un milestone, actualizar la documentación de usuario (`userdocs/`) describiendo la nueva funcionalidad para el usuario final
+
+---
+
+## Reglas obligatorias de testing
+
+1. **Toda nueva funcionalidad DEBE incluir tests.** No se considera completa una feature sin sus tests unitarios y/o de integración correspondientes.
+2. **Antes de hacer commit, ejecutar `dotnet test` y verificar que todos los tests pasan.** No commitear código que rompa tests existentes.
+3. **Tipos de tests:**
+   - **Unit tests** (`tests/MediPrax.UnitTests/`): para DTOs, catálogos, generadores de texto, lógica pura sin BD
+   - **Integration tests** (`tests/MediPrax.IntegrationTests/`): para servicios que usan DbContext, requieren PostgreSQL via Testcontainers
+4. **Convención de nombres:** `[ClaseTesteada]Tests.cs`, métodos: `[Método]_[Escenario]_[Resultado]` o descriptivo en inglés
+5. **Al corregir un bug, añadir un test que reproduce el bug** antes del fix para evitar regresiones
+6. **Al completar una funcionalidad, actualizar la documentación de usuario** (`userdocs/`) describiendo la nueva funcionalidad para el usuario final antes del commit
+
+```bash
+dotnet test                                   # Todos los tests (antes de commit)
+dotnet test tests/MediPrax.UnitTests          # Solo unitarios (rápido)
+dotnet test tests/MediPrax.IntegrationTests   # Solo integración (requiere Docker)
+```
 
 ---
 
@@ -187,4 +250,5 @@ docker compose up --build                     # Build + deploy completo
 | `docs/milestones/` | Especificaciones detalladas por milestone (M17–M42) |
 | `docs/05-architektur.md` | Decisiones de arquitectura técnica |
 | `docs/04-regulatorik.md` | Marco regulatorio KBV, gematik, DSGVO |
+| `docs/10-deployment.md` | Estrategia de entornos, Hetzner, producción local |
 | `userdocs/` | Guía de usuario en alemán |

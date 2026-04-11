@@ -97,7 +97,7 @@ else if (viewMode == "tag")
                     var widthPct = 100.0 / item.TotalColumns;
                     var leftPct = widthPct * item.Column;
 
-                    <div class="timeline-appt status-@appt.Status.ToString().ToLower()"
+                    <div class="timeline-appt status-@appt.Status.ToString().ToLower() @HighlightClass(appt.Id)"
                          style="top:@(item.Top)px;height:@(item.Height)px;left:@(F(leftPct))%;width:calc(@(F(widthPct))% - 4px);border-left-color:@color;background:@(color)12;"
                          @onclick="() => ViewAppointment(appt.Id)"
                          title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
@@ -137,7 +137,7 @@ else if (viewMode == "liste")
                     {
                         @foreach (var appt in day.Appointments)
                         {
-                            <div class="appointment-slot status-@appt.Status.ToString().ToLower()" @onclick="() => ViewAppointment(appt.Id)">
+                            <div class="appointment-slot status-@appt.Status.ToString().ToLower() @HighlightClass(appt.Id)" @onclick="() => ViewAppointment(appt.Id)">
                                 <span class="slot-time">@appt.StartTime.ToLocalTime().ToString("HH:mm")</span>
                                 <span class="slot-patient">@appt.PatientName</span>
                                 @if (!string.IsNullOrEmpty(appt.AppointmentType))
@@ -202,7 +202,7 @@ else
                             var leftPct = widthPct * item.Column;
                             var cols = item.TotalColumns;
 
-                            <div class="timeline-appt status-@appt.Status.ToString().ToLower()"
+                            <div class="timeline-appt status-@appt.Status.ToString().ToLower() @HighlightClass(appt.Id)"
                                  style="top:@(item.Top)px;height:@(item.Height)px;left:@(F(leftPct))%;width:calc(@(F(widthPct))% - 3px);border-left-color:@color;background:@(color)12;"
                                  @onclick="() => ViewAppointment(appt.Id)"
                                  title="@appt.PatientName — @item.StartLocal.ToString("HH:mm")–@appt.EndTime.ToLocalTime().ToString("HH:mm") — @appt.Notes">
@@ -262,6 +262,8 @@ else
 @code {
     [SupplyParameterFromQuery] public string? Arzt { get; set; }
     [SupplyParameterFromQuery] public string? Ansicht { get; set; }
+    [SupplyParameterFromQuery] public string? Highlight { get; set; }
+    [SupplyParameterFromQuery] public string? Woche { get; set; }
 
     private WeekScheduleDto? schedule;
     private IReadOnlyList<DoctorListItemDto> doctors = [];
@@ -270,6 +272,8 @@ else
     private string viewMode = "kalender";
     private bool showWeekend;
     private DateOnly selectedDate = DateOnly.FromDateTime(DateTime.Today);
+
+    private Guid? highlightId;
 
     private const int startHour = 7;
     private const int endHour = 18;
@@ -282,6 +286,8 @@ else
         // Restore state from query params
         if (!string.IsNullOrEmpty(Arzt)) selectedDoctorId = Arzt;
         if (!string.IsNullOrEmpty(Ansicht)) viewMode = Ansicht;
+        if (Guid.TryParse(Highlight, out var hId)) highlightId = hId;
+        if (DateOnly.TryParse(Woche, out var w)) { weekStart = w; selectedDate = w; }
 
         // Default: Arzt sees own schedule, Tag view
         if (string.IsNullOrEmpty(selectedDoctorId) && AuthState is not null)
@@ -296,7 +302,7 @@ else
             }
         }
 
-        weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today));
+        if (weekStart == default) weekStart = GetMonday(DateOnly.FromDateTime(DateTime.Today));
         doctors = await UserService.GetDoctorsAsync();
         await LoadSchedule();
     }
@@ -472,6 +478,8 @@ else
         }
         return parts[0][..1].ToUpper();
     }
+
+    private string HighlightClass(Guid apptId) => highlightId == apptId ? "highlighted" : "";
 
     private static string GetDoctorColor(string? doctorName)
     {

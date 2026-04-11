@@ -4,6 +4,7 @@
 @inject IAppointmentService AppointmentService
 @inject IPatientService PatientService
 @inject IUserService UserService
+@inject ISlotSuggestionService SlotSuggestionService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -90,6 +91,55 @@ else
                         <InputNumber @bind-Value="form.DurationMinutes" class="form-control" />
                     </div>
                 </div>
+
+                @* Slot-Suggestion *@
+                @if (!IsEdit)
+                {
+                    <div class="slot-suggestion-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Bevorzugter Tag</label>
+                                <select class="form-control" @bind="preferredDay">
+                                    <option value="">— Egal —</option>
+                                    <option value="1">Montag</option>
+                                    <option value="2">Dienstag</option>
+                                    <option value="3">Mittwoch</option>
+                                    <option value="4">Donnerstag</option>
+                                    <option value="5">Freitag</option>
+                                    <option value="6">Samstag</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Bevorzugte Uhrzeit</label>
+                                <InputText @bind-Value="preferredTimeStr" class="form-control" placeholder="z.B. 10:00" />
+                            </div>
+                            <div class="form-group" style="flex:0.6;align-self:end">
+                                <button type="button" class="btn btn-outline" @onclick="SearchSlots" disabled="@searchingSlots">
+                                    @(searchingSlots ? "Suche..." : "Freien Slot suchen")
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (slotError is not null)
+                        {
+                            <div class="slot-info">@slotError</div>
+                        }
+
+                        @if (suggestedSlots is not null && suggestedSlots.Count > 0)
+                        {
+                            <div class="slot-results">
+                                @foreach (var slot in suggestedSlots)
+                                {
+                                    <button type="button" class="slot-chip" @onclick="() => ApplySlot(slot)">
+                                        <span class="slot-date">@slot.Start.ToLocalTime().ToString("ddd dd.MM.")</span>
+                                        <span class="slot-time">@slot.Start.ToLocalTime().ToString("HH:mm")–@slot.End.ToLocalTime().ToString("HH:mm")</span>
+                                        <span class="slot-doctor">@slot.DoctorName</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
 
                 <div class="form-row">
                     <div class="form-group full">
@@ -249,7 +299,7 @@ else
             }
             else
             {
-                await AppointmentService.CreateAsync(new CreateAppointmentDto
+                var created = await AppointmentService.CreateAsync(new CreateAppointmentDto
                 {
                     PatientId = form.PatientId,
                     DoctorId = doctorId,
@@ -258,6 +308,12 @@ else
                     AppointmentType = string.IsNullOrEmpty(selectedTemplate) ? null : selectedTemplate,
                     Notes = form.Notes
                 });
+
+                // Navigate to calendar filtered by doctor, with highlight
+                var targetDate = form.Date;
+                var monday = targetDate.AddDays(-(((int)targetDate.DayOfWeek + 6) % 7));
+                Navigation.NavigateTo($"/termine?arzt={doctorId}&highlight={created.Id}&woche={monday:yyyy-MM-dd}");
+                return;
             }
 
             Navigation.NavigateTo(backUrl);
@@ -274,6 +330,54 @@ else
         var template = AppointmentTypeCatalog.GetByName(selectedTemplate);
         if (template is not null)
             form.DurationMinutes = template.DefaultDurationMinutes;
+    }
+
+    // Slot suggestion
+    private string preferredDay = string.Empty;
+    private string preferredTimeStr = string.Empty;
+    private bool searchingSlots;
+    private IReadOnlyList<FreeSlotDto>? suggestedSlots;
+    private string? slotError;
+
+    private async Task SearchSlots()
+    {
+        slotError = null;
+        suggestedSlots = null;
+
+        if (!Guid.TryParse(form.DoctorId, out var doctorId) || doctorId == Guid.Empty)
+        {
+            slotError = "Bitte zuerst einen Arzt wählen.";
+            return;
+        }
+
+        searchingSlots = true;
+        try
+        {
+            DayOfWeek? prefDay = !string.IsNullOrEmpty(preferredDay) ? (DayOfWeek)int.Parse(preferredDay) : null;
+            TimeOnly? prefTime = TimeOnly.TryParse(preferredTimeStr, out var t) ? t : null;
+
+            suggestedSlots = await SlotSuggestionService.SuggestNextSlotAsync(
+                doctorId, form.DurationMinutes, prefDay, prefTime);
+
+            if (suggestedSlots.Count == 0)
+                slotError = "Keine freien Slots in den nächsten 8 Wochen gefunden.";
+        }
+        catch
+        {
+            slotError = "Fehler bei der Slot-Suche.";
+        }
+        finally
+        {
+            searchingSlots = false;
+        }
+    }
+
+    private void ApplySlot(FreeSlotDto slot)
+    {
+        form.Date = DateOnly.FromDateTime(slot.Start.ToLocalTime());
+        form.Time = slot.Start.ToLocalTime().ToString("HH:mm");
+        form.DurationMinutes = slot.DurationMinutes;
+        suggestedSlots = null;
     }
 
     private class AppointmentFormModel

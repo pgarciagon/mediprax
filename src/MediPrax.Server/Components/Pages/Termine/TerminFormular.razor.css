@@ -121,6 +121,85 @@ textarea.form-control {
     color: #fff;
 }
 
+/* Slot suggestion */
+.slot-suggestion-section {
+    border-top: 1px dashed var(--color-border, #e2e8f0);
+    padding-top: 0.9rem;
+    margin-bottom: 0.9rem;
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    border: 1px solid var(--color-primary, #2563eb);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm, 6px);
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 150ms;
+    white-space: nowrap;
+}
+
+.btn-outline:hover:not(:disabled) {
+    background: var(--color-primary, #2563eb);
+    color: #fff;
+}
+
+.btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.slot-info {
+    font-size: 0.82rem;
+    color: var(--color-text-secondary, #64748b);
+    padding: 0.4rem 0;
+}
+
+.slot-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+
+.slot-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.5rem 0.8rem;
+    cursor: pointer;
+    transition: all 150ms;
+    min-width: 110px;
+}
+
+.slot-chip:hover {
+    border-color: var(--color-primary, #2563eb);
+    background: var(--color-primary-light, #eff6ff);
+    box-shadow: var(--shadow-sm);
+}
+
+.slot-date {
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+.slot-time {
+    font-size: 0.78rem;
+    color: var(--color-primary, #2563eb);
+    font-weight: 500;
+}
+
+.slot-doctor {
+    font-size: 0.7rem;
+    color: var(--color-text-muted, #94a3b8);
+}
+
 .error-message {
     background: #fef2f2;
     color: var(--color-danger, #dc2626);

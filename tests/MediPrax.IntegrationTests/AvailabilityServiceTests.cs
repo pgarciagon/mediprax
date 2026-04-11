@@ -363,5 +363,76 @@ public class AvailabilityServiceTests : IDisposable
         });
     }
 
+    [Fact]
+    public async Task FindNextFreeSlot_WithPreferredDay_StillReturnsResults()
+    {
+        // Setup schedule for Monday and Wednesday
+        await _sut.CreateScheduleBlockAsync(new CreateScheduleBlockDto
+        {
+            DoctorId = _doctor.Id, DayOfWeek = DayOfWeek.Monday,
+            StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(12, 0), SlotDurationMinutes = 50
+        });
+        await _sut.CreateScheduleBlockAsync(new CreateScheduleBlockDto
+        {
+            DoctorId = _doctor.Id, DayOfWeek = DayOfWeek.Wednesday,
+            StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(12, 0), SlotDurationMinutes = 50
+        });
+
+        var searchFrom = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+        var slots = await _sut.FindNextFreeSlotAsync(_doctor.Id, 50, searchFrom, 5, DayOfWeek.Wednesday);
+
+        Assert.True(slots.Count >= 1, "Should find slots even with preferredDay filter");
+        // Preferred day should appear first
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        var firstSlot = slots[0];
+        var localDay = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(firstSlot.Start, DateTimeKind.Utc), tz).DayOfWeek;
+        Assert.Equal(DayOfWeek.Wednesday, localDay);
+    }
+
+    [Fact]
+    public async Task FindNextFreeSlot_WithPreferredTime_SortsClosest()
+    {
+        await _sut.CreateScheduleBlockAsync(new CreateScheduleBlockDto
+        {
+            DoctorId = _doctor.Id, DayOfWeek = DayOfWeek.Monday,
+            StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(12, 0), SlotDurationMinutes = 25
+        });
+
+        var searchFrom = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+        var slots = await _sut.FindNextFreeSlotAsync(_doctor.Id, 25, searchFrom, 5,
+            preferredDay: DayOfWeek.Monday, preferredTime: new TimeOnly(10, 0));
+
+        Assert.True(slots.Count >= 1);
+        // First slot should be closest to 10:00
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+        var firstTime = TimeOnly.FromDateTime(
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(slots[0].Start, DateTimeKind.Utc), tz));
+        Assert.True(firstTime >= new TimeOnly(9, 30) && firstTime <= new TimeOnly(10, 30),
+            $"First slot at {firstTime} should be near preferred 10:00");
+    }
+
+    [Fact]
+    public async Task FindNextFreeSlot_WithoutPreferences_ReturnsChronological()
+    {
+        await _sut.CreateScheduleBlockAsync(new CreateScheduleBlockDto
+        {
+            DoctorId = _doctor.Id, DayOfWeek = DayOfWeek.Monday,
+            StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(12, 0), SlotDurationMinutes = 50
+        });
+        await _sut.CreateScheduleBlockAsync(new CreateScheduleBlockDto
+        {
+            DoctorId = _doctor.Id, DayOfWeek = DayOfWeek.Friday,
+            StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(12, 0), SlotDurationMinutes = 50
+        });
+
+        var searchFrom = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
+        var slots = await _sut.FindNextFreeSlotAsync(_doctor.Id, 50, searchFrom, 5);
+
+        Assert.True(slots.Count >= 2);
+        // Should be chronologically sorted
+        for (var i = 1; i < slots.Count; i++)
+            Assert.True(slots[i].Start >= slots[i - 1].Start, "Slots should be chronologically sorted");
+    }
+
     public void Dispose() => _factory.Dispose();
 }

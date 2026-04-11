@@ -171,62 +171,38 @@ public class AvailabilityService(DbContext context) : IAvailabilityService
 
     public async Task<IReadOnlyList<FreeSlotDto>> FindNextFreeSlotAsync(Guid doctorId, int durationMinutes, DateOnly searchFrom, int maxResults = 5, DayOfWeek? preferredDay = null, TimeOnly? preferredTime = null, CancellationToken ct = default)
     {
-        var results = new List<FreeSlotDto>();
+        var allSlots = new List<FreeSlotDto>();
         var currentDate = searchFrom;
         var maxSearchDays = 56; // 8 weeks
 
-        for (var i = 0; i < maxSearchDays && results.Count < maxResults; i++)
+        for (var i = 0; i < maxSearchDays; i++)
         {
             if (currentDate.DayOfWeek == DayOfWeek.Sunday) { currentDate = currentDate.AddDays(1); continue; }
 
             var daySlots = await GetFreeSlotsAsync(doctorId, currentDate, durationMinutes, ct);
-
-            if (preferredDay.HasValue && currentDate.DayOfWeek != preferredDay.Value && results.Count == 0)
-            {
-                // Skip non-preferred days if we haven't found anything yet on preferred days
-                // But still collect slots from preferred days first
-            }
-            else
-            {
-                foreach (var slot in daySlots)
-                {
-                    if (results.Count >= maxResults) break;
-                    results.Add(slot);
-                }
-            }
-
-            // Also check preferred days
-            if (preferredDay.HasValue && currentDate.DayOfWeek == preferredDay.Value)
-            {
-                if (preferredTime.HasValue)
-                {
-                    // Prefer slots near the preferred time
-                    var sorted = daySlots
-                        .OrderBy(s => Math.Abs((TimeOnly.FromDateTime(s.Start.ToLocalTime()) - preferredTime.Value).Ticks))
-                        .ToList();
-                    foreach (var slot in sorted)
-                    {
-                        if (!results.Contains(slot) && results.Count < maxResults)
-                            results.Add(slot);
-                    }
-                }
-            }
+            allSlots.AddRange(daySlots);
 
             currentDate = currentDate.AddDays(1);
+
+            // Stop early if we have enough and no preferences to sort by
+            if (!preferredDay.HasValue && !preferredTime.HasValue && allSlots.Count >= maxResults)
+                break;
         }
 
         // Sort: preferred day/time first, then chronological
+        IEnumerable<FreeSlotDto> sorted = allSlots.OrderBy(s => s.Start);
         if (preferredDay.HasValue || preferredTime.HasValue)
         {
-            results = results
-                .OrderBy(s => s.Start.ToLocalTime().DayOfWeek == preferredDay ? 0 : 1)
-                .ThenBy(s => preferredTime.HasValue ? Math.Abs((TimeOnly.FromDateTime(s.Start.ToLocalTime()) - preferredTime.Value).Ticks) : 0)
-                .ThenBy(s => s.Start)
-                .Take(maxResults)
-                .ToList();
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+            sorted = allSlots
+                .OrderBy(s => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(s.Start, DateTimeKind.Utc), tz).DayOfWeek == preferredDay ? 0 : 1)
+                .ThenBy(s => preferredTime.HasValue
+                    ? Math.Abs((TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(s.Start, DateTimeKind.Utc), tz)) - preferredTime.Value).Ticks)
+                    : 0)
+                .ThenBy(s => s.Start);
         }
 
-        return results.Take(maxResults).ToList();
+        return sorted.Take(maxResults).ToList();
     }
 
     public async Task<AvailabilityCheckResult> CheckAvailabilityAsync(Guid doctorId, DateTime start, int durationMinutes, CancellationToken ct = default)
