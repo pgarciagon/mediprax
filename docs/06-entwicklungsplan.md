@@ -75,6 +75,11 @@
 | M40 | Sprechzeiten & Verfuegbarkeit (Aerzte-Zeitplaene und Abwesenheiten) | Phase 2 | P1 | ABGESCHLOSSEN |
 | M41 | Intelligente Terminvergabe (automatische Slot-Vorschlaege) | Phase 2 | P1 | ABGESCHLOSSEN |
 | M42 | Automatische Diagnosevorschlaege aus strukturierten Befunden | Phase 2 | P1 | AUSSTEHEND |
+| M43 | Structured Encounter Documentation (ABDTP-Felder) | Phase 2 | P1 | AUSSTEHEND |
+| M44 | Advanced Diagnosis Management (Dauerdiagnosen, Metadaten, Vererbung) | Phase 2 | P1 | AUSSTEHEND |
+| M45 | Encounter Types (Karteieintragstypen) | Phase 2 | P2 | AUSSTEHEND |
+| M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | Phase 2 | P1 | AUSSTEHEND |
+| M47 | Enhanced Textbausteine with Inline Expansion | Phase 2 | P2 | AUSSTEHEND |
 
 ---
 
@@ -249,8 +254,8 @@ Produktionsreifes System mit Patientenverwaltung, Terminplanung, klinischer Doku
 | Prioritaet | Meilensteine | Begruendung |
 |------------|-------------|-------------|
 | **P0 -- Must Have** | 17, 18, 19, 20 | Core psychiatric/neurological documentation. Cannot compete without these. |
-| **P1 -- High** | 21, 22, 23, 24, 40, 41, 42 | Patient safety (medication monitoring), revenue protection (billing), daily-use forms, scheduling. |
-| **P2 -- Medium** | 25, 26, 27, 28, 39 | Major workflow improvements, specialty documentation, device integration. |
+| **P1 -- High** | 21, 22, 23, 24, 40, 41, 42, 43, 44, 46 | Patient safety, revenue protection, core consultation workflow, diagnosis management, automation. |
+| **P2 -- Medium** | 25, 26, 27, 28, 39, 45, 47 | Major workflow improvements, specialty documentation, encounter types, Textbausteine. |
 | **P3 -- Nice to Have** | 29, 30, 31, 32, 33, 34, 35, 36, 37, 38 | Competitive differentiators, niche requirements. |
 
 ### 4.1 Architekturprinzipien
@@ -290,6 +295,9 @@ Die detaillierten Implementierungsspezifikationen fuer jeden Meilenstein befinde
 | M40 | Sprechzeiten & Verfuegbarkeit | ABGESCHLOSSEN | [M40-sprechzeiten.md](milestones/M40-sprechzeiten.md) |
 | M41 | Intelligente Terminvergabe | ABGESCHLOSSEN | [M41-terminvergabe.md](milestones/M41-terminvergabe.md) |
 | M42 | Automatische Diagnosevorschlaege | AUSSTEHEND | [M42-diagnosevorschlaege.md](milestones/M42-diagnosevorschlaege.md) |
+| M43 | Structured Encounter Documentation (ABDTP) | AUSSTEHEND | [M43-structured-encounter.md](milestones/M43-structured-encounter.md) |
+| M44 | Advanced Diagnosis Management | AUSSTEHEND | [M44-diagnosis-management.md](milestones/M44-diagnosis-management.md) |
+| M46 | Action Chains (Aktionsketten) | AUSSTEHEND | [M46-action-chains.md](milestones/M46-action-chains.md) |
 
 #### P2 -- Medium
 
@@ -300,6 +308,8 @@ Die detaillierten Implementierungsspezifikationen fuer jeden Meilenstein befinde
 | M27 | Suicidality Assessment & Safety Planning | ABGESCHLOSSEN | [M27-suicidality-assessment.md](milestones/M27-suicidality-assessment.md) |
 | M28 | GDT Device Interface | AUSSTEHEND | [M28-gdt-device-interface.md](milestones/M28-gdt-device-interface.md) |
 | M39 | Arztbrief Therapiebericht Vorlage | AUSSTEHEND | [M39-therapiebericht.md](milestones/M39-therapiebericht.md) |
+| M45 | Encounter Types (Karteieintragstypen) | AUSSTEHEND | [M45-encounter-types.md](milestones/M45-encounter-types.md) |
+| M47 | Enhanced Textbausteine with Inline Expansion | AUSSTEHEND | [M47-textbausteine-enhancement.md](milestones/M47-textbausteine-enhancement.md) |
 
 #### P3 -- Nice to Have
 
