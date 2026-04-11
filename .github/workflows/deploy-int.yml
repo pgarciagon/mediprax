@@ -1,0 +1,49 @@
+name: Deploy INT
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-int
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to INT
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            cd ~/mediprax-int
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose -p mediprax-int up --build -d
+            echo "INT deployed: $(git rev-parse --short HEAD)"
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 20
+          STATUS=$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/login")
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed: HTTP $STATUS"
+            exit 1
+          fi
+          echo "INT is healthy: HTTP $STATUS"
+
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
