@@ -25,7 +25,8 @@ export function initAutocomplete(dotNetRef, textareaId) {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             const { word, start } = getHashWordAtCursor(textarea);
-            if (word && word.length >= 2) {
+            if (word !== null) {
+                // word can be "" (just '#') or "no" (e.g. '#no') — show dropdown in both cases
                 currentHashStart = start;
                 dropdownVisible = true;
                 dotNetRef.invokeMethodAsync('OnTextModuleSearch', word);

@@ -268,6 +268,39 @@ public class TextbausteinE2ETests : E2ETestBase
     }
 
     [Fact]
+    public async Task InlineExpansion_HashOnlyShowsAllModules()
+    {
+        await NavigateToAsync("/patienten");
+        var patientLink = Page.Locator("table tbody tr a").First;
+        await patientLink.ClickAsync();
+        await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        var newEncounterBtn = Page.Locator("a:has-text('Neuer Kontakt'), a:has-text('Neue Konsultation'), a:has-text('Neuer Encounter')").First;
+        if (await newEncounterBtn.CountAsync() > 0)
+        {
+            await newEncounterBtn.ClickAsync();
+            await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        }
+
+        var autocompleteTextarea = Page.Locator(".textmodule-autocomplete textarea").First;
+        if (await autocompleteTextarea.CountAsync() == 0)
+            return;
+
+        // Type just '#' to trigger dropdown with all available modules
+        await autocompleteTextarea.FocusAsync();
+        await autocompleteTextarea.PressSequentiallyAsync("#", new() { Delay = 50 });
+
+        // Wait for the dropdown to appear (200ms debounce + network)
+        var dropdown = Page.Locator(".tm-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync(new() { Timeout = 3_000 });
+
+        // Should show multiple modules (section-filtered)
+        var items = dropdown.Locator(".tm-item");
+        var count = await items.CountAsync();
+        Assert.True(count > 1, $"Dropdown should show multiple text modules when typing just '#', got {count}");
+    }
+
+    [Fact]
     public async Task CategoryFilter_FiltersModules()
     {
         await NavigateToAsync("/verwaltung/textbausteine");

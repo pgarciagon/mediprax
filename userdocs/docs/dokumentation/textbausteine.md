@@ -12,8 +12,8 @@ Textbausteine koennen in der gesamten klinischen Dokumentation verwendet werden 
 
 In jedem Textfeld mit Textbaustein-Unterstuetzung:
 
-1. Tippen Sie `#` gefolgt vom Kuerzel (mind. 2 Zeichen), z.B. `#norm`
-2. Eine **Dropdown-Liste** erscheint mit passenden Bausteinen
+1. Tippen Sie `#` — eine **Dropdown-Liste** erscheint sofort mit allen verfuegbaren Bausteinen (gefiltert nach der aktuellen Sektion)
+2. Tippen Sie weiter (z.B. `#norm`), um die Liste einzugrenzen
 3. Navigieren Sie mit **Pfeiltasten** (hoch/runter) durch die Liste
 4. Druecken Sie **Enter** oder klicken Sie auf den gewuenschten Eintrag
 5. Der `#Kuerzel`-Text wird durch den Baustein-Inhalt ersetzt

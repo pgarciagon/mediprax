@@ -57,7 +57,11 @@ public class TextModuleService(
     {
         var query = TextModules
             .Include(t => t.CreatedBy)
-            .Where(t => t.Shortcut.Contains(term) || t.Title.Contains(term));
+            .AsQueryable();
+
+        // When term is empty (user typed just '#'), show all available modules
+        if (!string.IsNullOrEmpty(term))
+            query = query.Where(t => t.Shortcut.Contains(term) || t.Title.Contains(term));
 
         if (section.HasValue)
             query = query.Where(t => t.TargetSection == null || t.TargetSection == section.Value);
@@ -65,7 +69,7 @@ public class TextModuleService(
         return await query
             .OrderByDescending(t => t.UsageCount)
             .ThenBy(t => t.Shortcut)
-            .Take(10)
+            .Take(15)
             .Select(t => MapToDto(t))
             .ToListAsync(ct);
     }
