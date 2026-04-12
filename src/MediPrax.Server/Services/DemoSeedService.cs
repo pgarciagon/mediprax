@@ -54,8 +54,16 @@ public static class DemoSeedService
 
         // Check if demo data was already seeded
         var hasWeber = db.Patients.Any(p => p.LastName == "Weber" && p.FirstName == "Klaus");
-        if (hasWeber && db.Appointments.Any()) return;
-        if (hasWeber) { ReSeedAppointments(db); return; }
+        // Re-seed appointments on every startup so they always cover the next 2 weeks
+        if (hasWeber)
+        {
+            // Clear stale appointments and re-generate with fresh dates
+            var allAppointments = db.Appointments.ToList();
+            db.Appointments.RemoveRange(allAppointments);
+            db.SaveChanges();
+            ReSeedAppointments(db);
+            return;
+        }
 
         // --- Users (Doctors + MFA) ---
         var mfaKoch = EnsureUser(db, "Sabine", "Koch", "koch@neuropsych-bremen.de", UserRole.MFA);
@@ -203,7 +211,7 @@ public static class DemoSeedService
         var monday = today.AddDays(-(int)today.DayOfWeek + 1);
         var pts = new[] { weber, mueller, hoffmann, fischer, braun, klein, schulz, lang, richter, wolf, schaefer, otto, seidel, kramer };
         var docs = new[] { drMeier, drSchmidt, drBauer, drWagner, drKrause, drLehmann, drFrank, drVogt };
-        var notes = new[] {
+        var notePool = new[] {
             "Kontrolltermin", "VT Sitzung", "Medikamentenkontrolle", "EEG-Kontrolle",
             "Befundbesprechung", "Erstgespräch", "Krisenintervention", "Folgetermin",
             "Diagnostik", "Arztbrief", "Überweisung", "Psychotherapie",
@@ -213,42 +221,53 @@ public static class DemoSeedService
         var durations = new[] { 25, 50, 25, 30, 25, 50, 25, 25, 50, 25 };
         var rng = new Random(42); // deterministic
 
-        // Generate dense schedule: each doctor gets 6-8 appointments per day, Mo-Fr
-        for (var dayOffset = 0; dayOffset < 5; dayOffset++)
+        // Generate dense schedule for 3 weeks: current week + next 2 weeks
+        // Each doctor gets 5-8 appointments per day, Mo-Fr
+        for (var weekOffset = 0; weekOffset < 3; weekOffset++)
         {
-            foreach (var doc in docs)
-            {
-                // Morning block: 07:30 - 12:30
-                var morningSlots = new[] { 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0 };
-                var morningCount = rng.Next(5, 8); // 5-7 morning appointments
-                var usedSlots = new HashSet<double>();
-                for (var i = 0; i < morningCount; i++)
-                {
-                    var slot = morningSlots[rng.Next(morningSlots.Length)];
-                    if (usedSlots.Contains(slot)) continue;
-                    usedSlots.Add(slot);
-                    var pt = pts[rng.Next(pts.Length)];
-                    var dur = durations[rng.Next(durations.Length)];
-                    var note = notes[rng.Next(notes.Length)];
-                    AddAppointment(db, pt, doc, monday.AddDays(dayOffset).AddHours(slot), dur, note);
-                }
+            var weekStart = monday.AddDays(weekOffset * 7);
 
-                // Afternoon block: 14:00 - 17:00
-                var afternoonSlots = new[] { 14.0, 14.5, 15.0, 15.5, 16.0, 16.5 };
-                var afternoonCount = rng.Next(2, 5); // 2-4 afternoon appointments
-                usedSlots.Clear();
-                for (var i = 0; i < afternoonCount; i++)
+            for (var dayOffset = 0; dayOffset < 5; dayOffset++)
+            {
+                foreach (var doc in docs)
                 {
-                    var slot = afternoonSlots[rng.Next(afternoonSlots.Length)];
-                    if (usedSlots.Contains(slot)) continue;
-                    usedSlots.Add(slot);
-                    var pt = pts[rng.Next(pts.Length)];
-                    var dur = durations[rng.Next(durations.Length)];
-                    var note = notes[rng.Next(notes.Length)];
-                    AddAppointment(db, pt, doc, monday.AddDays(dayOffset).AddHours(slot), dur, note);
+                    // Morning block: 07:30 - 12:30
+                    var morningSlots = new[] { 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0 };
+                    var morningCount = rng.Next(5, 8);
+                    var usedSlots = new HashSet<double>();
+                    for (var i = 0; i < morningCount; i++)
+                    {
+                        var slot = morningSlots[rng.Next(morningSlots.Length)];
+                        if (usedSlots.Contains(slot)) continue;
+                        usedSlots.Add(slot);
+                        var pt = pts[rng.Next(pts.Length)];
+                        var dur = durations[rng.Next(durations.Length)];
+                        var note = notePool[rng.Next(notePool.Length)];
+                        AddAppointment(db, pt, doc, weekStart.AddDays(dayOffset).AddHours(slot), dur, note);
+                    }
+
+                    // Afternoon block: 14:00 - 17:00 (Mo-Do only in weeks 2+)
+                    if (dayOffset < 4 || weekOffset == 0) // Friday has no afternoon except current week
+                    {
+                        var afternoonSlots = new[] { 14.0, 14.5, 15.0, 15.5, 16.0, 16.5 };
+                        var afternoonCount = rng.Next(2, 5);
+                        usedSlots.Clear();
+                        for (var i = 0; i < afternoonCount; i++)
+                        {
+                            var slot = afternoonSlots[rng.Next(afternoonSlots.Length)];
+                            if (usedSlots.Contains(slot)) continue;
+                            usedSlots.Add(slot);
+                            var pt = pts[rng.Next(pts.Length)];
+                            var dur = durations[rng.Next(durations.Length)];
+                            var note = notePool[rng.Next(notePool.Length)];
+                            AddAppointment(db, pt, doc, weekStart.AddDays(dayOffset).AddHours(slot), dur, note);
+                        }
+                    }
                 }
             }
         }
+
+        // ===== WEEK 1 (current): Named appointments for Dr. Meier & Dr. Schmidt =====
 
         // MONTAG — Dr. Meier
         AddAppointment(db, weber, drMeier, monday.AddHours(8), 25, "Kontrolltermin Depression");
@@ -329,6 +348,117 @@ public static class DemoSeedService
         // SAMSTAG — Notfallsprechstunde (nur Dr. Meier)
         AddAppointment(db, weber, drMeier, monday.AddDays(5).AddHours(9), 15, "Notfall: Krisenintervention");
         AddAppointment(db, braun, drMeier, monday.AddDays(5).AddHours(9.25), 15, "Notfall: Anfall gestern");
+
+        // ===== WEEK 2: Named follow-up appointments =====
+        var week2 = monday.AddDays(7);
+
+        // MONTAG W2 — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, week2.AddHours(8), 50, "VT Sitzung 8");
+        AddAppointment(db, weber, drMeier, week2.AddHours(9), 25, "Depression Verlaufskontrolle");
+        AddAppointment(db, schulz, drMeier, week2.AddHours(10), 25, "MMST Wiederholung");
+        AddAppointment(db, lang, drMeier, week2.AddHours(10.5), 50, "Psychotherapie probatorische Sitzung 1");
+        AddAppointment(db, richter, drMeier, week2.AddHours(14), 50, "Erstgespräch PTBS");
+        AddAppointment(db, wolf, drMeier, week2.AddHours(15), 50, "Krisenintervention Depression");
+        // MONTAG W2 — Dr. Schmidt
+        AddAppointment(db, mueller, drSchmidt, week2.AddHours(8), 30, "Ocrelizumab Infusionsvorbereitung");
+        AddAppointment(db, fischer, drSchmidt, week2.AddHours(9), 25, "Parkinson Medikamentenanpassung");
+        AddAppointment(db, braun, drSchmidt, week2.AddHours(9.5), 30, "Epilepsie Laborergebnisse");
+        AddAppointment(db, klein, drSchmidt, week2.AddHours(10.5), 25, "Topiramat Verträglichkeit");
+        AddAppointment(db, schaefer, drSchmidt, week2.AddHours(14), 25, "Schmerztherapie Kontrolle");
+
+        // DIENSTAG W2 — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, week2.AddDays(1).AddHours(8), 50, "VT Sitzung 9 — Exposition vorbereiten");
+        AddAppointment(db, weber, drMeier, week2.AddDays(1).AddHours(9), 25, "Sertralin Nebenwirkungen");
+        AddAppointment(db, otto, drMeier, week2.AddDays(1).AddHours(9.5), 50, "Erstgespräch Burnout");
+        AddAppointment(db, schulz, drMeier, week2.AddDays(1).AddHours(10.5), 25, "Angehörigengespräch Pflegesituation");
+        AddAppointment(db, seidel, drMeier, week2.AddDays(1).AddHours(14), 50, "PTBS Diagnostik");
+        // DIENSTAG W2 — Dr. Schmidt
+        AddAppointment(db, braun, drSchmidt, week2.AddDays(1).AddHours(8), 30, "EEG Kontrolle");
+        AddAppointment(db, mueller, drSchmidt, week2.AddDays(1).AddHours(9), 30, "Fatigue Management");
+        AddAppointment(db, klein, drSchmidt, week2.AddDays(1).AddHours(10), 25, "Kopfschmerztagebuch Auswertung");
+        AddAppointment(db, fischer, drSchmidt, week2.AddDays(1).AddHours(14), 45, "Doppler Kontrolle");
+
+        // MITTWOCH W2 — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, week2.AddDays(2).AddHours(8), 50, "VT Expositionssitzung");
+        AddAppointment(db, lang, drMeier, week2.AddDays(2).AddHours(9.5), 50, "Psychotherapie probatorische Sitzung 2");
+        AddAppointment(db, kramer, drMeier, week2.AddDays(2).AddHours(14), 50, "Erstgespräch Essstörung");
+        // MITTWOCH W2 — Dr. Schmidt
+        AddAppointment(db, fischer, drSchmidt, week2.AddDays(2).AddHours(8), 25, "On-Off Monitoring");
+        AddAppointment(db, mueller, drSchmidt, week2.AddDays(2).AddHours(9), 30, "MRT Befundbesprechung");
+        AddAppointment(db, braun, drSchmidt, week2.AddDays(2).AddHours(10), 25, "Anfallsfreiheit bestätigen");
+
+        // DONNERSTAG W2 — Dr. Meier
+        AddAppointment(db, weber, drMeier, week2.AddDays(3).AddHours(8), 25, "PHQ-9 Verlauf");
+        AddAppointment(db, schulz, drMeier, week2.AddDays(3).AddHours(9), 25, "Donepezil Verträglichkeit");
+        AddAppointment(db, hoffmann, drMeier, week2.AddDays(3).AddHours(9.5), 25, "Soziale Reintegration");
+        AddAppointment(db, wolf, drMeier, week2.AddDays(3).AddHours(14), 50, "Depression Folgetermin");
+        AddAppointment(db, lang, drMeier, week2.AddDays(3).AddHours(15), 25, "AU-Verlängerung");
+        // DONNERSTAG W2 — Dr. Schmidt
+        AddAppointment(db, klein, drSchmidt, week2.AddDays(3).AddHours(8), 25, "Botox-Termin Vorbereitung");
+        AddAppointment(db, fischer, drSchmidt, week2.AddDays(3).AddHours(9), 25, "Rigor-Evaluation");
+        AddAppointment(db, braun, drSchmidt, week2.AddDays(3).AddHours(10), 30, "Fahrtauglichkeit Epilepsie");
+        AddAppointment(db, mueller, drSchmidt, week2.AddDays(3).AddHours(14), 25, "Rezept Ocrelizumab");
+
+        // FREITAG W2 — Dr. Meier (halber Tag)
+        AddAppointment(db, hoffmann, drMeier, week2.AddDays(4).AddHours(8), 50, "VT Sitzung 10");
+        AddAppointment(db, weber, drMeier, week2.AddDays(4).AddHours(9), 25, "Arztbrief für Arbeitgeber");
+        AddAppointment(db, schulz, drMeier, week2.AddDays(4).AddHours(10), 25, "Pflegegrad Gutachten");
+        // FREITAG W2 — Dr. Schmidt (halber Tag)
+        AddAppointment(db, braun, drSchmidt, week2.AddDays(4).AddHours(8), 30, "Levetiracetam Spiegel");
+        AddAppointment(db, klein, drSchmidt, week2.AddDays(4).AddHours(9), 25, "Migräne Prophylaxe Evaluation");
+        AddAppointment(db, fischer, drSchmidt, week2.AddDays(4).AddHours(10), 25, "Parkinson Jahres-Review");
+
+        // ===== WEEK 3: Named appointments for continuity =====
+        var week3 = monday.AddDays(14);
+
+        // MONTAG W3 — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, week3.AddHours(8), 50, "VT Sitzung 11");
+        AddAppointment(db, weber, drMeier, week3.AddHours(9), 25, "Medikamentenkontrolle Sertralin 150mg");
+        AddAppointment(db, lang, drMeier, week3.AddHours(10), 50, "Psychotherapie KZT Sitzung 1");
+        AddAppointment(db, richter, drMeier, week3.AddHours(14), 50, "PTBS Folgetermin");
+        AddAppointment(db, otto, drMeier, week3.AddHours(15), 50, "Burnout Diagnostik Fortsetzung");
+        // MONTAG W3 — Dr. Schmidt
+        AddAppointment(db, mueller, drSchmidt, week3.AddHours(8), 30, "MS Quartalskontrolle");
+        AddAppointment(db, fischer, drSchmidt, week3.AddHours(9), 25, "Parkinson Ganganalyse");
+        AddAppointment(db, braun, drSchmidt, week3.AddHours(10), 25, "Epilepsie stabil — Rezept");
+        AddAppointment(db, klein, drSchmidt, week3.AddHours(14), 45, "Botox Migräne Durchführung");
+
+        // DIENSTAG W3 — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, week3.AddDays(1).AddHours(8), 50, "VT Sitzung 12 — Rückfallprävention");
+        AddAppointment(db, schulz, drMeier, week3.AddDays(1).AddHours(9), 25, "Demenz Verlauf");
+        AddAppointment(db, seidel, drMeier, week3.AddDays(1).AddHours(10), 50, "PTBS Traumaexposition");
+        AddAppointment(db, kramer, drMeier, week3.AddDays(1).AddHours(14), 50, "Essstörung Folgetermin");
+        // DIENSTAG W3 — Dr. Schmidt
+        AddAppointment(db, braun, drSchmidt, week3.AddDays(1).AddHours(8), 30, "Anfallskalender Review");
+        AddAppointment(db, mueller, drSchmidt, week3.AddDays(1).AddHours(9), 25, "Ergotherapie Rückmeldung");
+        AddAppointment(db, fischer, drSchmidt, week3.AddDays(1).AddHours(10), 25, "Levodopa Dosisanpassung");
+
+        // MITTWOCH W3 — Dr. Meier
+        AddAppointment(db, weber, drMeier, week3.AddDays(2).AddHours(8), 25, "Depression Remissionsprüfung");
+        AddAppointment(db, lang, drMeier, week3.AddDays(2).AddHours(9), 50, "KZT Sitzung 2");
+        AddAppointment(db, wolf, drMeier, week3.AddDays(2).AddHours(14), 50, "Depression Therapiebeginn VT");
+        // MITTWOCH W3 — Dr. Schmidt
+        AddAppointment(db, klein, drSchmidt, week3.AddDays(2).AddHours(8), 25, "Botox Nachkontrolle");
+        AddAppointment(db, fischer, drSchmidt, week3.AddDays(2).AddHours(9), 25, "Dysarthrie Evaluation");
+        AddAppointment(db, mueller, drSchmidt, week3.AddDays(2).AddHours(10), 30, "Kognitive Testung MS");
+
+        // DONNERSTAG W3 — Dr. Meier
+        AddAppointment(db, hoffmann, drMeier, week3.AddDays(3).AddHours(8), 50, "VT Sitzung 13");
+        AddAppointment(db, schulz, drMeier, week3.AddDays(3).AddHours(9), 25, "Melperon Reduktionsversuch");
+        AddAppointment(db, weber, drMeier, week3.AddDays(3).AddHours(10), 25, "Wiedereingliederung planen");
+        AddAppointment(db, otto, drMeier, week3.AddDays(3).AddHours(14), 25, "Burnout AU-Bescheinigung");
+        // DONNERSTAG W3 — Dr. Schmidt
+        AddAppointment(db, braun, drSchmidt, week3.AddDays(3).AddHours(8), 30, "EEG + Blutbild");
+        AddAppointment(db, fischer, drSchmidt, week3.AddDays(3).AddHours(9.5), 25, "Pramipexol Nebenwirkungen");
+        AddAppointment(db, klein, drSchmidt, week3.AddDays(3).AddHours(10.5), 25, "Kopfschmerzfrequenz Evaluation");
+
+        // FREITAG W3 — Dr. Meier (halber Tag)
+        AddAppointment(db, lang, drMeier, week3.AddDays(4).AddHours(8), 50, "KZT Sitzung 3");
+        AddAppointment(db, weber, drMeier, week3.AddDays(4).AddHours(9), 25, "Sertralin stabil — Rezept");
+        // FREITAG W3 — Dr. Schmidt (halber Tag)
+        AddAppointment(db, mueller, drSchmidt, week3.AddDays(4).AddHours(8), 25, "Rezept + Labor");
+        AddAppointment(db, braun, drSchmidt, week3.AddDays(4).AddHours(9), 25, "Epilepsie Zusammenfassung");
+        AddAppointment(db, fischer, drSchmidt, week3.AddDays(4).AddHours(10), 25, "Parkinson stabil");
 
         db.SaveChanges();
     }

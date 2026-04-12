@@ -22,7 +22,7 @@
 }
 else
 {
-    <div class="psychopath-actions" style="margin-bottom:1rem;">
+    <div class="psychopath-actions">
         <button type="button" class="btn btn-secondary" @onclick="SetNormalbefund">Normalbefund</button>
     </div>
 
@@ -89,13 +89,13 @@ else
         }
     </div>
 
-    <fieldset style="margin-top:1.5rem;">
+    <fieldset>
         <legend>Befundtext (automatisch generiert, editierbar)</legend>
         <textarea class="form-control notes-area" rows="8"
                   @bind="narrativeText" @bind:event="oninput"></textarea>
     </fieldset>
 
-    <fieldset style="margin-top:1rem;">
+    <fieldset>
         <legend>Anmerkungen</legend>
         <textarea class="form-control" rows="3"
                   @bind="notes" @bind:event="oninput"></textarea>
@@ -108,10 +108,10 @@ else
 
     @if (successMessage is not null)
     {
-        <div class="success-message" style="color:green;margin-top:0.5rem;">@successMessage</div>
+        <div class="success-message">@successMessage</div>
     }
 
-    <div class="form-actions" style="margin-top:1rem;">
+    <div class="form-actions">
         <button type="button" class="btn btn-primary" disabled="@saving" @onclick="HandleSave">
             @(saving ? "Speichern..." : "Speichern")
         </button>
