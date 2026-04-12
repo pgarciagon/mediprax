@@ -58,15 +58,9 @@ public static class DemoSeedService
         if (hasWeber)
         {
             // Clear stale appointments and re-generate with fresh dates
-            // First, detach encounters from appointments (FK constraint)
-            var linkedEncounters = db.Encounters.Where(e => e.AppointmentId != null).ToList();
-            foreach (var enc in linkedEncounters)
-                enc.AppointmentId = null;
-            db.SaveChanges();
-
-            var allAppointments = db.Appointments.ToList();
-            db.Appointments.RemoveRange(allAppointments);
-            db.SaveChanges();
+            // Use raw SQL to avoid EF change tracking / concurrency issues
+            db.Database.ExecuteSqlRaw("UPDATE encounters SET \"AppointmentId\" = NULL WHERE \"AppointmentId\" IS NOT NULL");
+            db.Database.ExecuteSqlRaw("DELETE FROM appointments");
             ReSeedAppointments(db);
             return;
         }
