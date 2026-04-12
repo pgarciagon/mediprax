@@ -23,7 +23,7 @@ else
 
     @if (showOrderForm)
     {
-        <div class="inline-form" style="margin-bottom:1.5rem">
+        <div class="inline-form">
             <h3>Laboranforderung</h3>
             <div class="form-row">
                 <div class="form-group">
@@ -58,7 +58,7 @@ else
     }
     else
     {
-        <table class="data-table" style="width:100%">
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>Anforderung</th>
@@ -109,14 +109,14 @@ else
                     @if (expandedId == r.Id && expandedDetail is not null)
                     {
                         <tr>
-                            <td colspan="7" style="padding:0.5rem 1rem;background:var(--bg-secondary, #f8f9fa)">
+                            <td colspan="7" class="expand-detail">
                                 @if (expandedDetail.Values.Count == 0)
                                 {
-                                    <p style="margin:0.5rem 0">Noch keine Werte eingetragen.</p>
+                                    <p class="expand-empty">Noch keine Werte eingetragen.</p>
                                 }
                                 else
                                 {
-                                    <table class="data-table" style="width:100%;margin:0.5rem 0">
+                                    <table class="data-table nested-table">
                                         <thead>
                                             <tr>
                                                 <th>Parameter</th>
@@ -164,7 +164,7 @@ else
                                 }
                                 @if (!string.IsNullOrEmpty(expandedDetail.Notes))
                                 {
-                                    <p style="margin:0.5rem 0"><strong>Notizen:</strong> @expandedDetail.Notes</p>
+                                    <p class="expand-notes"><strong>Notizen:</strong> @expandedDetail.Notes</p>
                                 }
                             </td>
                         </tr>

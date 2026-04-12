@@ -300,6 +300,37 @@
     font-style: italic;
 }
 
+/* Diagnoses section */
+.diagnoses-section {
+    margin-bottom: 1.5rem;
+}
+
+.section-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.diagnoses-card {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    padding: 1rem 1.2rem;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+}
+
+.diag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.diag-empty {
+    color: var(--color-text-muted, #94a3b8);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
 /* Diagnosis chips */
 .diag-chip {
     display: inline-flex;

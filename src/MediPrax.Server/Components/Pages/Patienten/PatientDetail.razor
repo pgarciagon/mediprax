@@ -95,28 +95,33 @@ else
         </section>
     </div>
 
-    <div class="diagnoses-section" style="margin-bottom:1.2rem;">
+    <div class="diagnoses-section">
         <div class="section-header">
             <h2>Diagnosen</h2>
-            <a href="/patienten/@Id/diagnosen" class="btn btn-sm btn-secondary">Alle verwalten</a>
-        </div>
-        @if (dauerdiagnosen is not null && dauerdiagnosen.Count > 0)
-        {
-            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
-                @foreach (var d in dauerdiagnosen)
-                {
-                    <span class="diag-chip" title="@d.Icd10Description">
-                        <span class="diag-certainty certainty-@d.Certainty.ToString().ToLower()">@d.Certainty</span>
-                        <strong>@d.Icd10Code</strong>
-                        @d.Icd10Description
-                    </span>
-                }
+            <div class="section-actions">
+                <a href="/patienten/@Id/diagnosen" class="btn btn-sm btn-secondary">Alle verwalten</a>
+                <a href="/patienten/@Id/diagnosen" class="btn btn-sm btn-primary">+ Diagnose</a>
             </div>
-        }
-        else
-        {
-            <div style="color:var(--color-text-muted);font-size:0.85rem;font-style:italic;">Keine Dauerdiagnosen.</div>
-        }
+        </div>
+        <div class="diagnoses-card">
+            @if (dauerdiagnosen is not null && dauerdiagnosen.Count > 0)
+            {
+                <div class="diag-chips">
+                    @foreach (var d in dauerdiagnosen)
+                    {
+                        <span class="diag-chip" title="@d.Icd10Description">
+                            <span class="diag-certainty certainty-@d.Certainty.ToString().ToLower()">@d.Certainty</span>
+                            <strong>@d.Icd10Code</strong>
+                            @d.Icd10Description
+                        </span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="diag-empty">Keine Dauerdiagnosen.</div>
+            }
+        </div>
     </div>
 
     <div class="encounters-section">
