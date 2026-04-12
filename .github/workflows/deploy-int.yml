@@ -35,14 +35,20 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 20
-          STATUS=$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            "curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/login")
-          if [ "$STATUS" != "200" ]; then
-            echo "Health check failed: HTTP $STATUS"
-            exit 1
-          fi
-          echo "INT is healthy: HTTP $STATUS"
+          for i in 1 2 3 4 5; do
+            sleep 30
+            STATUS=$(ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/login" 2>/dev/null || echo "000")
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "INT is healthy!"
+              exit 0
+            fi
+          done
+          echo "Health check failed after 5 attempts"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "docker compose -p mediprax-int logs --tail=30" || true
+          exit 1
 
       - name: Cleanup
         if: always()
