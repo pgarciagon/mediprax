@@ -111,6 +111,7 @@ nav:
     - KIM: telematik/kim.md
   - Verwaltung:
     - Benutzerverwaltung: verwaltung/benutzer.md
+    - Textbausteine: dokumentation/textbausteine.md
     - Datenimport: verwaltung/import.md
     - Audit-Log: verwaltung/audit.md
 
