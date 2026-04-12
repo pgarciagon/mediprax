@@ -237,6 +237,11 @@ Applied on server (not in Git repo):
 6. **When completing a feature, update the user documentation** (`userdocs/`) describing the new functionality for the end user before committing
 7. **UI workflow tested:** every feature must have a workflow described and manually verified before committing. The workflow includes: how to access the feature from the menu/navigation, what steps to follow, and what result to expect. This workflow must be documented in `userdocs/`.
 8. **Before committing, verify:** (a) the feature is accessible from the UI (sidebar links, buttons, routes), (b) `dotnet test` passes, (c) the workflow works end-to-end
+9. **After pushing to main, verify CI/CD passes:**
+   - Run `gh run list --limit 3` to check the latest GitHub Actions run
+   - If CI fails, diagnose with `gh run view <ID> --log-failed`, fix the issue, commit, push, and re-check — iterate until green
+   - Deploy INT is triggered automatically when CI passes on main
+   - E2E tests (`MediPrax.E2ETests`) are excluded from CI (require browser + running server); they run locally only
 
 ```bash
 dotnet test                                   # All tests (before commit)
