@@ -77,6 +77,9 @@ builder.Services.AddScoped<IAuthService, MediPrax.Server.Services.AuthService>()
 // M30: Text Modules
 builder.Services.AddScoped<ITextModuleService, TextModuleService>();
 
+// Composite Befund (AMDP + Neuro + free-text composition)
+builder.Services.AddScoped<ICompositeBefundService, CompositeBefundService>();
+
 // M31: DMP
 builder.Services.AddScoped<IDmpService, DmpService>();
 

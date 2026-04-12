@@ -124,8 +124,9 @@ Full specification in `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 | M45 | Encounter Types (Karteieintragstypen) | P2 | ⏳ |
 | M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ✅ |
 | M47 | Enhanced Textbausteine with Inline Expansion | P2 | ✅ |
+| M48 | Medication Catalog & Prescription Search (BfArM/FHIR) | P1 | ⏳ |
 
-**Phase 2 Summary:** ~20/31 completed. Priority pending: **M23**, **M24**, **M42** (P1); **M28**, **M39**, **M45** (P2).
+**Phase 2 Summary:** ~20/32 completed. Priority pending: **M23**, **M24**, **M42**, **M48** (P1); **M28**, **M39**, **M45** (P2).
 
 ---
 

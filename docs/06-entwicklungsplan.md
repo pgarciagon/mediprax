@@ -80,6 +80,7 @@
 | M45 | Encounter Types (Karteieintragstypen) | Phase 2 | P2 | AUSSTEHEND |
 | M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | Phase 2 | P1 | AUSSTEHEND |
 | M47 | Enhanced Textbausteine with Inline Expansion | Phase 2 | P2 | AUSSTEHEND |
+| M48 | Medication Catalog & Prescription Search (BfArM/FHIR) | Phase 2 | P1 | AUSSTEHEND |
 
 ---
 
@@ -254,7 +255,7 @@ Produktionsreifes System mit Patientenverwaltung, Terminplanung, klinischer Doku
 | Prioritaet | Meilensteine | Begruendung |
 |------------|-------------|-------------|
 | **P0 -- Must Have** | 17, 18, 19, 20 | Core psychiatric/neurological documentation. Cannot compete without these. |
-| **P1 -- High** | 21, 22, 23, 24, 40, 41, 42, 43, 44, 46 | Patient safety, revenue protection, core consultation workflow, diagnosis management, automation. |
+| **P1 -- High** | 21, 22, 23, 24, 40, 41, 42, 43, 44, 46, 48 | Patient safety, revenue protection, core consultation workflow, diagnosis management, automation, medication catalog. |
 | **P2 -- Medium** | 25, 26, 27, 28, 39, 45, 47 | Major workflow improvements, specialty documentation, encounter types, Textbausteine. |
 | **P3 -- Nice to Have** | 29, 30, 31, 32, 33, 34, 35, 36, 37, 38 | Competitive differentiators, niche requirements. |
 
@@ -298,6 +299,7 @@ Die detaillierten Implementierungsspezifikationen fuer jeden Meilenstein befinde
 | M43 | Structured Encounter Documentation (ABDTP) | AUSSTEHEND | [M43-structured-encounter.md](milestones/M43-structured-encounter.md) |
 | M44 | Advanced Diagnosis Management | AUSSTEHEND | [M44-diagnosis-management.md](milestones/M44-diagnosis-management.md) |
 | M46 | Action Chains (Aktionsketten) | AUSSTEHEND | [M46-action-chains.md](milestones/M46-action-chains.md) |
+| M48 | Medication Catalog & Prescription Search | AUSSTEHEND | [M48-medication-catalog.md](milestones/M48-medication-catalog.md) |
 
 #### P2 -- Medium
 

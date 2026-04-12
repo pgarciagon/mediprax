@@ -12,9 +12,11 @@
 @inject INeurologicalExamService NeuroExamService
 @inject IActionChainService ActionChainService
 @inject IActionChainExecutor ActionChainExecutor
+@inject ICompositeBefundService CompositeBefundService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using System.Security.Claims
+@using MediPrax.Application.DTOs
 @using MediPrax.Core.Enums
 
 <PageTitle>@(isEdit ? "Konsultation bearbeiten" : "Neue Konsultation")</PageTitle>
@@ -136,12 +138,12 @@ else
                 @if (isEdit)
                 {
                     <a href="/dokumentation/psychopath-befund/@Id"
-                       class="btn btn-sm @(psychopathFindingId.HasValue ? "btn-primary" : "btn-secondary")">
-                        Psychopath. Befund (AMDP) @(psychopathFindingId.HasValue ? " ✓" : "")
+                       class="btn btn-sm @(compositeBefund?.PsychopathFindingId.HasValue == true ? "btn-primary" : "btn-secondary")">
+                        Psychopath. Befund (AMDP) @(compositeBefund?.PsychopathFindingId.HasValue == true ? " ✓" : "")
                     </a>
                     <a href="/dokumentation/neurologischer-befund/@Id"
-                       class="btn btn-sm @(neuroExamId.HasValue ? "btn-primary" : "btn-secondary")">
-                        Neurologischer Befund @(neuroExamId.HasValue ? " ✓" : "")
+                       class="btn btn-sm @(compositeBefund?.NeuroExamId.HasValue == true ? "btn-primary" : "btn-secondary")">
+                        Neurologischer Befund @(compositeBefund?.NeuroExamId.HasValue == true ? " ✓" : "")
                     </a>
                 }
                 else
@@ -165,28 +167,6 @@ else
 
         <fieldset>
             <legend>Dokumentation (ABDTP)</legend>
-
-            @if (!string.IsNullOrEmpty(psychopathNarrative))
-            {
-                <div class="narrative-block">
-                    <div class="narrative-header">
-                        <span class="narrative-label">Psychopathologischer Befund (AMDP)</span>
-                        <a href="/dokumentation/psychopath-befund/@Id" class="btn-link btn-sm">Bearbeiten</a>
-                    </div>
-                    <div class="narrative-text">@psychopathNarrative</div>
-                </div>
-            }
-
-            @if (!string.IsNullOrEmpty(neuroNarrative))
-            {
-                <div class="narrative-block">
-                    <div class="narrative-header">
-                        <span class="narrative-label">Neurologischer Befund</span>
-                        <a href="/dokumentation/neurologischer-befund/@Id" class="btn-link btn-sm">Bearbeiten</a>
-                    </div>
-                    <div class="narrative-text">@neuroNarrative</div>
-                </div>
-            }
 
             @if (hasLegacyNotes)
             {
@@ -217,16 +197,80 @@ else
                             <span class="abdtp-key">@GetSectionKey(sectionType)</span>
                             @GetSectionLabel(sectionType)
                         </label>
-                        <TextModuleAutocomplete
-                            Value="@sectionContents[sectionType]"
-                            ValueChanged="@(v => sectionContents[sectionType] = v)"
-                            Rows="@GetSectionRows(sectionType)"
-                            Placeholder="@GetSectionPlaceholder(sectionType)"
-                            CssClass="form-control abdtp-textarea"
-                            PatientId="@PatientId"
-                            EncounterId="@Id"
-                            DoctorId="@(Guid.TryParse(form.DoctorId, out var docGuid) ? docGuid : null)"
-                            SectionFilter="@sectionType" />
+
+                        @if (sectionType == EncounterSectionType.Befund && isEdit)
+                        {
+                            @* Integrated Befund: structured findings + free-text *@
+                            <div class="befund-composite">
+                                @if (!string.IsNullOrEmpty(compositeBefund?.PsychopathNarrative))
+                                {
+                                    <div class="structured-finding-block">
+                                        <div class="structured-finding-header">
+                                            <span class="finding-title">Psychopathologischer Befund (AMDP)</span>
+                                            <a href="/dokumentation/psychopath-befund/@Id"
+                                               class="btn btn-sm btn-outline-secondary">Bearbeiten</a>
+                                        </div>
+                                        <div class="structured-finding-text">
+                                            @compositeBefund.PsychopathNarrative
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <a href="/dokumentation/psychopath-befund/@Id"
+                                       class="btn btn-sm btn-outline-primary structured-finding-add">
+                                        + Psychopathologischen Befund erheben
+                                    </a>
+                                }
+
+                                @if (!string.IsNullOrEmpty(compositeBefund?.NeuroNarrative))
+                                {
+                                    <div class="structured-finding-block">
+                                        <div class="structured-finding-header">
+                                            <span class="finding-title">Neurologischer Befund</span>
+                                            <a href="/dokumentation/neurologischer-befund/@Id"
+                                               class="btn btn-sm btn-outline-secondary">Bearbeiten</a>
+                                        </div>
+                                        <div class="structured-finding-text">
+                                            @compositeBefund.NeuroNarrative
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <a href="/dokumentation/neurologischer-befund/@Id"
+                                       class="btn btn-sm btn-outline-primary structured-finding-add">
+                                        + Neurologischen Befund erheben
+                                    </a>
+                                }
+
+                                <label class="form-label befund-freitext-label">Ergaenzender Befund</label>
+                                <TextModuleAutocomplete
+                                    Value="@sectionContents[EncounterSectionType.Befund]"
+                                    ValueChanged="@(v => sectionContents[EncounterSectionType.Befund] = v)"
+                                    Rows="4"
+                                    Placeholder="Weitere klinische Beobachtungen..."
+                                    CssClass="form-control abdtp-textarea"
+                                    PatientId="@PatientId"
+                                    EncounterId="@Id"
+                                    DoctorId="@(Guid.TryParse(form.DoctorId, out var docGuid2) ? docGuid2 : null)"
+                                    SectionFilter="EncounterSectionType.Befund" />
+                            </div>
+                        }
+                        else
+                        {
+                            @* Standard textarea for A, D, T, P, S and Befund in create mode *@
+                            <TextModuleAutocomplete
+                                Value="@sectionContents[sectionType]"
+                                ValueChanged="@(v => sectionContents[sectionType] = v)"
+                                Rows="@GetSectionRows(sectionType)"
+                                Placeholder="@GetSectionPlaceholder(sectionType)"
+                                CssClass="form-control abdtp-textarea"
+                                PatientId="@PatientId"
+                                EncounterId="@Id"
+                                DoctorId="@(Guid.TryParse(form.DoctorId, out var docGuid) ? docGuid : null)"
+                                SectionFilter="@sectionType" />
+                        }
                     </div>
                 }
             </div>
@@ -413,10 +457,7 @@ else
     private ActionChainResult? chainResult;
     private bool executingChain;
     private string? patientName;
-    private string? psychopathNarrative;
-    private string? neuroNarrative;
-    private Guid? psychopathFindingId;
-    private Guid? neuroExamId;
+    private CompositeBefundDto? compositeBefund;
     private string backUrl = "/patienten";
     private bool isEdit => Id.HasValue;
     private bool loading = true;
@@ -483,19 +524,8 @@ else
                 hasLegacyNotes = !string.IsNullOrWhiteSpace(encounter.Notes);
             }
 
-            // Load structured finding narratives
-            var psychFinding = await PsychopathFindingService.GetByEncounterAsync(Id!.Value);
-            if (psychFinding is not null)
-            {
-                psychopathNarrative = psychFinding.NarrativeText;
-                psychopathFindingId = psychFinding.Id;
-            }
-            var neuroExam = await NeuroExamService.GetByEncounterAsync(Id!.Value);
-            if (neuroExam is not null)
-            {
-                neuroNarrative = neuroExam.NarrativeText;
-                neuroExamId = neuroExam.Id;
-            }
+            // Load composite Befund (AMDP + Neuro + free-text, composed at read-time)
+            compositeBefund = await CompositeBefundService.GetAsync(Id!.Value);
         }
         else if (PatientId.HasValue)
         {
