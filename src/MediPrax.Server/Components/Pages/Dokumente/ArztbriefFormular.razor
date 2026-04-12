@@ -196,7 +196,13 @@ else
                         Vorlage wird mit Daten der Konsultation vom @selectedEncounter.EncounterDate.ToString("dd.MM.yyyy") befüllt.
                     </div>
                 }
-                <InputTextArea @bind-Value="form.Body" class="form-control notes-area" rows="18" />
+                <TextModuleAutocomplete
+                    Value="@form.Body"
+                    ValueChanged="@(v => form.Body = v)"
+                    Rows="18"
+                    CssClass="form-control notes-area"
+                    PatientId="@PatientId"
+                    DoctorId="@(Guid.TryParse(form.DoctorId, out var did) ? did : null)" />
             </div>
         </fieldset>
 

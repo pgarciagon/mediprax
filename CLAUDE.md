@@ -1,21 +1,21 @@
-# MediPrax — Contexto para Claude Code
+# MediPrax — Context for Claude Code
 
-## Descripción del proyecto
+## Project Description
 
-**MediPrax** es un sistema de gestión de consultas médicas alemanas (PVS — Praxisverwaltungssystem), desarrollado como reemplazo de CGM Medistar para la práctica piloto **Neuropsychiatricum Bremen** (Gemeinschaftspraxis für Psychiatrie und Neurologie, Osterstraße 1a, 28199 Bremen).
+**MediPrax** is a German medical practice management system (PVS — Praxisverwaltungssystem), developed as a replacement for CGM Medistar for the pilot practice **Neuropsychiatricum Bremen** (Gemeinschaftspraxis für Psychiatrie und Neurologie, Osterstraße 1a, 28199 Bremen).
 
-- Desarrollado por un solo desarrollador con Claude Code
-- Propietario, todos los derechos reservados
-- Regulación aplicable: KBV, gematik, DSGVO, §630f BGB, §203 StGB
+- Developed by a single developer with Claude Code
+- Proprietary, all rights reserved
+- Applicable regulations: KBV, gematik, DSGVO, §630f BGB, §203 StGB
 
 ---
 
-## Stack técnico
+## Tech Stack
 
-| Capa | Tecnología |
-|------|-----------|
+| Layer | Technology |
+|-------|-----------|
 | Backend + Frontend | C# / .NET 10 + Blazor Server (InteractiveServer render mode) |
-| Base de datos | PostgreSQL 16+ via EF Core 10 + Npgsql |
+| Database | PostgreSQL 16+ via EF Core 10 + Npgsql |
 | PDF | QuestPDF |
 | FHIR | Firely SDK (.NET) |
 | Tests | xUnit + Testcontainers.PostgreSQL + Playwright |
@@ -25,36 +25,36 @@
 
 ---
 
-## Arquitectura (DDD en capas)
+## Architecture (Layered DDD)
 
 ```
-MediPrax.Core             → Entidades, Enums, Interfaces de repositorio, ValueObjects
-MediPrax.Application      → Services, DTOs, Interfaces de servicio, Catalogs (ICD-10, GOP, AMDP…)
-MediPrax.Infrastructure   → EF Core DbContext, Configuraciones, Migraciones, implementaciones TI
-MediPrax.Reporting        → Generadores PDF (QuestPDF): Arztbrief, Formulare, PtvForms
-MediPrax.Server           → Host Blazor: Components/Pages, Program.cs, wwwroot
-MediPrax.UI               → Librería de componentes UI compartidos
+MediPrax.Core             → Entities, Enums, Repository Interfaces, ValueObjects
+MediPrax.Application      → Services, DTOs, Service Interfaces, Catalogs (ICD-10, GOP, AMDP…)
+MediPrax.Infrastructure   → EF Core DbContext, Configurations, Migrations, TI implementations
+MediPrax.Reporting        → PDF Generators (QuestPDF): Arztbrief, Formulare, PtvForms
+MediPrax.Server           → Blazor Host: Components/Pages, Program.cs, wwwroot
+MediPrax.UI               → Shared UI component library
 tests/MediPrax.UnitTests
 tests/MediPrax.IntegrationTests
 ```
 
-### Patrones establecidos
+### Established Patterns
 
-- Entidades heredan `BaseEntity` (Id, CreatedAt, UpdatedAt, IsDeleted, DeletedAt) — soft delete global
-- Services: inyectan `DbContext`, devuelven DTOs, async con `CancellationToken`
+- Entities inherit `BaseEntity` (Id, CreatedAt, UpdatedAt, IsDeleted, DeletedAt) — global soft delete
+- Services: inject `DbContext`, return DTOs, async with `CancellationToken`
 - DTOs: `XxxDto`, `CreateXxxDto`, `UpdateXxxDto`, `XxxListItemDto`
-- Páginas Blazor: `@rendermode InteractiveServer`, `@attribute [Authorize(Policy = "...")]`, patrón loading/error
-- **Código en inglés, UI y dominio médico en alemán**
-- Audit trail en todas las operaciones significativas (EF Core Interceptor)
-- Cada milestone genera su propia migración EF Core
+- Blazor pages: `@rendermode InteractiveServer`, `@attribute [Authorize(Policy = "...")]`, loading/error pattern
+- **Code in English, UI and medical domain in German**
+- Audit trail on all significant operations (EF Core Interceptor)
+- Each milestone generates its own EF Core migration
 
-### Roles RBAC
+### RBAC Roles
 
 `Admin` | `Arzt` | `MFA` (Medizinische Fachangestellte) | `Empfang`
 
 ---
 
-## Estado actual
+## Current Status
 
 **v1.0.0 MVP — Released 2026-04-08**
 
@@ -62,10 +62,10 @@ tests/MediPrax.IntegrationTests
 
 ## Milestones
 
-### Fase 1: MVP (M1–M16) — COMPLETADOS ✅
+### Phase 1: MVP (M1–M16) — COMPLETED ✅
 
-| # | Nombre |
-|---|--------|
+| # | Name |
+|---|------|
 | M1 | Projekt-Setup: Repo, CI/CD, Clean Architecture, DB Schema |
 | M2 | Patientenverwaltung (CRUD, Suche, GKV/PKV) |
 | M3 | Terminplanung (Wochenansicht, Wartezimmer) |
@@ -83,173 +83,176 @@ tests/MediPrax.IntegrationTests
 | M15 | Infrastruktur & Stabilität: Backup, SignalR, Health Checks, Serilog, Rate Limiting |
 | M16 | Phase 2 Vorbereitung: FHIR/Firely SDK, Konnektor-Client, Zertifizierungsdoku |
 
-Extras implementados sobre el plan: TI-Simulation completa (eGK, E-Rezept, KIM, ePA con mock services), GitHub Actions CI/CD, KVDT-Export, CSV-Import (migración desde Medistar), 76 tests automatizados.
+Extras implemented beyond plan: Full TI simulation (eGK, E-Rezept, KIM, ePA with mock services), GitHub Actions CI/CD, KVDT-Export, CSV-Import (migration from Medistar), 76 automated tests.
 
 ---
 
-### Fase 2: Psiquiatría & Neurología (M17–M42)
+### Phase 2: Psychiatry & Neurology (M17–M42)
 
-Especificación completa en `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
+Full specification in `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 
-| # | Nombre | Prioridad | Estado |
-|---|--------|-----------|--------|
-| M17 | Structured Psychopathological Assessment (AMDP, ~130 síntomas, generador narrativo) | P0 | ✅ |
+| # | Name | Priority | Status |
+|---|------|----------|--------|
+| M17 | Structured Psychopathological Assessment (AMDP, ~130 symptoms, narrative generator) | P0 | ✅ |
 | M18 | Psychometric Testing (PHQ-9, GAD-7, HAMD, PANSS, MMSE…) | P0 | ✅ |
-| M19 | PTV Forms & Therapy Case Management (Therapiegenehmigung, contingentes) | P0 | ✅ |
+| M19 | PTV Forms & Therapy Case Management (Therapiegenehmigung, contingents) | P0 | ✅ |
 | M20 | Structured Neurological Examination | P0 | ✅ |
-| M21 | Advanced Medication Management: interacciones, depósitos, monitoreo | P1 | ✅ |
+| M21 | Advanced Medication Management: interactions, depot injections, monitoring | P1 | ✅ |
 | M22 | Laboratory Integration & Monitoring (LDT) | P1 | ✅ |
-| M23 | Billing Enhancements: plausibilidad, GOP-Engine, GOÄ-Rechnung | P1 | ⏳ |
+| M23 | Billing Enhancements: plausibility, GOP engine, GOÄ-Rechnung | P1 | ⏳ |
 | M24 | Missing KBV Forms: Muster 2, 7, 13, 14, 26 | P1 | ⏳ |
-| M25 | Appointment Enhancements: recurrentes, Warteliste, session tracking | P2 | ⚠️ parcial |
-| M26 | Disease-Specific Documentation: Epilepsia, MS, Parkinson, Cefalea | P2 | ✅ |
+| M25 | Appointment Enhancements: recurring, Warteliste, session tracking | P2 | ⚠️ partial |
+| M26 | Disease-Specific Documentation: Epilepsy, MS, Parkinson, Headache | P2 | ✅ |
 | M27 | Suicidality Assessment & Safety Planning | P2 | ✅ |
-| M28 | GDT Device Interface (EEG, EMG, potenciales evocados) | P2 | ⏳ |
+| M28 | GDT Device Interface (EEG, EMG, evoked potentials) | P2 | ⏳ |
 | M29 | Videosprechstunde Integration | P3 | ⏳ |
-| M30 | Text Modules & Documentation Automation (Textbausteine) | P3 | ⚠️ parcial |
+| M30 | Text Modules & Documentation Automation (Textbausteine) | P3 | ⚠️ partial |
 | M31 | DMP Depression | P3 | ✅ |
 | M32 | Involuntary Commitment & Legal Documentation (PsychKG, BGB 1906) | P3 | ⏳ |
-| M33 | Private Billing GOÄ: Rechnungen, Mahnwesen | P3 | ⚠️ parcial |
+| M33 | Private Billing GOÄ: Rechnungen, Mahnwesen | P3 | ⚠️ partial |
 | M34 | eAU Electronic Transmission | P3 | ⏳ |
 | M35 | BtM Management & E-BtM-Rezept | P3 | ✅ |
-| M36 | Automated Mahnwesen (recordatorios de pago en 3 etapas) | P3 | ⏳ |
-| M37 | DATEV-Export Interface (para Steuerberater) | P3 | ⏳ |
+| M36 | Automated Mahnwesen (3-stage payment reminders) | P3 | ⏳ |
+| M37 | DATEV-Export Interface (for Steuerberater) | P3 | ⏳ |
 | M38 | Umsatzstatistik / Revenue Analytics | P3 | ⏳ |
 | M39 | Arztbrief Therapiebericht Vorlage | P2 | ⏳ |
-| M40 | Sprechzeiten & Verfügbarkeit (horarios y ausencias de médicos) | P1 | ✅ |
-| M41 | Intelligente Terminvergabe (sugerencia automática de slots) | P1 | ✅ |
+| M40 | Sprechzeiten & Verfügbarkeit (doctor schedules and absences) | P1 | ✅ |
+| M41 | Intelligente Terminvergabe (automatic slot suggestion) | P1 | ✅ |
 | M42 | Automatische Diagnosevorschläge aus strukturierten Befunden | P1 | ⏳ |
-| M43 | Structured Encounter Documentation (ABDTP-Felder) | P1 | ✅ |
-| M44 | Advanced Diagnosis Management (Dauerdiagnosen, Metadaten, Vererbung) | P1 | ✅ |
+| M43 | Structured Encounter Documentation (ABDTP fields) | P1 | ✅ |
+| M44 | Advanced Diagnosis Management (Dauerdiagnosen, metadata, inheritance) | P1 | ✅ |
 | M45 | Encounter Types (Karteieintragstypen) | P2 | ⏳ |
 | M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ✅ |
-| M47 | Enhanced Textbausteine with Inline Expansion | P2 | ⏳ |
+| M47 | Enhanced Textbausteine with Inline Expansion | P2 | ✅ |
 
-**Resumen Fase 2:** ~19/31 completados. Pendientes prioritarios: **M23**, **M24**, **M42** (P1); **M28**, **M39**, **M45**, **M47** (P2).
-
----
-
-### Fases siguientes (infraestructura externa requerida)
-
-| Fase | Contenido | Estado |
-|------|-----------|--------|
-| Fase 2 TI | Konnektor real, ePA, E-Rezept, KIM, ECC-256 | Simulado — pendiente acceso gematik |
-| Fase 3 Abrechnung | EBM-Motor completo, KVDT validado, Hybrid-DRG | Parcialmente en M10/M23 |
-| Fase 4 Zertifizierung | KBV, gematik KOB, DSGVO-Audit, migración Medistar, Go-Live | Pendiente |
+**Phase 2 Summary:** ~20/31 completed. Priority pending: **M23**, **M24**, **M42** (P1); **M28**, **M39**, **M45** (P2).
 
 ---
 
-## Comandos útiles
+### Future Phases (external infrastructure required)
+
+| Phase | Content | Status |
+|-------|---------|--------|
+| Phase 2 TI | Real Konnektor, ePA, E-Rezept, KIM, ECC-256 | Simulated — pending gematik access |
+| Phase 3 Billing | Full EBM engine, validated KVDT, Hybrid-DRG | Partially in M10/M23 |
+| Phase 4 Certification | KBV, gematik KOB, DSGVO audit, Medistar migration, Go-Live | Pending |
+
+---
+
+## Useful Commands
 
 ```bash
-# Desarrollo local
-docker compose up -d                          # Levanta PostgreSQL en puerto 5432
-dotnet run --project src/MediPrax.Server      # Servidor en http://localhost:5116
+# Local development
+docker compose up -d                          # Start PostgreSQL on port 5432
+dotnet run --project src/MediPrax.Server      # Server at http://localhost:5116
 
-# Base de datos
-dotnet ef migrations add <Nombre> \
+# Database
+dotnet ef migrations add <Name> \
   --project src/MediPrax.Infrastructure \
-  --startup-project src/MediPrax.Server       # Nueva migración
+  --startup-project src/MediPrax.Server       # New migration
 dotnet ef database update \
   --project src/MediPrax.Infrastructure \
-  --startup-project src/MediPrax.Server       # Aplicar migraciones
+  --startup-project src/MediPrax.Server       # Apply migrations
 
 # Tests
-dotnet test                                   # Todos los tests
-dotnet test tests/MediPrax.UnitTests          # Solo unitarios
-dotnet test tests/MediPrax.IntegrationTests   # Solo integración (requiere Docker)
+dotnet test                                   # All tests
+dotnet test tests/MediPrax.UnitTests          # Unit tests only
+dotnet test tests/MediPrax.IntegrationTests   # Integration only (requires Docker)
 
 # Build & Docker
-dotnet build                                  # Compilar solución
-docker compose up --build                     # Build + deploy completo
+dotnet build                                  # Build solution
+docker compose up --build                     # Full build + deploy
 ```
 
-**Conexión local:** `Host=localhost;Port=5432;Database=mediprax;Username=mediprax;Password=mediprax_dev`
-**Puerto app:** `http://localhost:5116` (dev) / `http://localhost:8080` (Docker)
+**Local connection:** `Host=localhost;Port=5432;Database=mediprax;Username=mediprax;Password=mediprax_dev`
+**App port:** `http://localhost:5116` (dev) / `http://localhost:8080` (Docker)
 
 ---
 
-## Entornos de deployment
+## Deployment Environments
 
-Estrategia de 3 entornos para software médico. Documentación completa en `docs/10-deployment.md`.
+3-environment strategy for medical software. Full documentation in `docs/10-deployment.md`.
 
-### Hetzner cloud (46.225.170.6)
+### Hetzner Cloud (46.225.170.6)
 
-| Entorno | URL | Directorio | Docker project | BD | Branch |
-|---------|-----|-----------|----------------|-----|--------|
+| Environment | URL | Directory | Docker project | DB | Branch |
+|-------------|-----|-----------|----------------|-----|--------|
 | **INT** | `http://46.225.170.6:8081` | `~/mediprax-int/` | `mediprax-int` | `mediprax_int` | `main` / feature |
-| **VAL** | `http://46.225.170.6:8082` | `~/mediprax-val/` | `mediprax-val` | `mediprax_val` | tags release |
+| **VAL** | `http://46.225.170.6:8082` | `~/mediprax-val/` | `mediprax-val` | `mediprax_val` | release tags |
 
-- SSH: `deployer@46.225.170.6` (grupo `docker`, sin sudo)
-- Login demo: `meier@neuropsych-bremen.de` / `mediprax2026`
-- Sin datos reales, sin TI
+- SSH: `deployer@46.225.170.6` (`docker` group, no sudo)
+- Demo login: `meier@neuropsych-bremen.de` / `mediprax2026`
+- No real data, no TI
 
 ```bash
-# Actualizar INT
+# Update INT
 ssh 46.225.170.6 "cd ~/mediprax-int && git pull && docker compose -p mediprax-int up --build -d"
 
-# Desplegar release en VAL
+# Deploy release to VAL
 ssh 46.225.170.6 "cd ~/mediprax-val && git fetch --tags && git checkout v1.1.0 && docker compose -p mediprax-val up --build -d"
 ```
 
-### Producción (futuro) — Servidor local en consulta
+### Production (future) — Local server at the practice
 
-- **OS:** Windows Server 2022 con Docker Desktop
-- **Konnektor TI** en la misma LAN
-- Datos reales, DSGVO, backups cifrados
-- Misma configuración Docker, sin seed demo, migraciones explícitas
+- **OS:** Windows Server 2022 with Docker Desktop
+- **Konnektor TI** on the same LAN
+- Real data, DSGVO, encrypted backups
+- Same Docker configuration, no demo seed, explicit migrations
 
-### Fixes necesarios para Docker deploy
+### Required Fixes for Docker Deploy
 
-Aplicados en servidor (no en repo Git):
-1. Dockerfile: `dotnet restore` apunta al server project (no al `.slnx`)
-2. Program.cs: eliminado `createScopeForStatusCodePages`, añadido `PendingModelChangesWarning` ignore
-3. Program.cs: `EnsureCreated()` + seed en todos los entornos
-
----
-
-## Convenciones de código
-
-- **Idioma código:** TODO el código fuente en inglés — clases, métodos, variables, propiedades, comentarios, nombres de archivos, mensajes de log, documentación técnica, commit messages, PR descriptions, CLAUDE.md, docs/
-- **Idioma UI:** TODO lo visible para el usuario final en alemán — labels, botones, mensajes de error/éxito, navegación, títulos de página, placeholders, tooltips, contenido de `userdocs/`
-- **Dominio médico:** términos alemanes del dominio se mantienen como nombres propios en el código (`Encounter`, `Arztbrief`, `Sprechzeiten`, `Wiedervorlage`, `Termin`…) cuando no hay equivalente inglés claro o cuando es un concepto regulatorio alemán (KBV, GOP, EBM, KVDT)
-- Nuevas entidades siempre en `MediPrax.Core/Entities/`, heredan `BaseEntity`
-- Nuevos servicios: interfaz en `MediPrax.Application/Interfaces/`, implementación en `MediPrax.Application/Services/`
-- Configuración EF en `MediPrax.Infrastructure/Persistence/Configurations/`
-- Registro de DI en `src/MediPrax.Server/Program.cs`
-- Cada milestone nuevo requiere: entidad + servicio + DTO + configuración EF + migración + página Blazor + tests
-- **Seed data obligatorio:** toda nueva funcionalidad DEBE incluir datos de prueba (seed) en la migración EF Core. Migrar datos existentes afectados cuando sea necesario. Los seeds usan SQL directo en el `Up()` de la migración con GUIDs fijos para idempotencia.
-- Al completar un milestone, actualizar la documentación de usuario (`userdocs/`) describiendo la nueva funcionalidad para el usuario final
+Applied on server (not in Git repo):
+1. Dockerfile: `dotnet restore` points to server project (not `.slnx`)
+2. Program.cs: removed `createScopeForStatusCodePages`, added `PendingModelChangesWarning` ignore
+3. Program.cs: `EnsureCreated()` + seed in all environments
 
 ---
 
-## Reglas obligatorias de testing
+## Code Conventions
 
-1. **Toda nueva funcionalidad DEBE incluir tests.** No se considera completa una feature sin sus tests unitarios y/o de integración correspondientes.
-2. **Antes de hacer commit, ejecutar `dotnet test` y verificar que todos los tests pasan.** No commitear código que rompa tests existentes.
-3. **Tipos de tests:**
-   - **Unit tests** (`tests/MediPrax.UnitTests/`): para DTOs, catálogos, generadores de texto, lógica pura sin BD
-   - **Integration tests** (`tests/MediPrax.IntegrationTests/`): para servicios que usan DbContext, requieren PostgreSQL via Testcontainers
-4. **Convención de nombres:** `[ClaseTesteada]Tests.cs`, métodos: `[Método]_[Escenario]_[Resultado]` o descriptivo en inglés
-5. **Al corregir un bug, añadir un test que reproduce el bug** antes del fix para evitar regresiones
-6. **Al completar una funcionalidad, actualizar la documentación de usuario** (`userdocs/`) describiendo la nueva funcionalidad para el usuario final antes del commit
+- **Code language:** ALL source code in English — classes, methods, variables, properties, comments, file names, log messages, technical documentation, commit messages, PR descriptions, CLAUDE.md, docs/
+- **UI language:** ALL end-user visible content in German — labels, buttons, error/success messages, navigation, page titles, placeholders, tooltips, `userdocs/` content
+- **Medical domain:** German domain terms are kept as proper nouns in code (`Encounter`, `Arztbrief`, `Sprechzeiten`, `Wiedervorlage`, `Termin`…) when there is no clear English equivalent or when it is a German regulatory concept (KBV, GOP, EBM, KVDT)
+- New entities always in `MediPrax.Core/Entities/`, inheriting `BaseEntity`
+- New services: interface in `MediPrax.Application/Interfaces/`, implementation in `MediPrax.Application/Services/`
+- EF configuration in `MediPrax.Infrastructure/Persistence/Configurations/`
+- DI registration in `src/MediPrax.Server/Program.cs`
+- Each new milestone requires: entity + service + DTO + EF configuration + migration + Blazor page + tests
+- **Mandatory seed data:** every new feature MUST include test/seed data in the EF Core migration. Migrate existing impacted data when necessary. Seeds use raw SQL in the migration `Up()` with fixed GUIDs for idempotency.
+- **Mandatory UI access:** every new feature MUST be accessible from the UI through a clear workflow. This includes: links in the sidebar/navigation (`MainLayout.razor`), buttons on relevant pages, and navigable routes. A feature is NOT considered complete if the user cannot reach it from the interface.
+- When completing a milestone, update the user documentation (`userdocs/`) describing the new functionality for the end user
+
+---
+
+## Mandatory Testing Rules
+
+1. **Every new feature MUST include tests.** A feature is not considered complete without its corresponding unit and/or integration tests.
+2. **Before committing, run `dotnet test` and verify all tests pass.** Do not commit code that breaks existing tests.
+3. **Test types:**
+   - **Unit tests** (`tests/MediPrax.UnitTests/`): for DTOs, catalogs, text generators, pure logic without DB
+   - **Integration tests** (`tests/MediPrax.IntegrationTests/`): for services using DbContext, require PostgreSQL via Testcontainers
+4. **Naming convention:** `[TestedClass]Tests.cs`, methods: `[Method]_[Scenario]_[Result]` or descriptive in English
+5. **When fixing a bug, add a test that reproduces the bug** before the fix to prevent regressions
+6. **When completing a feature, update the user documentation** (`userdocs/`) describing the new functionality for the end user before committing
+7. **UI workflow tested:** every feature must have a workflow described and manually verified before committing. The workflow includes: how to access the feature from the menu/navigation, what steps to follow, and what result to expect. This workflow must be documented in `userdocs/`.
+8. **Before committing, verify:** (a) the feature is accessible from the UI (sidebar links, buttons, routes), (b) `dotnet test` passes, (c) the workflow works end-to-end
 
 ```bash
-dotnet test                                   # Todos los tests (antes de commit)
-dotnet test tests/MediPrax.UnitTests          # Solo unitarios (rápido)
-dotnet test tests/MediPrax.IntegrationTests   # Solo integración (requiere Docker)
+dotnet test                                   # All tests (before commit)
+dotnet test tests/MediPrax.UnitTests          # Unit tests only (fast)
+dotnet test tests/MediPrax.IntegrationTests   # Integration only (requires Docker)
 ```
 
 ---
 
-## Documentación adicional
+## Additional Documentation
 
-| Archivo | Contenido |
-|---------|-----------|
+| File | Content |
+|------|---------|
 | `CHANGELOG.md` | Release notes v1.0.0 |
-| `docs/06-entwicklungsplan.md` | Plan de fases y milestones (índice general M1–M42) |
-| `docs/milestones/` | Especificaciones detalladas por milestone (M17–M42) |
-| `docs/05-architektur.md` | Decisiones de arquitectura técnica |
-| `docs/04-regulatorik.md` | Marco regulatorio KBV, gematik, DSGVO |
-| `docs/10-deployment.md` | Estrategia de entornos, Hetzner, producción local |
-| `userdocs/` | Guía de usuario en alemán |
+| `docs/06-entwicklungsplan.md` | Phase and milestone plan (general index M1–M42) |
+| `docs/milestones/` | Detailed specifications per milestone (M17–M42) |
+| `docs/05-architektur.md` | Technical architecture decisions |
+| `docs/04-regulatorik.md` | Regulatory framework KBV, gematik, DSGVO |
+| `docs/10-deployment.md` | Environment strategy, Hetzner, local production |
+| `userdocs/` | End-user guide in German |

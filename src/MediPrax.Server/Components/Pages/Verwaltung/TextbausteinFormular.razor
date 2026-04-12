@@ -1,0 +1,196 @@
+@page "/verwaltung/textbausteine/neu"
+@page "/verwaltung/textbausteine/{Id:guid}/bearbeiten"
+@attribute [Authorize(Policy = "Klinisch")]
+@inject ITextModuleService TextModuleService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using MediPrax.Core.Enums
+
+<PageTitle>@(isEdit ? "Textbaustein bearbeiten" : "Neuer Textbaustein")</PageTitle>
+
+<div class="page-header">
+    <h1>@(isEdit ? "Textbaustein bearbeiten" : "Neuer Textbaustein")</h1>
+</div>
+
+@if (loading)
+{
+    <p>Laden...</p>
+}
+else
+{
+    <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="textbausteinForm">
+        <DataAnnotationsValidator />
+
+        <fieldset>
+            <legend>Grunddaten</legend>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Kuerzel *</label>
+                    <InputText @bind-Value="form.Shortcut" class="form-control" placeholder="z.B. normpsy" />
+                </div>
+                <div class="form-group">
+                    <label>Titel *</label>
+                    <InputText @bind-Value="form.Title" class="form-control" placeholder="Kurze Beschreibung" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Kategorie</label>
+                    <InputText @bind-Value="form.Category" class="form-control" placeholder="z.B. Psychiatrie/Befund" />
+                </div>
+                <div class="form-group">
+                    <label>Zielsektion</label>
+                    <InputSelect @bind-Value="form.TargetSection" class="form-control">
+                        <option value="">Alle Sektionen</option>
+                        <option value="Anamnese">Anamnese</option>
+                        <option value="Befund">Befund</option>
+                        <option value="Diagnose">Diagnose</option>
+                        <option value="Therapie">Therapie</option>
+                        <option value="Procedere">Procedere</option>
+                        <option value="Sonstiges">Sonstiges</option>
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Sichtbarkeit</label>
+                    <InputSelect @bind-Value="form.Visibility" class="form-control">
+                        <option value="global">Global (alle Benutzer)</option>
+                        <option value="personal">Persoenlich (nur ich)</option>
+                    </InputSelect>
+                </div>
+                <div class="form-group"></div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Inhalt</legend>
+
+            <div class="form-group">
+                <label>Text *</label>
+                <textarea class="form-control" rows="12" @bind="form.Content"
+                          placeholder="Text des Bausteins eingeben..."
+                          style="font-family:monospace;font-size:0.9rem"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Verfuegbare Variablen</label>
+                <div class="variables-box">
+                    <code>{"{Patient.Name}"}</code> <code>{"{Patient.Alter}"}</code> <code>{"{Patient.Geburtsdatum}"}</code> <code>{"{Patient.Geschlecht}"}</code>
+                    <code>{"{Arzt.Name}"}</code> <code>{"{Arzt.Titel}"}</code>
+                    <code>{"{Datum}"}</code> <code>{"{Datum.Lang}"}</code>
+                    <code>{"{Diagnosen}"}</code> <code>{"{Dauerdiagnosen}"}</code> <code>{"{Medikation}"}</code>
+                    <code>{"{LetzterBefund.Psychopath}"}</code> <code>{"{LetzterBefund.Neuro}"}</code>
+                    <code>{"{Encounter.Datum}"}</code> <code>{"{Encounter.Dauer}"}</code>
+                </div>
+            </div>
+        </fieldset>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "Speichern..." : "Speichern")
+            </button>
+            <a href="/verwaltung/textbausteine" class="btn btn-secondary">Abbrechen</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private TextbausteinFormModel form = new();
+    private bool isEdit => Id.HasValue;
+    private bool loading = true;
+    private bool saving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (isEdit)
+        {
+            var module = await TextModuleService.GetByIdAsync(Id!.Value);
+            if (module is null)
+            {
+                Navigation.NavigateTo("/verwaltung/textbausteine");
+                return;
+            }
+
+            form = new TextbausteinFormModel
+            {
+                Shortcut = module.Shortcut,
+                Title = module.Title,
+                Content = module.Content,
+                Category = module.Category,
+                TargetSection = module.TargetSection?.ToString() ?? "",
+                Visibility = module.IsGlobal ? "global" : "personal"
+            };
+        }
+
+        loading = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        errorMessage = null;
+
+        try
+        {
+            EncounterSectionType? targetSection =
+                Enum.TryParse<EncounterSectionType>(form.TargetSection, out var ts) ? ts : null;
+
+            var dto = new CreateTextModuleDto
+            {
+                Shortcut = form.Shortcut,
+                Title = form.Title,
+                Content = form.Content,
+                Category = form.Category,
+                TargetSection = targetSection,
+                IsGlobal = form.Visibility == "global"
+            };
+
+            if (isEdit)
+            {
+                await TextModuleService.UpdateAsync(Id!.Value, dto);
+            }
+            else
+            {
+                if (AuthState is not null)
+                {
+                    var state = await AuthState;
+                    var userId = state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (Guid.TryParse(userId, out var uid))
+                        dto.CreatedById = uid;
+                }
+                await TextModuleService.CreateAsync(dto);
+            }
+
+            Navigation.NavigateTo("/verwaltung/textbausteine");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            saving = false;
+        }
+    }
+
+    private class TextbausteinFormModel
+    {
+        public string Shortcut { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string TargetSection { get; set; } = string.Empty;
+        public string Visibility { get; set; } = "global";
+    }
+}

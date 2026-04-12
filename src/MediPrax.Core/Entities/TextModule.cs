@@ -1,3 +1,5 @@
+using MediPrax.Core.Enums;
+
 namespace MediPrax.Core.Entities;
 
 public class TextModule : BaseEntity
@@ -11,4 +13,6 @@ public class TextModule : BaseEntity
     public string Category { get; set; } = string.Empty;
     public bool IsGlobal { get; set; }
     public int UsageCount { get; set; }
+    public EncounterSectionType? TargetSection { get; set; }
+    public DateTime? LastUsedAt { get; set; }
 }

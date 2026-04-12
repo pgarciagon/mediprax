@@ -20,8 +20,12 @@ public class TextModuleConfiguration : IEntityTypeConfiguration<TextModule>
             .WithMany()
             .HasForeignKey(t => t.CreatedById);
 
+        builder.Property(t => t.TargetSection).HasConversion<int?>();
+        builder.Property(t => t.LastUsedAt);
+
         builder.HasIndex(t => t.Shortcut);
         builder.HasIndex(t => t.Category);
+        builder.HasIndex(t => t.TargetSection);
         builder.HasQueryFilter(t => !t.IsDeleted);
     }
 }

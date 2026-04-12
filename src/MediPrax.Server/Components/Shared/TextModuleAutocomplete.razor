@@ -1,0 +1,176 @@
+@using MediPrax.Application.DTOs
+@using MediPrax.Application.Interfaces
+@using MediPrax.Core.Enums
+@inject ITextModuleService TextModuleService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+
+<div class="textmodule-autocomplete" @ref="containerRef">
+    <textarea id="@textareaId"
+              class="@CssClass"
+              rows="@Rows"
+              placeholder="@Placeholder"
+              value="@Value"
+              @onchange="HandleChange" />
+
+    @if (showDropdown && searchResults.Count > 0)
+    {
+        <div class="tm-dropdown" style="top:@(dropdownTop)px;left:@(dropdownLeft)px;">
+            @for (var i = 0; i < searchResults.Count; i++)
+            {
+                var idx = i;
+                var item = searchResults[i];
+                <div class="tm-item @(idx == selectedIndex ? "tm-item-selected" : "")"
+                     @onclick="() => SelectModule(item)"
+                     @onmouseenter="() => selectedIndex = idx">
+                    <code class="tm-shortcut">#@item.Shortcut</code>
+                    <span class="tm-title">@item.Title</span>
+                    <span class="tm-category">@item.Category</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public int Rows { get; set; } = 4;
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string CssClass { get; set; } = "form-control";
+    [Parameter] public Guid? PatientId { get; set; }
+    [Parameter] public Guid? EncounterId { get; set; }
+    [Parameter] public Guid? DoctorId { get; set; }
+    [Parameter] public EncounterSectionType? SectionFilter { get; set; }
+
+    private ElementReference containerRef;
+    private IJSObjectReference? jsModule;
+    private DotNetObjectReference<TextModuleAutocomplete>? dotNetRef;
+    private string textareaId = $"tm-{Guid.NewGuid():N}";
+
+    private List<TextModuleDto> searchResults = [];
+    private bool showDropdown;
+    private int selectedIndex;
+    private int dropdownTop;
+    private int dropdownLeft;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            jsModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "/js/textmodule-autocomplete.js");
+            await jsModule.InvokeVoidAsync("initAutocomplete", dotNetRef, textareaId);
+        }
+    }
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? string.Empty;
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+    }
+
+    [JSInvokable]
+    public async Task OnTextModuleSearch(string term)
+    {
+        searchResults = (await TextModuleService.SearchAsync(term, SectionFilter)).ToList();
+        selectedIndex = 0;
+        showDropdown = searchResults.Count > 0;
+
+        if (showDropdown && jsModule is not null)
+        {
+            try
+            {
+                var pos = await jsModule.InvokeAsync<CaretPosition>("getCaretPosition", textareaId);
+                dropdownTop = pos.Top + 20; // offset below cursor line
+                dropdownLeft = Math.Max(0, pos.Left);
+            }
+            catch
+            {
+                dropdownTop = 30;
+                dropdownLeft = 0;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnDismissDropdown()
+    {
+        showDropdown = false;
+        searchResults = [];
+        selectedIndex = 0;
+        InvokeAsync(StateHasChanged);
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnNavigate(string direction)
+    {
+        if (searchResults.Count == 0) return Task.CompletedTask;
+
+        if (direction == "down")
+            selectedIndex = (selectedIndex + 1) % searchResults.Count;
+        else if (direction == "up")
+            selectedIndex = (selectedIndex - 1 + searchResults.Count) % searchResults.Count;
+
+        InvokeAsync(StateHasChanged);
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task<bool> OnSelectCurrent()
+    {
+        if (!showDropdown || searchResults.Count == 0) return false;
+
+        var selected = searchResults[selectedIndex];
+        await SelectModule(selected);
+        return true;
+    }
+
+    private async Task SelectModule(TextModuleDto module)
+    {
+        showDropdown = false;
+        searchResults = [];
+
+        // Resolve variables
+        var content = module.Content;
+        if (PatientId.HasValue && content.Contains('{'))
+        {
+            content = await TextModuleService.ResolveVariablesAsync(
+                content, PatientId.Value, EncounterId, DoctorId);
+        }
+
+        // Replace #shortcut in textarea via JS
+        if (jsModule is not null)
+        {
+            var newValue = await jsModule.InvokeAsync<string>(
+                "replaceHashWord", textareaId, content);
+            Value = newValue;
+            await ValueChanged.InvokeAsync(newValue);
+        }
+
+        // Track usage
+        await TextModuleService.IncrementUsageAsync(module.Id);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (jsModule is not null)
+        {
+            try
+            {
+                await jsModule.InvokeVoidAsync("dispose", textareaId);
+                await jsModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        dotNetRef?.Dispose();
+    }
+
+    private record CaretPosition(int Top, int Left);
+}

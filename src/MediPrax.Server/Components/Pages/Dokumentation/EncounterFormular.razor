@@ -217,11 +217,16 @@ else
                             <span class="abdtp-key">@GetSectionKey(sectionType)</span>
                             @GetSectionLabel(sectionType)
                         </label>
-                        <textarea class="form-control abdtp-textarea"
-                                  rows="@GetSectionRows(sectionType)"
-                                  value="@sectionContents[sectionType]"
-                                  @onchange="e => sectionContents[sectionType] = e.Value?.ToString() ?? string.Empty"
-                                  placeholder="@GetSectionPlaceholder(sectionType)" />
+                        <TextModuleAutocomplete
+                            Value="@sectionContents[sectionType]"
+                            ValueChanged="@(v => sectionContents[sectionType] = v)"
+                            Rows="@GetSectionRows(sectionType)"
+                            Placeholder="@GetSectionPlaceholder(sectionType)"
+                            CssClass="form-control abdtp-textarea"
+                            PatientId="@PatientId"
+                            EncounterId="@Id"
+                            DoctorId="@(Guid.TryParse(form.DoctorId, out var docGuid) ? docGuid : null)"
+                            SectionFilter="@sectionType" />
                     </div>
                 }
             </div>
