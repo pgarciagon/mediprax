@@ -21,6 +21,11 @@
 }
 else
 {
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
     <div class="form-container">
         <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="appointmentForm">
             <fieldset>
@@ -149,11 +154,6 @@ else
                     </div>
                 </div>
             </fieldset>
-
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="error-message">@errorMessage</div>
-            }
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary" disabled="@saving">

@@ -17,6 +17,11 @@
 }
 else
 {
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
     <div class="form-container">
         <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="userForm">
             <fieldset>
@@ -93,11 +98,6 @@ else
                         <div class="success-message">@passwordMessage</div>
                     }
                 </fieldset>
-            }
-
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="error-message">@errorMessage</div>
             }
 
             <div class="form-actions">

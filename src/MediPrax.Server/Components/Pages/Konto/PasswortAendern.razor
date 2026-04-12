@@ -10,6 +10,16 @@
     <h1>Passwort ändern</h1>
 </div>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="error-message">@errorMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="success-message">@successMessage</div>
+}
+
 <div class="form-container" style="max-width: 480px">
     <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="changePasswordForm">
         <fieldset>
@@ -28,16 +38,6 @@
                 <InputText @bind-Value="form.ConfirmPassword" class="form-control" type="password" />
             </div>
         </fieldset>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="error-message">@errorMessage</div>
-        }
-
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="success-message">@successMessage</div>
-        }
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary" disabled="@saving">

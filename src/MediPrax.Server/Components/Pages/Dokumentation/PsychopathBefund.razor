@@ -22,6 +22,16 @@
 }
 else
 {
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
+    @if (successMessage is not null)
+    {
+        <div class="success-message">@successMessage</div>
+    }
+
     <div class="psychopath-actions">
         <button type="button" class="btn btn-secondary" @onclick="SetNormalbefund">Normalbefund</button>
     </div>
@@ -100,16 +110,6 @@ else
         <textarea class="form-control" rows="3"
                   @bind="notes" @bind:event="oninput"></textarea>
     </fieldset>
-
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="error-message">@errorMessage</div>
-    }
-
-    @if (successMessage is not null)
-    {
-        <div class="success-message">@successMessage</div>
-    }
 
     <div class="form-actions">
         <button type="button" class="btn btn-primary" disabled="@saving" @onclick="HandleSave">

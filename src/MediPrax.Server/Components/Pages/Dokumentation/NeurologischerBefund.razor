@@ -23,6 +23,16 @@
 }
 else
 {
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="success-message">@successMessage</div>
+    }
+
     <!-- Tabs -->
     <div class="neuro-tabs">
         <div class="tab-bar">
@@ -660,16 +670,6 @@ else
             <legend>Zusätzliche Notizen</legend>
             <textarea @bind="form.Notes" class="form-control" rows="3" placeholder="Weitere Anmerkungen..."></textarea>
         </fieldset>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="error-message">@errorMessage</div>
-        }
-
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="success-message">@successMessage</div>
-        }
 
         <div class="form-actions">
             <button type="button" class="btn btn-primary" @onclick="HandleSave" disabled="@saving">

@@ -30,9 +30,7 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             # Stop containers and drop the INT database to force fresh EnsureCreated()
-            docker compose -p mediprax-int down
-            docker compose -p mediprax-int run --rm -e PGPASSWORD=mediprax_int db \
-              psql -h db -U mediprax_int -d postgres -c "DROP DATABASE IF EXISTS mediprax_int WITH (FORCE);" 2>/dev/null || true
+            docker compose -p mediprax-int down -v
             docker compose -p mediprax-int up --build -d
             echo "INT deployed: $(git rev-parse --short HEAD)"
           EOF

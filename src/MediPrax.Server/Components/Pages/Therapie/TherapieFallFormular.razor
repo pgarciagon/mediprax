@@ -20,6 +20,11 @@
 }
 else
 {
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
     <EditForm Model="form" OnValidSubmit="HandleSubmit" FormName="therapyCaseForm">
         <DataAnnotationsValidator />
 
@@ -205,11 +210,6 @@ else
                 <InputTextArea @bind-Value="form.Notes" class="form-control" rows="3" placeholder="Interne Notizen zum Therapiefall..." />
             </div>
         </fieldset>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="error-message">@errorMessage</div>
-        }
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary" disabled="@saving">

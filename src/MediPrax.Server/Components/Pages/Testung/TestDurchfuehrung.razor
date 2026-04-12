@@ -76,6 +76,11 @@ else
         <p class="test-instruction">@definition.Instruction</p>
     </div>
 
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+
     <div class="questions-container">
         @foreach (var item in definition.Items)
         {
@@ -108,11 +113,6 @@ else
         <span>Laufende Punktzahl: <strong>@responses.Values.Sum()</strong> / @definition.MaxScore</span>
         <span>Beantwortet: @responses.Count / @definition.Items.Count</span>
     </div>
-
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="error-message">@errorMessage</div>
-    }
 
     <div class="form-actions">
         <button class="btn btn-primary" @onclick="SubmitTest" disabled="@submitting">

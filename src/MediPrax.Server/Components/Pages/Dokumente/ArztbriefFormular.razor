@@ -37,6 +37,15 @@ else
         .main-content:has(.arztbrief-layout), .main-content:has(.arztbrief-readonly) { max-width: none !important; padding: 1.5rem !important; }
     </style>
 
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">@errorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div style="color:var(--color-primary);font-size:0.85rem;margin-bottom:0.5rem;">@successMessage</div>
+    }
+
     @if (isEdit && arztbriefStatus == ArztbriefStatus.Versendet)
     {
         @* === READ-ONLY VIEW for Versendet === *@
@@ -205,15 +214,6 @@ else
                     DoctorId="@(Guid.TryParse(form.DoctorId, out var did) ? did : null)" />
             </div>
         </fieldset>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="error-message">@errorMessage</div>
-        }
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div style="color:var(--color-primary);font-size:0.85rem;margin-bottom:0.5rem;">@successMessage</div>
-        }
 
         <div class="form-actions">
             @if (isEdit && arztbriefStatus == ArztbriefStatus.Versendet)
