@@ -8,7 +8,7 @@ MediPrax ist ein modernes **Praxisverwaltungssystem (PVS)**, das speziell fuer *
 |---|---|
 | **Patientenverwaltung** | Patientenstammdaten, Versicherungsinformationen, Betreuer |
 | **Terminplanung** | Wochenansicht, Terminserien, Wartezimmer, Warteliste |
-| **Klinische Dokumentation** | Psychopathologischer Befund (AMDP), neurologischer Befund, Psychometrie, Suizidalitaetseinschaetzung |
+| **Klinische Dokumentation** | Psychopathologischer Befund (AMDP), neurologischer Befund, Psychometrie, Suizidalitaetseinschaetzung, ABDTP-Sektionen, Aktionsketten, Textbausteine |
 | **Krankheitsspezifische Module** | Anfallskalender, Kopfschmerz-Tagebuch, MS-Dokumentation, Parkinson-Dokumentation |
 | **Therapieverwaltung** | Therapiefaelle, PTV-Formulare, DMP Depression |
 | **Medikation** | Medikamentenverwaltung, Labormonitoring, BtM-Verwaltung, Rezeptdruck |
@@ -16,7 +16,7 @@ MediPrax ist ein modernes **Praxisverwaltungssystem (PVS)**, das speziell fuer *
 | **Formulare** | Arztbriefe, KBV-Formulare, PsychKG-Dokumentation, eAU |
 | **Geraeteanbindung** | GDT-Schnittstelle (EEG, EMG, NLG), Videosprechstunde |
 | **Telematikinfrastruktur** | eGK-Lesung, E-Rezept, KIM-Kommunikation |
-| **Verwaltung** | Benutzerverwaltung, Datenimport, Audit-Protokoll |
+| **Verwaltung** | Benutzerverwaltung, Textbausteine, Aktionsketten, Datenimport, Audit-Protokoll |
 
 ## Schnellstart
 
