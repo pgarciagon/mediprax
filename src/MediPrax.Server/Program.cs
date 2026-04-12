@@ -493,3 +493,6 @@ app.MapRazorComponents<App>()
 app.Run();
 
 public record LoginRequest(string Email, string Password);
+
+// Expose Program class for WebApplicationFactory in E2E tests
+public partial class Program;

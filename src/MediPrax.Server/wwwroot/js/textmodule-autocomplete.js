@@ -19,6 +19,7 @@ export function initAutocomplete(dotNetRef, textareaId) {
 
     let debounceTimer = null;
     let currentHashStart = -1; // position of the '#' character
+    let dropdownVisible = false; // tracks dropdown state locally for synchronous checks
 
     const onInput = () => {
         clearTimeout(debounceTimer);
@@ -26,16 +27,18 @@ export function initAutocomplete(dotNetRef, textareaId) {
             const { word, start } = getHashWordAtCursor(textarea);
             if (word && word.length >= 2) {
                 currentHashStart = start;
+                dropdownVisible = true;
                 dotNetRef.invokeMethodAsync('OnTextModuleSearch', word);
             } else {
                 currentHashStart = -1;
+                dropdownVisible = false;
                 dotNetRef.invokeMethodAsync('OnDismissDropdown');
             }
         }, 200);
     };
 
     const onKeyDown = (e) => {
-        if (currentHashStart === -1) return;
+        if (currentHashStart === -1 || !dropdownVisible) return;
 
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -43,15 +46,14 @@ export function initAutocomplete(dotNetRef, textareaId) {
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             dotNetRef.invokeMethodAsync('OnNavigate', 'up');
-        } else if (e.key === 'Enter' && currentHashStart >= 0) {
-            // Only intercept Enter when dropdown is visible
-            dotNetRef.invokeMethodAsync('OnSelectCurrent').then(selected => {
-                if (selected) {
-                    e.preventDefault();
-                }
-            });
+        } else if (e.key === 'Enter') {
+            // Prevent newline synchronously, then select via async
+            e.preventDefault();
+            dotNetRef.invokeMethodAsync('OnSelectCurrent');
         } else if (e.key === 'Escape') {
+            e.preventDefault();
             currentHashStart = -1;
+            dropdownVisible = false;
             dotNetRef.invokeMethodAsync('OnDismissDropdown');
         }
     };
@@ -61,6 +63,7 @@ export function initAutocomplete(dotNetRef, textareaId) {
         setTimeout(() => {
             dotNetRef.invokeMethodAsync('OnDismissDropdown');
             currentHashStart = -1;
+            dropdownVisible = false;
         }, 200);
     };
 
@@ -68,7 +71,9 @@ export function initAutocomplete(dotNetRef, textareaId) {
     textarea.addEventListener('keydown', onKeyDown);
     textarea.addEventListener('blur', onBlur);
 
-    instances.set(textareaId, { textarea, onInput, onKeyDown, onBlur, dotNetRef });
+    const state = { currentHashStart: () => currentHashStart, dropdownVisible: () => dropdownVisible };
+    const resetState = () => { currentHashStart = -1; dropdownVisible = false; };
+    instances.set(textareaId, { textarea, onInput, onKeyDown, onBlur, dotNetRef, state, resetState });
 }
 
 /**
@@ -147,6 +152,7 @@ export function replaceHashWord(textareaId, replacement) {
     textarea.dispatchEvent(new Event('change', { bubbles: true }));
 
     // Reset state
+    instance.resetState();
     instance.dotNetRef.invokeMethodAsync('OnDismissDropdown');
 
     return newValue;

@@ -8,6 +8,7 @@
     <Project Path="src/MediPrax.UI/MediPrax.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/MediPrax.E2ETests/MediPrax.E2ETests.csproj" />
     <Project Path="tests/MediPrax.IntegrationTests/MediPrax.IntegrationTests.csproj" />
     <Project Path="tests/MediPrax.UnitTests/MediPrax.UnitTests.csproj" />
   </Folder>
