@@ -1,0 +1,132 @@
+@using MediPrax.Application.DTOs
+@using MediPrax.Application.Interfaces
+@inject IMedicationCatalogService CatalogService
+@rendermode InteractiveServer
+
+<div class="medication-search" style="position:relative;">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">@Label</label>
+    }
+    <input type="text"
+           class="form-control"
+           placeholder="@Placeholder"
+           @bind="searchTerm"
+           @bind:event="oninput"
+           @bind:after="OnSearchInput"
+           @onfocus="OnFocus"
+           @onblur="OnBlur"
+           @onkeydown="OnKeyDown" />
+
+    @if (showDropdown && searchResults.Count > 0)
+    {
+        <div style="position:absolute;top:100%;left:0;right:0;z-index:1000;background:var(--surface, #fff);border:1px solid var(--border, #e2e8f0);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:320px;overflow-y:auto;margin-top:2px;">
+            @for (var i = 0; i < searchResults.Count; i++)
+            {
+                var idx = i;
+                var item = searchResults[i];
+                <div style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid var(--border, #f1f5f9);display:flex;gap:0.5rem;align-items:center;@(idx == selectedIndex ? "background:var(--hover, #f1f5f9);" : "")"
+                     @onclick="() => SelectEntry(item)"
+                     @onmouseenter="() => selectedIndex = idx">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            @item.Handelsname
+                        </div>
+                        <div style="font-size:0.8rem;color:#64748b;">
+                            @item.Wirkstoff @item.Staerke — @item.Darreichungsform — @item.Packungsgroesse
+                        </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <code style="font-size:0.75rem;color:#94a3b8;">@item.Pzn</code>
+                        @if (item.IsBtm)
+                        {
+                            <span style="display:block;background:#fef2f2;color:#ef4444;padding:1px 6px;border-radius:3px;font-size:0.7rem;font-weight:600;margin-top:2px;">BtM</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Medikament suchen (Name, Wirkstoff oder PZN)...";
+    [Parameter] public EventCallback<MedicationCatalogEntryDto> OnSelected { get; set; }
+
+    private string searchTerm = string.Empty;
+    private List<MedicationCatalogEntryDto> searchResults = [];
+    private bool showDropdown;
+    private int selectedIndex;
+    private CancellationTokenSource? _debounceCts;
+    private bool _hasFocus;
+
+    private async Task OnSearchInput()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(300, _debounceCts.Token);
+            if (searchTerm.Length >= 2)
+            {
+                var results = await CatalogService.SearchAsync(searchTerm, 15, _debounceCts.Token);
+                searchResults = results.ToList();
+                selectedIndex = 0;
+                showDropdown = searchResults.Count > 0;
+            }
+            else
+            {
+                searchResults = [];
+                showDropdown = false;
+            }
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void OnFocus()
+    {
+        _hasFocus = true;
+        if (searchResults.Count > 0)
+            showDropdown = true;
+    }
+
+    private async Task OnBlur()
+    {
+        _hasFocus = false;
+        // Delay to allow click events on dropdown items
+        await Task.Delay(200);
+        if (!_hasFocus)
+            showDropdown = false;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!showDropdown || searchResults.Count == 0) return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                selectedIndex = (selectedIndex + 1) % searchResults.Count;
+                break;
+            case "ArrowUp":
+                selectedIndex = (selectedIndex - 1 + searchResults.Count) % searchResults.Count;
+                break;
+            case "Enter":
+                await SelectEntry(searchResults[selectedIndex]);
+                break;
+            case "Escape":
+                showDropdown = false;
+                break;
+        }
+    }
+
+    private async Task SelectEntry(MedicationCatalogEntryDto entry)
+    {
+        searchTerm = $"{entry.Handelsname} {entry.Staerke}";
+        showDropdown = false;
+        searchResults = [];
+        await OnSelected.InvokeAsync(entry);
+    }
+}

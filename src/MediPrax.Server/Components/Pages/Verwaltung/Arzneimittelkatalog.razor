@@ -1,0 +1,199 @@
+@page "/verwaltung/arzneimittelkatalog"
+@attribute [Authorize(Roles = "Admin,Arzt")]
+@inject IMedicationCatalogService CatalogService
+@rendermode InteractiveServer
+
+<PageTitle>Arzneimittelkatalog</PageTitle>
+
+<div class="page-header">
+    <h1>Arzneimittelkatalog</h1>
+    <div class="header-actions">
+        <span style="color:#64748b;font-size:0.9rem;">@(statistics?.ActiveEntries ?? 0) aktive Einträge</span>
+    </div>
+</div>
+
+@if (statistics is not null)
+{
+    <div style="display:flex;gap:1rem;margin:1rem 0;flex-wrap:wrap;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;min-width:140px;">
+            <div style="font-size:0.8rem;color:#64748b;">Gesamt</div>
+            <div style="font-size:1.5rem;font-weight:700;">@statistics.TotalEntries</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;min-width:140px;">
+            <div style="font-size:0.8rem;color:#64748b;">BtM-Präparate</div>
+            <div style="font-size:1.5rem;font-weight:700;color:#ef4444;">@statistics.BtmCount</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;min-width:140px;">
+            <div style="font-size:0.8rem;color:#64748b;">T-Rezept</div>
+            <div style="font-size:1.5rem;font-weight:700;color:#f59e0b;">@statistics.TRezeptCount</div>
+        </div>
+        @foreach (var cat in statistics.ByCategory.OrderByDescending(x => x.Value))
+        {
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;min-width:140px;">
+                <div style="font-size:0.8rem;color:#64748b;">@FormatCategory(cat.Key)</div>
+                <div style="font-size:1.5rem;font-weight:700;">@cat.Value</div>
+            </div>
+        }
+    </div>
+}
+
+<div style="display:flex;gap:1rem;margin:1.5rem 0;align-items:end;">
+    <div style="flex:1;max-width:400px;">
+        <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Suche (Handelsname, Wirkstoff oder PZN)</label>
+        <input type="text" @bind="searchTerm" @bind:event="oninput" @bind:after="DebounceSearch"
+               placeholder="Mindestens 2 Zeichen eingeben..." class="form-control" />
+    </div>
+    <div>
+        <label style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Kategorie</label>
+        <select @bind="selectedCategory" @bind:after="OnCategoryChanged" class="form-control" style="min-width:200px;">
+            <option value="">Alle Kategorien</option>
+            @foreach (var cat in Enum.GetValues<MediPrax.Core.Enums.MedicationCategory>())
+            {
+                <option value="@cat">@FormatCategory(cat.ToString())</option>
+            }
+        </select>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <p>Laden...</p>
+}
+else if (results is not null && results.Count > 0)
+{
+    <div style="overflow-x:auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Handelsname</th>
+                    <th>Wirkstoff</th>
+                    <th>ATC</th>
+                    <th>Stärke</th>
+                    <th>Darreichungsform</th>
+                    <th>Packung</th>
+                    <th>Norm</th>
+                    <th>PZN</th>
+                    <th>Hersteller</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in results)
+                {
+                    <tr>
+                        <td style="font-weight:600;">@entry.Handelsname</td>
+                        <td>@entry.Wirkstoff</td>
+                        <td><code>@entry.AtcCode</code></td>
+                        <td>@entry.Staerke</td>
+                        <td>@entry.Darreichungsform</td>
+                        <td>@entry.Packungsgroesse</td>
+                        <td>@entry.NormPackungsgroesse</td>
+                        <td><code>@entry.Pzn</code></td>
+                        <td>@entry.Hersteller</td>
+                        <td>
+                            @if (entry.IsBtm)
+                            {
+                                <span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">BtM</span>
+                            }
+                            @if (entry.IsTRezeptPflichtig)
+                            {
+                                <span style="background:#fffbeb;color:#f59e0b;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;">T-Rezept</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (!string.IsNullOrEmpty(searchTerm) && searchTerm.Length >= 2)
+{
+    <p style="color:#64748b;margin-top:1rem;">Keine Ergebnisse gefunden.</p>
+}
+
+@code {
+    private string searchTerm = string.Empty;
+    private string selectedCategory = string.Empty;
+    private IReadOnlyList<MedicationCatalogEntryDto>? results;
+    private CatalogStatisticsDto? statistics;
+    private bool isLoading;
+    private CancellationTokenSource? _debounceCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        statistics = await CatalogService.GetStatisticsAsync();
+    }
+
+    private async Task DebounceSearch()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(300, _debounceCts.Token);
+            await ExecuteSearch();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private async Task OnCategoryChanged()
+    {
+        await ExecuteSearch();
+    }
+
+    private async Task ExecuteSearch()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            if (!string.IsNullOrEmpty(selectedCategory) &&
+                Enum.TryParse<MediPrax.Core.Enums.MedicationCategory>(selectedCategory, out var cat))
+            {
+                results = await CatalogService.GetByCategoryAsync(cat, 100);
+
+                // Further filter by search term if provided
+                if (!string.IsNullOrWhiteSpace(searchTerm) && searchTerm.Length >= 2)
+                {
+                    var term = searchTerm.Trim().ToLowerInvariant();
+                    results = results.Where(r =>
+                        r.Handelsname.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        r.Wirkstoff.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        r.Pzn.Contains(term, StringComparison.OrdinalIgnoreCase)
+                    ).ToList();
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(searchTerm) && searchTerm.Length >= 2)
+            {
+                results = await CatalogService.SearchAsync(searchTerm, 50);
+            }
+            else
+            {
+                results = null;
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string FormatCategory(string category) => category switch
+    {
+        "Antidepressivum" => "Antidepressiva",
+        "Antipsychotikum" => "Antipsychotika",
+        "Stimmungsstabilisierer" => "Stimmungsstabilisierer",
+        "Anxiolytikum" => "Anxiolytika",
+        "Hypnotikum" => "Hypnotika",
+        "Stimulans" => "Stimulanzien",
+        "Antikonvulsivum" => "Antikonvulsiva",
+        "Substitutionsmittel" => "Substitutionsmittel",
+        "Parkinsonmittel" => "Parkinson-Medikamente",
+        "MsTherapeutikum" => "MS-Therapeutika",
+        "Migraenetherapeutikum" => "Migräne-Therapeutika",
+        "Sonstiges" => "Sonstige",
+        _ => category
+    };
+}

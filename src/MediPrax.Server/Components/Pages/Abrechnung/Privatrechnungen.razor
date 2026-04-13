@@ -2,9 +2,16 @@
 @attribute [Authorize(Policy = "Klinisch")]
 @inject IPrivateInvoiceService InvoiceService
 @inject IPatientService PatientService
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Privatrechnungen</PageTitle>
+
+<div class="billing-tabs">
+    <a href="/abrechnung" class="billing-tab">Übersicht</a>
+    <a href="/abrechnung/validierung" class="billing-tab">Quartalsvalidierung</a>
+    <a href="/abrechnung/privatrechnungen" class="billing-tab active">Privatrechnungen (GOÄ)</a>
+</div>
 
 <div class="page-header">
     <h1>Privatrechnungen (GOÄ)</h1>
@@ -191,6 +198,8 @@ else
             }
 
             <div class="form-actions">
+                <a href="/api/formulare/goae-rechnung/@selectedInvoice.Id" target="_blank"
+                   class="btn btn-primary">PDF herunterladen</a>
                 <button class="btn btn-secondary" @onclick="() => selectedInvoice = null">Schließen</button>
             </div>
         </div>

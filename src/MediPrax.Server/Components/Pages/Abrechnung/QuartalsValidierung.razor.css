@@ -1,0 +1,28 @@
+.billing-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--color-border, #e2e8f0);
+}
+
+.billing-tab {
+    padding: 0.7rem 1.2rem;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-secondary, #64748b);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+}
+
+.billing-tab:hover {
+    color: var(--color-text, #0f172a);
+    background: rgba(37, 99, 235, 0.04);
+}
+
+.billing-tab.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    font-weight: 600;
+}

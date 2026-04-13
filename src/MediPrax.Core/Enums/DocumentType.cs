@@ -10,5 +10,6 @@ public enum DocumentType
     Krankenhauseinweisung,
     Heilmittelverordnung,
     HaeuslicheKrankenpflege,
-    Soziotherapie
+    Soziotherapie,
+    UeberweisungPsychotherapie
 }

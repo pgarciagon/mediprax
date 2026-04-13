@@ -14,6 +14,7 @@ MediPrax unterstuetzt die gaengigen KBV-Standardformulare (Muster) fuer den Prax
 | **Muster 13** | Heilmittelverordnung | Verordnung von Heilmitteln (Ergo-/Physiotherapie, Logopaedie) |
 | **Muster 12** | Haeusliche Krankenpflege | Verordnung haeuslicher Krankenpflege |
 | **Muster 26** | Soziotherapie | Verordnung von Soziotherapie fuer psychisch Kranke |
+| **Muster 7** | Ueberweisung zur Psychotherapie | Ueberweisung an Psychotherapeuten mit Therapieverfahren und somatischer Abklaerung |
 
 ## Formular erstellen
 
@@ -62,6 +63,16 @@ Fuer die elektronische Uebermittlung siehe [eAU](eau.md).
 | Diagnosegruppe | ICD-10 und Heilmittel-Diagnosegruppe |
 | Verordnungsmenge | Anzahl der Behandlungen |
 | Frequenz | Behandlungshaeufigkeit pro Woche |
+
+### Ueberweisung zur Psychotherapie (Muster 7)
+
+| Feld | Beschreibung |
+|---|---|
+| Diagnose | ICD-10-Code und Klartext der Verdachtsdiagnose |
+| Therapieverfahren | Verhaltenstherapie (VT), Tiefenpsychologisch fundierte PT (TP), Analytische PT (AP) oder Systemische Therapie (ST) |
+| Somatische Abklaerung | Bestaetigung, dass eine somatische Abklaerung erfolgt ist |
+| Befunde | Zusammenfassung relevanter Vorbefunde und Anamnese |
+| Dringlichkeit | Kennzeichnung als dringende Ueberweisung |
 
 ### Soziotherapie (Muster 26)
 

@@ -7,6 +7,7 @@ namespace MediPrax.Application.Services;
 
 public interface IPrivateInvoiceService
 {
+    Task<PrivateInvoiceDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<PrivateInvoiceDto> CreateAsync(CreatePrivateInvoiceDto dto, CancellationToken ct = default);
     Task<IReadOnlyList<PrivateInvoiceDto>> GetByPatientAsync(Guid patientId, CancellationToken ct = default);
     Task UpdateStatusAsync(Guid id, InvoiceStatus status, CancellationToken ct = default);
@@ -17,6 +18,13 @@ public interface IPrivateInvoiceService
 public class PrivateInvoiceService(DbContext context) : IPrivateInvoiceService
 {
     private DbSet<PrivateInvoice> Invoices => context.Set<PrivateInvoice>();
+
+    public async Task<PrivateInvoiceDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var invoice = await Invoices.Include(i => i.Patient)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+        return invoice is null ? null : MapToDto(invoice);
+    }
 
     public async Task<PrivateInvoiceDto> CreateAsync(CreatePrivateInvoiceDto dto, CancellationToken ct = default)
     {

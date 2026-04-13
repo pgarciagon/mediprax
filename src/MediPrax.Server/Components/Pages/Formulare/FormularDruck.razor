@@ -47,6 +47,10 @@ else
             <h3>Soziotherapie</h3>
             <p>Muster 26</p>
         </div>
+        <div class="form-card" @onclick='() => activeForm = "ueberweisungpt"' style="border-left: 4px solid #9c27b0;">
+            <h3>Überweisung Psychotherapie</h3>
+            <p>Muster 7</p>
+        </div>
     </div>
 
     @if (activeForm == "rezept")
@@ -332,6 +336,57 @@ else
             </fieldset>
         </div>
     }
+
+    @if (activeForm == "ueberweisungpt")
+    {
+        <div class="detail-form">
+            <fieldset>
+                <legend>Überweisung zur Psychotherapie (Muster 7)</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Diagnose *</label>
+                        <InputText @bind-Value="ueberweisungPt.Diagnose" class="form-control" placeholder="z.B. Mittelgradige depressive Episode" />
+                    </div>
+                    <div class="form-group" style="flex:0.3">
+                        <label>ICD-10</label>
+                        <InputText @bind-Value="ueberweisungPt.IcdCode" class="form-control" placeholder="z.B. F32.1" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Therapieverfahren *</label>
+                    <select @bind="ueberweisungPt.TherapieForm" class="form-control">
+                        <option value="">— Bitte wählen —</option>
+                        <option value="Verhaltenstherapie">Verhaltenstherapie (VT)</option>
+                        <option value="Tiefenpsychologisch fundierte Psychotherapie">Tiefenpsychologisch fundierte Psychotherapie (TP)</option>
+                        <option value="Analytische Psychotherapie">Analytische Psychotherapie (AP)</option>
+                        <option value="Systemische Therapie">Systemische Therapie (ST)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Relevante Befunde / Anamnese</label>
+                    <InputTextArea @bind-Value="ueberweisungPt.Befunde" class="form-control" rows="2" placeholder="Zusammenfassung relevanter Befunde" />
+                </div>
+                <div class="form-group">
+                    <label>
+                        <InputCheckbox @bind-Value="ueberweisungPt.SomatischeAbklaerung" /> Somatische Abklärung erfolgt
+                    </label>
+                </div>
+                @if (ueberweisungPt.SomatischeAbklaerung)
+                {
+                    <div class="form-group">
+                        <label>Details zur somatischen Abklärung</label>
+                        <InputText @bind-Value="ueberweisungPt.SomatischeAbklaerungDetails" class="form-control" placeholder="z.B. Labor unauffällig, Schilddrüse abgeklärt" />
+                    </div>
+                }
+                <div class="form-group">
+                    <label>
+                        <InputCheckbox @bind-Value="ueberweisungPt.Dringlichkeit" /> Dringende Überweisung
+                    </label>
+                </div>
+                <button class="btn btn-primary" @onclick="GenerateUeberweisungPt">PDF erzeugen</button>
+            </fieldset>
+        </div>
+    }
 }
 
 @code {
@@ -347,6 +402,7 @@ else
     private HeilmittelForm heilmittel = new();
     private HkpForm hkp = new();
     private SoziotherapieForm sozio = new();
+    private UeberweisungPtForm ueberweisungPt = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -389,6 +445,11 @@ else
     private void GenerateSoziotherapie()
     {
         Navigation.NavigateTo($"/api/formulare/soziotherapie?patientId={PatientId}&diagnose={Uri.EscapeDataString(sozio.Diagnose)}&icd={Uri.EscapeDataString(sozio.IcdCode ?? "")}&stoerungen={Uri.EscapeDataString(sozio.Faehigkeitsstoerungen)}&ziele={Uri.EscapeDataString(sozio.Therapieziele)}&stunden={sozio.Stunden}&therapeut={Uri.EscapeDataString(sozio.Soziotherapeut ?? "")}&erst={sozio.Erst}", forceLoad: true);
+    }
+
+    private void GenerateUeberweisungPt()
+    {
+        Navigation.NavigateTo($"/api/formulare/ueberweisung-psychotherapie?patientId={PatientId}&diagnose={Uri.EscapeDataString(ueberweisungPt.Diagnose)}&icd={Uri.EscapeDataString(ueberweisungPt.IcdCode ?? "")}&therapie={Uri.EscapeDataString(ueberweisungPt.TherapieForm)}&befunde={Uri.EscapeDataString(ueberweisungPt.Befunde ?? "")}&somatisch={ueberweisungPt.SomatischeAbklaerung}&somatischDetails={Uri.EscapeDataString(ueberweisungPt.SomatischeAbklaerungDetails ?? "")}&dringend={ueberweisungPt.Dringlichkeit}", forceLoad: true);
     }
 
     private class RezeptForm
@@ -459,5 +520,16 @@ else
         public int Stunden { get; set; } = 30;
         public string? Soziotherapeut { get; set; }
         public bool Erst { get; set; } = true;
+    }
+
+    private class UeberweisungPtForm
+    {
+        public string Diagnose { get; set; } = "";
+        public string? IcdCode { get; set; }
+        public string TherapieForm { get; set; } = "";
+        public string? Befunde { get; set; }
+        public bool SomatischeAbklaerung { get; set; }
+        public string? SomatischeAbklaerungDetails { get; set; }
+        public bool Dringlichkeit { get; set; }
     }
 }

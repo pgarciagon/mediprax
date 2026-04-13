@@ -10,5 +10,8 @@ public enum MedicationCategory
     Stimulans,
     Antikonvulsivum,
     Substitutionsmittel,
+    Parkinsonmittel,
+    MsTherapeutikum,
+    Migraenetherapeutikum,
     Sonstiges
 }

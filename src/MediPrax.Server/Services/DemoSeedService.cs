@@ -1,3 +1,4 @@
+using MediPrax.Application.Data;
 using MediPrax.Core.Entities;
 using MediPrax.Core.Enums;
 using MediPrax.Core.ValueObjects;
@@ -14,6 +15,18 @@ public static class DemoSeedService
 {
     public static void Seed(MediPraxDbContext db)
     {
+        // --- ICD-10 codes (always seed if table is empty) ---
+        SeedIcd10Codes(db);
+
+        // --- Medication catalog (always seed if table is empty) ---
+        SeedMedicationCatalog(db);
+
+        // --- Text modules / Textbausteine (always seed if table is empty) ---
+        SeedTextModules(db);
+
+        // --- Action chains / Aktionsketten (always seed if table is empty) ---
+        SeedActionChains(db);
+
         // Always ensure all doctors exist (even if patients already seeded)
         var drMeier = EnsureUser(db, "Dr. Thomas", "Meier", "meier@neuropsych-bremen.de", UserRole.Arzt);
         var drSchmidt = EnsureUser(db, "Dr. Anna", "Schmidt", "schmidt@neuropsych-bremen.de", UserRole.Arzt);
@@ -718,5 +731,246 @@ public static class DemoSeedService
             StartTime = utcTime,
             DurationMinutes = duration, Notes = notes
         });
+    }
+
+    private static void SeedMedicationCatalog(MediPraxDbContext db)
+    {
+        if (db.MedicationCatalog.Any())
+            return;
+
+        // Extract and execute the seed SQL from the compiled migration assembly.
+        // The migration file contains a large INSERT (279 rows) that we need to replay
+        // when using EnsureCreated() (which skips migration Up() methods).
+        try
+        {
+            var migrationAssembly = typeof(MediPrax.Infrastructure.Persistence.MediPraxDbContext).Assembly;
+            var migrationType = migrationAssembly.GetTypes()
+                .FirstOrDefault(t => t.Name == "AddMedicationCatalog");
+
+            if (migrationType != null)
+            {
+                // Read the source from embedded resource or use reflection on the compiled migration
+                // Since we can't easily extract SQL from compiled migration, use a simpler approach:
+                // read the .cs file if available, otherwise skip (production uses Database.Migrate())
+            }
+
+            // Fallback: execute seed from the migration file on disk (development only)
+            var migrationPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                "src", "MediPrax.Infrastructure", "Migrations", "20260413174153_AddMedicationCatalog.cs");
+            if (File.Exists(migrationPath))
+            {
+                var content = File.ReadAllText(migrationPath);
+                var startMarker = "INSERT INTO medication_catalog";
+                var startIdx = content.IndexOf(startMarker);
+                if (startIdx >= 0)
+                {
+                    // Find the closing of the SQL block ("""); pattern)
+                    var endMarker = "\"\"\");";
+                    var endIdx = content.IndexOf(endMarker, startIdx);
+                    if (endIdx > startIdx)
+                    {
+                        var sql = content[startIdx..endIdx].Trim();
+                        db.Database.ExecuteSqlRaw(sql);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not seed medication catalog: {ex.Message}");
+        }
+    }
+
+    private static void SeedActionChains(MediPraxDbContext db)
+    {
+        if (db.Set<ActionChain>().Any())
+            return;
+
+        var doctor = db.Users.FirstOrDefault(u => u.Role == UserRole.Arzt);
+        if (doctor is null) return;
+
+        var chains = new (string Shortcut, string Title, string Category, string Desc, (ActionStepType Type, string Config)[] Steps)[]
+        {
+            ("dep", "Depression Standard", "Psychiatrie",
+                "Standardkette für depressive Episode: Diagnose F32.1, GOP 21220, Vorlage psych",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"F32.1\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"21220\",\"description\":\"Psychiatrisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"psych\"}")
+                }),
+            ("angst", "Angststörung", "Psychiatrie",
+                "Generalisierte Angststörung: F41.1, GOP 21220",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"F41.1\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"21220\",\"description\":\"Psychiatrisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"psych\"}")
+                }),
+            ("epi", "Epilepsie Kontrolle", "Neurologie",
+                "Epilepsiekontrolle: G40.9, GOP 16220 + 16311",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"G40.9\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"16220\",\"description\":\"Neurologisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"16311\",\"description\":\"EEG\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"neuro\"}")
+                }),
+            ("erstgespraech", "Psychiatrisches Erstgespräch", "Psychiatrie",
+                "Erstgespräch: GOP 21210 + 21220, 50 Min.",
+                new[] {
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"21210\",\"description\":\"Grundpauschale Psychiatrie\",\"quantity\":1}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"21220\",\"description\":\"Psychiatrisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"psych\"}"),
+                    (ActionStepType.SetDuration, "{\"durationMinutes\":50}")
+                }),
+            ("schmerz", "Chronischer Schmerz", "Neurologie",
+                "Chronischer Schmerz: R52.2, GOP 16220",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"R52.2\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"16220\",\"description\":\"Neurologisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"neuro\"}")
+                }),
+            ("demenz", "Demenz Kontrolle", "Psychiatrie",
+                "Demenzkontrolle: F00.1, GOP 21220, Wiedervorlage 180 Tage",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"F00.1\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"21220\",\"description\":\"Psychiatrisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"psych\"}"),
+                    (ActionStepType.CreateRecall, "{\"reason\":\"Demenz-Kontrolle\",\"daysFromNow\":180}")
+                }),
+            ("park", "Parkinson Kontrolle", "Neurologie",
+                "Parkinson: G20, GOP 16220",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"G20\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"16220\",\"description\":\"Neurologisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"neuro\"}")
+                }),
+            ("ms", "Multiple Sklerose", "Neurologie",
+                "MS-Kontrolle: G35, GOP 16220, Wiedervorlage 90 Tage",
+                new[] {
+                    (ActionStepType.AddDiagnosis, "{\"icd10Code\":\"G35\",\"certainty\":\"Gesichert\",\"diagnosisType\":\"Encounterdiagnose\"}"),
+                    (ActionStepType.AddBillingCode, "{\"gopCode\":\"16220\",\"description\":\"Neurologisches Gespräch\",\"quantity\":1}"),
+                    (ActionStepType.SetNoteTemplate, "{\"template\":\"neuro\"}"),
+                    (ActionStepType.CreateRecall, "{\"reason\":\"MS-Kontrolle\",\"daysFromNow\":90}")
+                }),
+        };
+
+        for (int i = 0; i < chains.Length; i++)
+        {
+            var c = chains[i];
+            var chain = new ActionChain
+            {
+                Shortcut = c.Shortcut,
+                Title = c.Title,
+                Category = c.Category,
+                Description = c.Desc,
+                CreatedById = doctor.Id,
+                IsGlobal = true,
+                IsActive = true,
+                SortOrder = i + 1
+            };
+            db.Set<ActionChain>().Add(chain);
+            db.SaveChanges(); // Save to get the chain Id
+
+            for (int j = 0; j < c.Steps.Length; j++)
+            {
+                var s = c.Steps[j];
+                db.Set<ActionChainStep>().Add(new ActionChainStep
+                {
+                    ActionChainId = chain.Id,
+                    StepType = s.Type,
+                    SortOrder = j + 1,
+                    Configuration = s.Config
+                });
+            }
+            db.SaveChanges();
+        }
+    }
+
+    private static void SeedTextModules(MediPraxDbContext db)
+    {
+        if (db.Set<TextModule>().Any())
+            return;
+
+        // Need a user for CreatedById — find first doctor
+        var doctor = db.Users.FirstOrDefault(u => u.Role == UserRole.Arzt);
+        if (doctor is null) return; // Users not yet seeded — will be seeded on next restart
+
+        var modules = new List<TextModule>
+        {
+            new() { Shortcut = "normpsy", Title = "Normaler psychopathologischer Befund", Category = "Psychiatrie/Befund",
+                TargetSection = EncounterSectionType.Befund, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Bewusstsein klar, zur Person, Ort, Zeit und Situation voll orientiert. Aufmerksamkeit und Konzentration unbeeinträchtigt. Auffassung und Mnestik intakt. Formales Denken geordnet, kohärent, keine Perseveration. Inhaltlich kein Wahn, keine Zwänge. Wahrnehmung ungestört, keine Halluzinationen. Ich-Erleben intakt. Affekt ausgeglichen, modulationsfähig, Stimmung euthym. Antrieb und Psychomotorik unauffällig. Keine Suizidalität, keine Fremdgefährdung." },
+            new() { Shortcut = "depbefund", Title = "Depressiver Befund", Category = "Psychiatrie/Befund",
+                TargetSection = EncounterSectionType.Befund, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Bewusstsein klar, allseits orientiert. Konzentration und Aufmerksamkeit subjektiv reduziert. Formales Denken verlangsamt, grüblerisch, eingeengt auf depressive Thematik. Inhaltlich Insuffizienz- und Schuldgefühle, keine Wahnphänomene. Wahrnehmung ungestört. Affekt deprimiert, Stimmung gedrückt, Schwingungsfähigkeit eingeschränkt. Antrieb vermindert, Psychomotorik verlangsamt. Schlafstörungen (Ein-/Durchschlaf). Appetitminderung. Suizidalität exploriert: aktuell keine akute Suizidalität, Absprachefähigkeit gegeben." },
+            new() { Shortcut = "normneuro", Title = "Normaler neurologischer Befund", Category = "Neurologie/Befund",
+                TargetSection = EncounterSectionType.Befund, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Hirnnerven: Pupillen isokor, direkte und konsensuelle Lichtreaktion prompt. Augenmotilität frei, kein Nystagmus. Gesichtssensorik und -motorik seitengleich. Gaumensegel hebt seitengleich. Zunge median. Motorik: Muskeltonus und -trophik unauffällig, keine Paresen. MER seitengleich mittellebhaft auslösbar. Pyramidenbahnzeichen negativ. Sensibilität: Oberflächen- und Tiefensensibilität intakt. Koordination: Finger-Nase-Versuch und Knie-Hacke-Versuch zielsicher. Romberg negativ. Stand und Gang sicher." },
+            new() { Shortcut = "erstanamnese", Title = "Erstgespräch Anamnese", Category = "Psychiatrie/Anamnese",
+                TargetSection = EncounterSectionType.Anamnese, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Vorstellungsgrund: {Patient.Name}, {Patient.Alter} Jahre, stellt sich erstmalig in unserer Praxis vor.\n\nAktuelle Beschwerden:\n\nPsychiatrische Anamnese:\n\nSomatische Anamnese:\n\nFamilienanamnese:\n\nSozialanamnese:\n\nMedikamentenanamnese:\n\nSubstanzanamnese:" },
+            new() { Shortcut = "therplan", Title = "Therapieplan Standard", Category = "Allgemein/Therapie",
+                TargetSection = EncounterSectionType.Therapie, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "1. Medikamentöse Therapie: [Medikament, Dosis, Schema]\n2. Psychotherapie: [Art, Frequenz]\n3. Soziotherapeutische Maßnahmen: [falls indiziert]\n4. Kontrolltermin: [Datum/Intervall]\n5. Laborkontrollen: [falls erforderlich]" },
+            new() { Shortcut = "wv", Title = "Wiedervorstellung", Category = "Allgemein/Procedere",
+                TargetSection = EncounterSectionType.Procedere, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Wiedervorstellung in [2/4/6/8] Wochen zur Verlaufskontrolle. Bei Verschlechterung umgehende Vorstellung. Medikation wie besprochen [fortführen/anpassen]. Nächster Labortermin: [Datum]." },
+            new() { Shortcut = "briefein", Title = "Arztbrief Einleitung", Category = "Allgemein/Arztbrief",
+                TargetSection = null, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Wir berichten über unseren gemeinsamen Patienten {Patient.Name}, geb. {Patient.Geburtsdatum}, der sich am {Encounter.Datum} in unserer psychiatrisch-neurologischen Praxis vorstellte." },
+            new() { Shortcut = "briefschluss", Title = "Arztbrief Schluss", Category = "Allgemein/Arztbrief",
+                TargetSection = null, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Für Rückfragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen kollegialen Grüßen\n\n{Arzt.Titel} {Arzt.Name}\nFacharzt für Psychiatrie und Neurologie" },
+            new() { Shortcut = "diagliste", Title = "Diagnosenliste", Category = "Allgemein/Diagnose",
+                TargetSection = EncounterSectionType.Diagnose, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Diagnosen:\n{Diagnosen}\n\nDauerdiagnosen:\n{Dauerdiagnosen}" },
+            new() { Shortcut = "medliste", Title = "Aktuelle Medikation", Category = "Allgemein/Therapie",
+                TargetSection = EncounterSectionType.Therapie, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Aktuelle Medikation:\n{Medikation}" },
+            new() { Shortcut = "kurz", Title = "Kurzkonsultation", Category = "Psychiatrie/Kurzkonsultation",
+                TargetSection = EncounterSectionType.Befund, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Kurzkonsultation am {Datum}. Patient berichtet [Befinden]. Psychopathologisch [Befund]. Medikation wird [beibehalten/angepasst]. Nächster Termin in [X] Wochen." },
+            new() { Shortcut = "ksanamnese", Title = "Kopfschmerz-Anamnese", Category = "Neurologie/Anamnese",
+                TargetSection = EncounterSectionType.Anamnese, IsGlobal = true, CreatedById = doctor.Id,
+                Content = "Kopfschmerzcharakter: [dumpf-drückend/pulsierend/stechend]\nLokalisation: [frontal/temporal/okzipital/hemikraniell]\nIntensität (VAS 0-10):\nDauer: [Stunden/Tage]\nFrequenz: [pro Woche/Monat]\nBegleitsymptome: [Übelkeit/Erbrechen/Phono-/Photophobie/Aura]\nAuslöser: [Stress/Schlafmangel/Alkohol/Menstruation]\nBisherige Therapie:\nVorbehandlung:" },
+        };
+
+        db.Set<TextModule>().AddRange(modules);
+        db.SaveChanges();
+    }
+
+    private static void SeedIcd10Codes(MediPraxDbContext db)
+    {
+        if (db.Set<Icd10Code>().Any())
+            return;
+
+        var entries = Icd10Catalog.AllEntries;
+        foreach (var entry in entries)
+        {
+            db.Set<Icd10Code>().Add(new Icd10Code
+            {
+                Code = entry.Code,
+                Description = entry.Description,
+                Category = GetIcd10Category(entry.Code),
+                IsActive = true
+            });
+        }
+        db.SaveChanges();
+    }
+
+    private static string GetIcd10Category(string code)
+    {
+        if (code.StartsWith("F0")) return "Organische Störungen";
+        if (code.StartsWith("F1")) return "Störungen durch psychotrope Substanzen";
+        if (code.StartsWith("F2")) return "Schizophrenie und wahnhafte Störungen";
+        if (code.StartsWith("F3")) return "Affektive Störungen";
+        if (code.StartsWith("F4")) return "Neurotische Störungen";
+        if (code.StartsWith("F5")) return "Verhaltensauffälligkeiten";
+        if (code.StartsWith("F6")) return "Persönlichkeitsstörungen";
+        if (code.StartsWith("F9")) return "ADHS und Verhaltensstörungen";
+        if (code.StartsWith("G")) return "Neurologie";
+        if (code.StartsWith("I")) return "Schlaganfall";
+        if (code.StartsWith("R")) return "Symptome";
+        if (code.StartsWith("Z")) return "Faktoren";
+        return "Sonstige";
     }
 }

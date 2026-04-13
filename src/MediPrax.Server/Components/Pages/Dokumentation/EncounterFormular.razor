@@ -13,10 +13,14 @@
 @inject IActionChainService ActionChainService
 @inject IActionChainExecutor ActionChainExecutor
 @inject ICompositeBefundService CompositeBefundService
+@inject ISuicidalityAssessmentService SuicidalityService
+@inject IServiceScopeFactory ScopeFactory
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 @using System.Security.Claims
+@using Microsoft.Extensions.DependencyInjection
 @using MediPrax.Application.DTOs
+@using MediPrax.Application.Catalogs
 @using MediPrax.Core.Enums
 
 <PageTitle>@(isEdit ? "Konsultation bearbeiten" : "Neue Konsultation")</PageTitle>
@@ -135,6 +139,36 @@ else
                     <span class="no-codes">Keine Diagnosen hinzugefügt.</span>
                 }
             </div>
+
+            @if (diagnosisSuggestions.Count > 0)
+            {
+                <div class="suggestion-panel">
+                    <div class="suggestion-header">
+                        <span class="suggestion-title">Diagnosevorschlaege aus strukturierten Befunden</span>
+                        <span class="suggestion-count">@diagnosisSuggestions.Count Vorschlag@(diagnosisSuggestions.Count != 1 ? "e" : "")</span>
+                    </div>
+                    <div class="suggestion-list">
+                        @foreach (var s in diagnosisSuggestions)
+                        {
+                            var alreadyAdded = form.Icd10Codes.Contains(s.Icd10Code);
+                            <div class="suggestion-item @(alreadyAdded ? "suggestion-accepted" : "")">
+                                <span class="suggestion-confidence confidence-@s.Confidence.ToString().ToLower()">@GetConfidenceLabel(s.Confidence)</span>
+                                <strong class="suggestion-code">@s.Icd10Code</strong>
+                                <span class="suggestion-desc">@s.Description</span>
+                                <span class="suggestion-rationale" title="@s.Rationale">@TruncateRationale(s.Rationale)</span>
+                                @if (!alreadyAdded)
+                                {
+                                    <button type="button" class="btn-suggestion-accept" @onclick="() => AcceptSuggestion(s)">+</button>
+                                }
+                                else
+                                {
+                                    <span class="suggestion-added-label">hinzugefuegt</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
         </fieldset>
 
         <fieldset>
@@ -482,6 +516,9 @@ else
     private IReadOnlyList<PatientDiagnosisDto> dauerdiagnosen = [];
     private HashSet<Guid> selectedDauerdiagnosen = new();
 
+    // M42: Diagnosis suggestions from structured findings
+    private List<DiagnosisSuggestion> diagnosisSuggestions = [];
+
     protected override async Task OnInitializedAsync()
     {
         doctors = await UserService.GetDoctorsAsync();
@@ -526,6 +563,8 @@ else
 
             // Load composite Befund (AMDP + Neuro + free-text, composed at read-time)
             compositeBefund = await CompositeBefundService.GetAsync(Id!.Value);
+
+            // M42: Diagnosis suggestions loaded in OnAfterRenderAsync to avoid concurrent DbContext access
         }
         else if (PatientId.HasValue)
         {
@@ -558,18 +597,35 @@ else
         loading = false;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isEdit && Id.HasValue && PatientId.HasValue)
+        {
+            await LoadDiagnosisSuggestions();
+            StateHasChanged();
+        }
+    }
+
+    private bool icdSearchBusy;
+
     private async Task SearchIcd()
     {
         if (string.IsNullOrWhiteSpace(icdSearchTerm))
         {
             showIcdDropdown = false;
             icdResults = [];
+            return;
         }
-        else
+        if (icdSearchBusy) return;
+        icdSearchBusy = true;
+        try
         {
-            icdResults = await Icd10Service.SearchAsync(icdSearchTerm);
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IIcd10CodeService>();
+            icdResults = await svc.SearchAsync(icdSearchTerm);
             showIcdDropdown = icdResults.Count > 0;
         }
+        finally { icdSearchBusy = false; }
     }
 
     private async Task OnIcdFocus()
@@ -581,15 +637,23 @@ else
     private async Task ToggleIcdDropdown()
     {
         if (showIcdDropdown) { showIcdDropdown = false; return; }
-        if (string.IsNullOrWhiteSpace(icdSearchTerm))
+        if (icdSearchBusy) return;
+        icdSearchBusy = true;
+        try
         {
-            icdResults = await Icd10Service.GetAllAsync();
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var svc = scope.ServiceProvider.GetRequiredService<IIcd10CodeService>();
+            if (string.IsNullOrWhiteSpace(icdSearchTerm))
+            {
+                icdResults = await svc.GetAllAsync();
+            }
+            else
+            {
+                icdResults = await svc.SearchAsync(icdSearchTerm);
+            }
+            showIcdDropdown = icdResults.Count > 0;
         }
-        else
-        {
-            icdResults = await Icd10Service.SearchAsync(icdSearchTerm);
-        }
-        showIcdDropdown = icdResults.Count > 0;
+        finally { icdSearchBusy = false; }
     }
 
     private void AddIcd(Icd10CodeDto entry)
@@ -942,6 +1006,88 @@ else
             errorMessage = ex.Message;
             saving = false;
         }
+    }
+
+    // M42: Diagnosis suggestion methods — uses separate service scope to avoid concurrent DbContext access
+    private async Task LoadDiagnosisSuggestions()
+    {
+        if (!isEdit || !Id.HasValue || !PatientId.HasValue) return;
+
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var psychService = scope.ServiceProvider.GetRequiredService<IPsychopathFindingService>();
+            var neuroService = scope.ServiceProvider.GetRequiredService<INeurologicalExamService>();
+            var suicService = scope.ServiceProvider.GetRequiredService<ISuicidalityAssessmentService>();
+
+            // Load psychopath findings for this encounter
+            var psychDto = await psychService.GetByEncounterAsync(Id.Value);
+            var psychFindings = psychDto?.Findings;
+
+            // Load neuro exam for this encounter
+            var neuroDto = await neuroService.GetByEncounterAsync(Id.Value);
+            Core.Entities.NeurologicalExamination? neuroExam = null;
+            if (neuroDto is not null)
+            {
+                neuroExam = new Core.Entities.NeurologicalExamination
+                {
+                    CranialNerves = neuroDto.CranialNerves,
+                    MotorSystem = neuroDto.MotorSystem,
+                    Reflexes = neuroDto.Reflexes,
+                    SensorySystem = neuroDto.SensorySystem,
+                    Coordination = neuroDto.Coordination,
+                    Gait = neuroDto.Gait,
+                    MeningealSigns = neuroDto.MeningealSigns
+                };
+            }
+
+            // Load latest suicidality assessment for this patient
+            var suicDto = await suicService.GetLatestByPatientAsync(PatientId.Value);
+            Core.Entities.SuicidalityAssessment? suicAssessment = null;
+            if (suicDto is not null)
+            {
+                suicAssessment = new Core.Entities.SuicidalityAssessment
+                {
+                    SuicidalIdeation = suicDto.SuicidalIdeation,
+                    SuicidalPlans = suicDto.SuicidalPlans,
+                    SuicidalIntent = suicDto.SuicidalIntent,
+                    PriorAttempts = suicDto.PriorAttempts,
+                    RiskLevel = suicDto.RiskLevel
+                };
+            }
+
+            diagnosisSuggestions = DiagnosisSuggestionCatalog
+                .SuggestAll(psychFindings, neuroExam, suicAssessment)
+                .ToList();
+        }
+        catch
+        {
+            // Suggestions are non-critical — silently ignore errors
+            diagnosisSuggestions = [];
+        }
+    }
+
+    private void AcceptSuggestion(DiagnosisSuggestion suggestion)
+    {
+        if (!form.Icd10Codes.Contains(suggestion.Icd10Code))
+        {
+            form.Icd10Codes.Add(suggestion.Icd10Code);
+            icdDescriptions[suggestion.Icd10Code] = suggestion.Description;
+        }
+    }
+
+    private static string GetConfidenceLabel(SuggestionConfidence confidence) => confidence switch
+    {
+        SuggestionConfidence.High => "Hoch",
+        SuggestionConfidence.Medium => "Mittel",
+        SuggestionConfidence.Low => "Niedrig",
+        _ => ""
+    };
+
+    private static string TruncateRationale(string rationale)
+    {
+        if (string.IsNullOrEmpty(rationale)) return "";
+        return rationale.Length > 80 ? rationale[..77] + "..." : rationale;
     }
 
     private class EncounterFormModel

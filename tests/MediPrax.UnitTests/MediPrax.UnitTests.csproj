@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MediPrax.Core\MediPrax.Core.csproj" />
     <ProjectReference Include="..\..\src\MediPrax.Application\MediPrax.Application.csproj" />
+    <ProjectReference Include="..\..\src\MediPrax.Reporting\MediPrax.Reporting.csproj" />
   </ItemGroup>
 
 </Project>

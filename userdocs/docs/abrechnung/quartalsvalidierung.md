@@ -1,6 +1,6 @@
 # Quartalsvalidierung
 
-Die Quartalsvalidierung fuehrt eine umfassende Plausibilitaetspruefung ueber **alle Patienten** des Quartals durch. Sie erreichen sie unter **Abrechnung** > **Quartalsvalidierung** oder direkt unter `/abrechnung/quartalsvalidierung`.
+Die Quartalsvalidierung fuehrt eine umfassende Plausibilitaetspruefung ueber **alle Patienten** des Quartals durch. Sie erreichen sie ueber die Registerkarte **Quartalsvalidierung** auf der Abrechnungsseite oder direkt unter `/abrechnung/validierung`.
 
 ## Zweck
 
@@ -8,7 +8,7 @@ Vor dem [KVDT-Export](kvdt.md) an die KV sollten alle Abrechnungsdaten auf Fehle
 
 ## Validierung durchfuehren
 
-1. Navigieren Sie zu **Abrechnung** > **Quartalsvalidierung**.
+1. Navigieren Sie zu **Abrechnung** und klicken Sie auf die Registerkarte **Quartalsvalidierung**.
 2. Waehlen Sie das zu pruefende **Quartal** (z. B. Q1/2026).
 3. Klicken Sie auf **Validierung starten**.
 4. Die Pruefung laeuft ueber alle Patienten und Kontakte des Quartals.

@@ -99,8 +99,8 @@ Full specification in `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 | M20 | Structured Neurological Examination | P0 | ✅ |
 | M21 | Advanced Medication Management: interactions, depot injections, monitoring | P1 | ✅ |
 | M22 | Laboratory Integration & Monitoring (LDT) | P1 | ✅ |
-| M23 | Billing Enhancements: plausibility, GOP engine, GOÄ-Rechnung | P1 | ⏳ |
-| M24 | Missing KBV Forms: Muster 2, 7, 13, 14, 26 | P1 | ⏳ |
+| M23 | Billing Enhancements: plausibility, GOP engine, GOÄ-Rechnung | P1 | ✅ |
+| M24 | Missing KBV Forms: Muster 2, 7, 13, 14, 26 | P1 | ✅ |
 | M25 | Appointment Enhancements: recurring, Warteliste, session tracking | P2 | ⚠️ partial |
 | M26 | Disease-Specific Documentation: Epilepsy, MS, Parkinson, Headache | P2 | ✅ |
 | M27 | Suicidality Assessment & Safety Planning | P2 | ✅ |
@@ -118,15 +118,15 @@ Full specification in `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 | M39 | Arztbrief Therapiebericht Vorlage | P2 | ⏳ |
 | M40 | Sprechzeiten & Verfügbarkeit (doctor schedules and absences) | P1 | ✅ |
 | M41 | Intelligente Terminvergabe (automatic slot suggestion) | P1 | ✅ |
-| M42 | Automatische Diagnosevorschläge aus strukturierten Befunden | P1 | ⏳ |
+| M42 | Automatische Diagnosevorschläge aus strukturierten Befunden | P1 | ✅ |
 | M43 | Structured Encounter Documentation (ABDTP fields) | P1 | ✅ |
 | M44 | Advanced Diagnosis Management (Dauerdiagnosen, metadata, inheritance) | P1 | ✅ |
 | M45 | Encounter Types (Karteieintragstypen) | P2 | ⏳ |
 | M46 | Action Chains (Aktionsketten / Behandlungskomplexe) | P1 | ✅ |
 | M47 | Enhanced Textbausteine with Inline Expansion | P2 | ✅ |
-| M48 | Medication Catalog & Prescription Search (BfArM/FHIR) | P1 | ⏳ |
+| M48 | Medication Catalog & Prescription Search (BfArM/FHIR) | P1 | ✅ |
 
-**Phase 2 Summary:** ~20/32 completed. Priority pending: **M23**, **M24**, **M42**, **M48** (P1); **M28**, **M39**, **M45** (P2).
+**Phase 2 Summary:** ~24/32 completed. Priority pending: **M28**, **M39**, **M45** (P2).
 
 ---
 
@@ -143,9 +143,8 @@ Full specification in `IMPLEMENTATION_PLAN_PSYCHIATRY_NEUROLOGY.md`.
 ## Useful Commands
 
 ```bash
-# Local development
-docker compose up -d                          # Start PostgreSQL on port 5432
-dotnet run --project src/MediPrax.Server      # Server at http://localhost:5116
+# Local development (uses local PostgreSQL process, NOT Docker)
+dotnet run --project src/MediPrax.Server      # Server at http://localhost:5079
 
 # Database
 dotnet ef migrations add <Name> \
@@ -158,15 +157,17 @@ dotnet ef database update \
 # Tests
 dotnet test                                   # All tests
 dotnet test tests/MediPrax.UnitTests          # Unit tests only
-dotnet test tests/MediPrax.IntegrationTests   # Integration only (requires Docker)
+dotnet test tests/MediPrax.IntegrationTests   # Integration only (uses Testcontainers)
 
-# Build & Docker
+# Build & Docker (INT/VAL only — NOT for local development)
 dotnet build                                  # Build solution
-docker compose up --build                     # Full build + deploy
+docker compose up --build                     # Full build + deploy (INT/VAL servers only)
 ```
 
-**Local connection:** `Host=localhost;Port=5432;Database=mediprax;Username=mediprax;Password=mediprax_dev`
-**App port:** `http://localhost:5116` (dev) / `http://localhost:8080` (Docker)
+**Local development:** Uses local PostgreSQL process (not Docker). Connection: `Host=localhost;Port=5432;Database=mediprax;Username=mediprax;Password=mediprax_dev`
+**Local UI testing:** Always use the external Chrome instance (Claude in Chrome MCP tools: `mcp__Claude_in_Chrome__*`) for local UI testing instead of the Claude Preview tool. Navigate to `http://localhost:5079`, log in with the demo credentials, and verify features interactively.
+**Local app port:** `http://localhost:5079`
+**INT/VAL:** Use Docker Compose on the Hetzner server. See Deployment Environments section.
 
 ---
 
@@ -222,6 +223,7 @@ Applied on server (not in Git repo):
 - **Mandatory seed data:** every new feature MUST include test/seed data in the EF Core migration. Migrate existing impacted data when necessary. Seeds use raw SQL in the migration `Up()` with fixed GUIDs for idempotency.
 - **Mandatory UI access:** every new feature MUST be accessible from the UI through a clear workflow. This includes: links in the sidebar/navigation (`MainLayout.razor`), buttons on relevant pages, and navigable routes. A feature is NOT considered complete if the user cannot reach it from the interface.
 - When completing a milestone, update the user documentation (`userdocs/`) describing the new functionality for the end user
+- **Memory sync:** whenever CLAUDE.md is updated (new rules, milestone status changes, conventions, deployment info), the corresponding memory files in `.claude/projects/-Users-pgarcgo-code-mediprax/memory/` MUST also be updated to stay in sync. This includes `MEMORY.md` (index) and the relevant `feedback_*.md` files. Rules in CLAUDE.md and memory must never contradict each other.
 
 ---
 
@@ -232,12 +234,14 @@ Applied on server (not in Git repo):
 3. **Test types:**
    - **Unit tests** (`tests/MediPrax.UnitTests/`): for DTOs, catalogs, text generators, pure logic without DB
    - **Integration tests** (`tests/MediPrax.IntegrationTests/`): for services using DbContext, require PostgreSQL via Testcontainers
-4. **Naming convention:** `[TestedClass]Tests.cs`, methods: `[Method]_[Scenario]_[Result]` or descriptive in English
+   - **E2E/UI tests** (`tests/MediPrax.E2ETests/`): for every new UI feature. Uses Playwright + xUnit. Each new page or significant UI component MUST have E2E tests covering: page loads, key user interactions, navigation, and form workflows. Follow the pattern in `E2ETestBase.cs` (fresh browser context per test, auto-login). E2E tests run locally only (not in CI).
+4. **Naming convention:** `[TestedClass]Tests.cs` or `[Feature]E2ETests.cs`, methods: `[Method]_[Scenario]_[Result]` or descriptive in English
 5. **When fixing a bug, add a test that reproduces the bug** before the fix to prevent regressions
 6. **When completing a feature, update the user documentation** (`userdocs/`) describing the new functionality for the end user before committing
 7. **UI workflow tested:** every feature must have a workflow described and manually verified before committing. The workflow includes: how to access the feature from the menu/navigation, what steps to follow, and what result to expect. This workflow must be documented in `userdocs/`.
-8. **Before committing, verify:** (a) the feature is accessible from the UI (sidebar links, buttons, routes), (b) `dotnet test` passes, (c) the workflow works end-to-end
-9. **After pushing to main, verify CI/CD passes:**
+8. **E2E tests required:** every new feature with a UI component MUST include Playwright E2E tests in `tests/MediPrax.E2ETests/`. A feature is NOT considered complete without E2E tests covering the main user workflows. **Automatic rule:** Whenever UI components are added or modified, E2E tests MUST be created/updated AND executed locally before considering the task complete. Do not wait for the user to ask — proactively create and run E2E tests for every UI change.
+9. **Before committing, verify:** (a) the feature is accessible from the UI (sidebar links, buttons, routes), (b) `dotnet test` passes, (c) the workflow works end-to-end, (d) E2E tests exist for new UI features
+10. **After pushing to main, verify CI/CD passes:**
    - Run `gh run list --limit 3` to check the latest GitHub Actions run
    - If CI fails, diagnose with `gh run view <ID> --log-failed`, fix the issue, commit, push, and re-check — iterate until green
    - Deploy INT is triggered automatically when CI passes on main

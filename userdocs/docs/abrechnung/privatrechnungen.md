@@ -1,11 +1,10 @@
 # Privatrechnungen (GOAe)
 
-Fuer privatversicherte Patienten (PKV) erstellen Sie Rechnungen nach der Gebuehrenordnung fuer Aerzte (GOAe). MediPrax unterstuetzt den gesamten Rechnungsprozess von der Erstellung bis zum Zahlungseingang.
+Fuer privatversicherte Patienten (PKV) erstellen Sie Rechnungen nach der Gebuehrenordnung fuer Aerzte (GOAe). MediPrax unterstuetzt den gesamten Rechnungsprozess von der Erstellung bis zum Zahlungseingang. Sie erreichen die Verwaltung ueber die Registerkarte **Privatrechnungen (GOAe)** auf der Abrechnungsseite oder direkt unter `/abrechnung/privatrechnungen`.
 
 ## Rechnung erstellen
 
-1. Oeffnen Sie die [Patientenakte](../patienten/akte.md) eines PKV-Patienten.
-2. Navigieren Sie zu **Rechnungen**.
+1. Navigieren Sie zu **Abrechnung** und klicken Sie auf die Registerkarte **Privatrechnungen (GOAe)**.
 3. Klicken Sie auf **Neue Rechnung**.
 4. Die **Rechnungsnummer** wird automatisch vergeben (Format: RE-JJJJ-NNNN, z. B. RE-2026-0042).
 
@@ -58,6 +57,25 @@ Bei ueberfaelligen Rechnungen:
 2. Klicken Sie auf **Mahnung erstellen**.
 3. Die Mahnung wird als PDF generiert.
 4. Versenden Sie die Mahnung an den Patienten.
+
+## GOAe-Rechnung als PDF
+
+Sie koennen jede Rechnung als professionelles PDF-Dokument herunterladen:
+
+1. Oeffnen Sie die Rechnungsuebersicht unter **Abrechnung > Privatrechnungen**.
+2. Klicken Sie auf **Detail** bei der gewuenschten Rechnung.
+3. Im Detail-Dialog klicken Sie auf **PDF herunterladen**.
+4. Das PDF enthaelt alle Pflichtangaben nach § 14 UStG:
+   - Praxisname und -adresse
+   - Patientenname und -adresse
+   - Rechnungsnummer und -datum
+   - Auflistung aller GOAe-Positionen mit Ziffer, Beschreibung, Faktor, Punktzahl und Betrag
+   - Gesamtbetrag
+   - Zahlungsziel und Bankverbindung
+   - Hinweis auf Umsatzsteuerbefreiung (§ 4 Nr. 14a UStG)
+
+!!! tip "Tipp"
+    Laden Sie die Rechnung als PDF herunter, bevor Sie den Status auf **Versendet** setzen, um eine Kopie fuer Ihre Unterlagen zu haben.
 
 ## Rechnungsuebersicht
 

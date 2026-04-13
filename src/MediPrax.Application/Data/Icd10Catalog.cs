@@ -19,6 +19,9 @@ public static class Icd10Catalog
     public static string? GetDescription(string code)
         => Entries.FirstOrDefault(e => e.Code.Equals(code, StringComparison.OrdinalIgnoreCase))?.Description;
 
+    /// <summary>All catalog entries — used for DB seeding and in-memory lookups.</summary>
+    public static IReadOnlyList<Icd10Entry> AllEntries => Entries;
+
     // Psychiatrie & Neurologie — häufigste ICD-10-GM Codes
     private static readonly Icd10Entry[] Entries =
     [
@@ -47,6 +50,8 @@ public static class Icd10Catalog
         new("F25.1", "Schizoaffektive Störung, gegenwärtig depressiv"),
 
         // Affektive Störungen (F30-F39)
+        new("F30.0", "Hypomanie"),
+        new("F30.1", "Manie ohne psychotische Symptome"),
         new("F31.0", "Bipolare affektive Störung, gegenwärtig hypomanisch"),
         new("F31.3", "Bipolare affektive Störung, gegenwärtig leichte depressive Episode"),
         new("F31.4", "Bipolare affektive Störung, gegenwärtig schwere depressive Episode"),
@@ -109,6 +114,7 @@ public static class Icd10Catalog
         new("G62.1", "Alkoholpolyneuropathie"),
         new("G62.9", "Polyneuropathie, nicht näher bezeichnet"),
         new("G80.0", "Spastische tetraplegische Zerebralparese"),
+        new("G81.9", "Hemiparese, nicht näher bezeichnet"),
         new("G93.3", "Chronisches Müdigkeitssyndrom"),
 
         // Schlaganfall (I60-I69)
@@ -120,7 +126,9 @@ public static class Icd10Catalog
         // Symptome (R-Codes)
         new("R41.3", "Sonstige Amnesie"),
         new("R41.8", "Sonstige Symptome, kognitive Funktionen betreffend"),
+        new("R29.1", "Meningismus"),
         new("R45.1", "Ruhelosigkeit und Erregung"),
+        new("R45.8", "Sonstige Symptome, die die Stimmung betreffen"),
         new("R51", "Kopfschmerz"),
         new("R56.0", "Fieberkrämpfe"),
 

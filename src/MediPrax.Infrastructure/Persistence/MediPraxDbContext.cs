@@ -61,6 +61,9 @@ public class MediPraxDbContext : DbContext
     public DbSet<ActionChain> ActionChains => Set<ActionChain>();
     public DbSet<ActionChainStep> ActionChainSteps => Set<ActionChainStep>();
 
+    // M48: Medication Catalog
+    public DbSet<MedicationCatalogEntry> MedicationCatalog => Set<MedicationCatalogEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MediPraxDbContext).Assembly);

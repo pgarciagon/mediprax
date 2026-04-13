@@ -93,6 +93,9 @@ builder.Services.AddScoped<IBtmComplianceService, BtmComplianceService>();
 builder.Services.AddScoped<IActionChainService, ActionChainService>();
 builder.Services.AddScoped<IActionChainExecutor, ActionChainExecutor>();
 
+// M48: Medication Catalog
+builder.Services.AddScoped<IMedicationCatalogService, MedicationCatalogService>();
+
 // Telematik — Mock services (replace with real implementations when TI access is available)
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IEgkService, MediPrax.Server.Services.Telematik.MockEgkService>();
 builder.Services.AddSingleton<MediPrax.Application.Interfaces.Telematik.IERezeptService, MediPrax.Server.Services.Telematik.MockERezeptService>();
@@ -404,6 +407,24 @@ app.MapGet("/api/formulare/soziotherapie", async (Guid patientId, string diagnos
     return Results.File(pdf, "application/pdf", $"Soziotherapie_{patient.LastName}.pdf");
 }).RequireAuthorization("Klinisch");
 
+app.MapGet("/api/formulare/ueberweisung-psychotherapie", async (Guid patientId, string diagnose, string? icd, string therapie, string? befunde, bool somatisch, string? somatischDetails, bool dringend, IPatientService patientService) =>
+{
+    var patient = await patientService.GetByIdAsync(patientId);
+    if (patient is null) return Results.NotFound();
+    var doc = new MediPrax.Reporting.Formulare.UeberweisungPsychotherapieDocument(new MediPrax.Reporting.Formulare.UeberweisungPsychotherapieData
+    {
+        PatientName = patient.FullName, PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        Kvnr = patient.Kvnr ?? "", Krankenkasse = patient.InsuranceProvider ?? "",
+        Versichertennummer = patient.InsuranceNumber ?? "",
+        Diagnose = diagnose, DiagnoseIcd = icd, TherapieForm = therapie,
+        Befunde = befunde, SomatischeAbklaerung = somatisch,
+        SomatischeAbklaerungDetails = somatischDetails, Dringlichkeit = dringend,
+        ArztName = "Dr. med.", Datum = DateTime.Today.ToString("dd.MM.yyyy")
+    });
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"UeberweisungPsychotherapie_{patient.LastName}.pdf");
+}).RequireAuthorization("Klinisch");
+
 // M32: PsychKG PDF endpoints
 app.MapGet("/api/formulare/psychkg-zeugnis", async (Guid patientId, string untersuchungsDatum, string? untersuchungsZeit, string psychopathBefunde, string selbstgefaehrdung, string fremdgefaehrdung, string diagnose, string empfehlung, string? dauer, IPatientService patientService) =>
 {
@@ -449,6 +470,48 @@ app.MapGet("/api/formulare/betreuungsanregung", async (Guid patientId, string di
     var pdf = doc.GeneratePdf();
     return Results.File(pdf, "application/pdf", $"Betreuungsanregung_{patient.LastName}.pdf");
 }).RequireAuthorization("Arzt");
+
+// M23: GOÄ-Rechnung PDF endpoint
+app.MapGet("/api/formulare/goae-rechnung/{invoiceId:guid}", async (Guid invoiceId, IPrivateInvoiceService invoiceService, IPatientService patientService) =>
+{
+    var invoice = await invoiceService.GetByIdAsync(invoiceId);
+    if (invoice is null) return Results.NotFound("Rechnung nicht gefunden.");
+
+    var patient = await patientService.GetByIdAsync(invoice.PatientId);
+    if (patient is null) return Results.NotFound("Patient nicht gefunden.");
+
+    var positionen = invoice.Items.Select(item => new MediPrax.Reporting.Formulare.GoaeRechnungPosition
+    {
+        GopCode = item.GoaePosition ?? "—",
+        Description = item.Description,
+        Datum = invoice.InvoiceDate,
+        Steigerungsfaktor = item.Factor,
+        Punktzahl = item.UnitPrice,
+        Betrag = item.Total
+    }).ToList();
+
+    var data = new MediPrax.Reporting.Formulare.GoaeRechnungData
+    {
+        ArztName = "Dr. med.",
+        PatientName = patient.FullName,
+        PatientAdresse = patient.Street != null ? $"{patient.Street}, {patient.PostalCode} {patient.City}" : string.Empty,
+        PatientGeburtsdatum = patient.DateOfBirth.ToString("dd.MM.yyyy"),
+        RechnungsNummer = invoice.InvoiceNumber,
+        RechnungsDatum = invoice.InvoiceDate.ToString("dd.MM.yyyy"),
+        Diagnose = invoice.Notes,
+        Positionen = positionen,
+        Gesamtbetrag = invoice.TotalGross,
+        Zahlungsziel = invoice.DueDate.ToString("dd.MM.yyyy"),
+        BankInhaber = "Neuropsychiatricum Bremen",
+        BankIban = "DE00 0000 0000 0000 0000 00",
+        BankBic = "XXXXXXXX",
+        BankName = "Sparkasse Bremen"
+    };
+
+    var doc = new MediPrax.Reporting.Formulare.GoaeRechnungDocument(data);
+    var pdf = doc.GeneratePdf();
+    return Results.File(pdf, "application/pdf", $"GOAe-Rechnung_{invoice.InvoiceNumber}.pdf");
+}).RequireAuthorization("Klinisch");
 
 // KVDT export endpoint
 app.MapGet("/api/kvdt-export/{quarter}", async (string quarter, IKvdtExportService kvdtService, IAuditService auditService) =>
