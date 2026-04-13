@@ -31,7 +31,8 @@ jobs:
             git reset --hard origin/main
             # Stop containers and drop the INT database to force fresh EnsureCreated()
             docker compose -p mediprax-int down -v
-            docker compose -p mediprax-int up --build -d
+            docker compose -p mediprax-int build --no-cache
+            docker compose -p mediprax-int up -d
             echo "INT deployed: $(git rev-parse --short HEAD)"
           EOF
 

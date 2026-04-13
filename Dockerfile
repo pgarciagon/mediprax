@@ -14,7 +14,7 @@ RUN dotnet restore src/MediPrax.Server/MediPrax.Server.csproj
 
 # Copy everything and publish
 COPY . .
-RUN dotnet publish src/MediPrax.Server/MediPrax.Server.csproj -c Release -o /app --no-restore
+RUN dotnet publish src/MediPrax.Server/MediPrax.Server.csproj -c Release -o /app
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
