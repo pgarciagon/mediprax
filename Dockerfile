@@ -21,8 +21,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # Install QuestPDF system dependencies (libSkiaSharp)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libfontconfig1 \
+# Retry apt-get update up to 3 times to handle transient Ubuntu mirror sync issues
+RUN for i in 1 2 3; do apt-get update && break || sleep 5; done \
+    && apt-get install -y --no-install-recommends libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app .
