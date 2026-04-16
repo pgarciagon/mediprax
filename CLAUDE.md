@@ -187,12 +187,16 @@ docker compose up --build                     # Full build + deploy (INT/VAL ser
 - No real data, no TI
 
 ```bash
-# Update INT
+# Update INT (automatic via CI on push to main, or manual)
 ssh 46.225.170.6 "cd ~/mediprax-int && git pull && docker compose -p mediprax-int up --build -d"
 
-# Deploy release to VAL
+# Deploy release to VAL (MANUAL ONLY — requires explicit user request)
 ssh 46.225.170.6 "cd ~/mediprax-val && git fetch --tags && git checkout v1.1.0 && docker compose -p mediprax-val up --build -d"
 ```
+
+**Deployment policy:**
+- **INT**: auto-deploys on every push to `main` via CI/CD. Can also be deployed manually.
+- **VAL**: **manual deployment only**, triggered exclusively by the user. VAL is reserved for stable, validated versions. Never deploy to VAL automatically or without explicit user request.
 
 ### Production (future) — Local server at the practice
 

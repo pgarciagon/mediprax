@@ -8,12 +8,10 @@
 @inject IEncounterSectionService SectionService
 @inject IPatientDiagnosisService DiagnosisService
 @inject IIcd10CodeService Icd10Service
-@inject IPsychopathFindingService PsychopathFindingService
-@inject INeurologicalExamService NeuroExamService
+@inject IDiagnosisSuggestionService DiagnosisSuggestionService
 @inject IActionChainService ActionChainService
 @inject IActionChainExecutor ActionChainExecutor
 @inject ICompositeBefundService CompositeBefundService
-@inject ISuicidalityAssessmentService SuicidalityService
 @inject IServiceScopeFactory ScopeFactory
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -1016,48 +1014,9 @@ else
         try
         {
             await using var scope = ScopeFactory.CreateAsyncScope();
-            var psychService = scope.ServiceProvider.GetRequiredService<IPsychopathFindingService>();
-            var neuroService = scope.ServiceProvider.GetRequiredService<INeurologicalExamService>();
-            var suicService = scope.ServiceProvider.GetRequiredService<ISuicidalityAssessmentService>();
-
-            // Load psychopath findings for this encounter
-            var psychDto = await psychService.GetByEncounterAsync(Id.Value);
-            var psychFindings = psychDto?.Findings;
-
-            // Load neuro exam for this encounter
-            var neuroDto = await neuroService.GetByEncounterAsync(Id.Value);
-            Core.Entities.NeurologicalExamination? neuroExam = null;
-            if (neuroDto is not null)
-            {
-                neuroExam = new Core.Entities.NeurologicalExamination
-                {
-                    CranialNerves = neuroDto.CranialNerves,
-                    MotorSystem = neuroDto.MotorSystem,
-                    Reflexes = neuroDto.Reflexes,
-                    SensorySystem = neuroDto.SensorySystem,
-                    Coordination = neuroDto.Coordination,
-                    Gait = neuroDto.Gait,
-                    MeningealSigns = neuroDto.MeningealSigns
-                };
-            }
-
-            // Load latest suicidality assessment for this patient
-            var suicDto = await suicService.GetLatestByPatientAsync(PatientId.Value);
-            Core.Entities.SuicidalityAssessment? suicAssessment = null;
-            if (suicDto is not null)
-            {
-                suicAssessment = new Core.Entities.SuicidalityAssessment
-                {
-                    SuicidalIdeation = suicDto.SuicidalIdeation,
-                    SuicidalPlans = suicDto.SuicidalPlans,
-                    SuicidalIntent = suicDto.SuicidalIntent,
-                    PriorAttempts = suicDto.PriorAttempts,
-                    RiskLevel = suicDto.RiskLevel
-                };
-            }
-
-            diagnosisSuggestions = DiagnosisSuggestionCatalog
-                .SuggestAll(psychFindings, neuroExam, suicAssessment)
+            var suggestionService = scope.ServiceProvider.GetRequiredService<IDiagnosisSuggestionService>();
+            diagnosisSuggestions = (await suggestionService
+                .GetSuggestionsForEncounterAsync(Id.Value, PatientId.Value))
                 .ToList();
         }
         catch
