@@ -75,6 +75,7 @@ nav:
     - ABDTP-Sektionen: dokumentation/abdtp-sektionen.md
     - Aktionsketten: dokumentation/aktionsketten.md
     - Textbausteine: dokumentation/textbausteine.md
+    - Diagnosevorschläge: dokumentation/diagnosevorschlaege.md
   - Krankheitsspezifische Module:
     - Anfallskalender (Epilepsie): krankheiten/epilepsie.md
     - Kopfschmerz-Tagebuch: krankheiten/kopfschmerz.md
@@ -112,6 +113,7 @@ nav:
   - Verwaltung:
     - Benutzerverwaltung: verwaltung/benutzer.md
     - Textbausteine: dokumentation/textbausteine.md
+    - Arzneimittelkatalog: verwaltung/arzneimittelkatalog.md
     - Datenimport: verwaltung/import.md
     - Audit-Log: verwaltung/audit.md
 
